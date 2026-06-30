@@ -1,0 +1,221 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Achats groupés</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Gestion des achats groupés
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        <i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Vue admin
+        &bull; {{ groupes.paginator.count }} groupe{{ groupes.paginator.count|pluralize }}
+      </p>
+    </div>
+    <form method="post" action="{% url 'apps_marketplace:admin_finaliser_groupes_expires' %}"
+      onsubmit="return confirm('Finaliser tous les groupes expirés maintenant ?')">
+      {% csrf_token %}
+      <button type="submit" class="btn-ghost" style="font-size:.82rem">
+        <i class="bi bi-lightning-fill" style="color:var(--saffron)"></i> Finaliser les groupes expirés
+      </button>
+    </form>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
+      color:var(--text)">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Filtres + recherche ── -->
+  <div class="ycard p-3 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-6">
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.8rem"></i>
+          <input type="text" name="q" value="{{ q }}" placeholder="Produit, créateur…"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding-left:2.2rem">
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <select name="statut" class="form-select"
+          style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+          <option value="">— Tous les statuts —</option>
+          {% for val, label in statuts %}
+          <option value="{{ val }}" {% if statut == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.82rem">
+          <i class="bi bi-funnel"></i> Filtrer
+        </button>
+        {% if statut or q %}
+        <a href="{% url 'apps_marketplace:admin_groupes_liste' %}" class="btn-ghost" style="font-size:.82rem;width:auto">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Filtres statut rapides ── -->
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    <a href="{% url 'apps_marketplace:admin_groupes_liste' %}{% if q %}?q={{ q }}{% endif %}"
+      class="cpill {% if not statut %}on{% endif %}"
+      style="{% if not statut %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      Tous
+    </a>
+    {% for val, label in statuts %}
+    <a href="?statut={{ val }}{% if q %}&q={{ q }}{% endif %}"
+      class="cpill {% if statut == val %}on{% endif %}"
+      style="{% if statut == val %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- ── Liste des groupes ── -->
+  {% if groupes %}
+  <div style="display:grid;gap:.75rem">
+    {% for g in groupes %}
+    <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden" id="groupe-{{ g.pk }}">
+
+      <!-- Header -->
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-3"
+        style="border-bottom:1px solid var(--border);background:var(--surface)">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+            {% if g.createur.avatar %}
+              <img src="{{ g.createur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+            {% else %}
+              {{ g.createur.username|first|upper }}
+            {% endif %}
+          </div>
+          <div>
+            <span style="font-size:.82rem;font-weight:700;color:var(--text)">{{ g.createur.username }}</span>
+            <span style="font-size:.7rem;color:var(--muted);margin-left:.5rem">
+              <i class="bi bi-calendar3 me-1"></i>{{ g.date_creation|date:"d M Y" }}
+            </span>
+          </div>
+        </div>
+        <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;
+          background:{% if g.statut == 'traite' %}rgba(16,185,129,.15){% elif g.statut == 'complet' %}rgba(99,102,241,.15){% elif g.statut == 'expire' %}rgba(239,68,68,.12){% else %}rgba(246,169,43,.15){% endif %};
+          color:{% if g.statut == 'traite' %}var(--jade){% elif g.statut == 'complet' %}var(--indigo){% elif g.statut == 'expire' %}var(--ember){% else %}var(--saffron){% endif %}">
+          {{ g.get_statut_display }}
+        </span>
+      </div>
+
+      <!-- Corps -->
+      <div class="d-flex align-items-center gap-3 px-4 py-3 flex-wrap">
+
+        <!-- Image produit -->
+        <a href="{% url 'apps_core:produit_detail' g.produit.slug %}" style="flex-shrink:0">
+          <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:var(--surface)">
+            {% if g.produit.image_principale %}
+              <img src="{{ g.produit.image_principale }}" alt="" style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted)"></i></div>
+            {% endif %}
+          </div>
+        </a>
+
+        <!-- Infos produit + prix -->
+        <div class="flex-grow-1 min-width-0">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            {{ g.produit.titre }}
+          </div>
+          <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+            <span style="font-size:.78rem;color:var(--muted);text-decoration:line-through">{{ g.prix_normal|floatformat:0 }} F</span>
+            <span style="font-size:.86rem;font-weight:800;color:var(--jade)">{{ g.prix_groupe|floatformat:0 }} F</span>
+            <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(16,185,129,.12);color:var(--jade)">
+              -{{ g.pourcentage_reduction }}%
+            </span>
+          </div>
+        </div>
+
+        <!-- Progression participants -->
+        <div style="min-width:180px;flex-shrink:0">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span style="font-size:.74rem;color:var(--text-2)">
+              <i class="bi bi-people-fill me-1" style="color:var(--indigo)"></i>{{ g.nb_participants }}/{{ g.nb_participants_min }}
+            </span>
+            {% if g.est_complet %}
+            <span style="font-size:.7rem;color:var(--jade)"><i class="bi bi-check-circle-fill"></i></span>
+            {% endif %}
+          </div>
+          {% widthratio g.nb_participants g.nb_participants_min 100 as pct %}
+          <div style="height:6px;background:var(--surface);border-radius:99px;overflow:hidden">
+            <div style="height:100%;width:{% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%;background:{% if g.est_complet %}var(--jade){% else %}var(--saffron){% endif %};border-radius:99px;transition:width .4s"></div>
+          </div>
+        </div>
+
+        <!-- Expiration -->
+        <div class="text-end flex-shrink-0" style="min-width:100px">
+          <div style="font-size:.72rem;color:var(--muted)">Expire le</div>
+          <div style="font-size:.78rem;font-weight:600;color:{% if g.statut == 'expire' %}var(--ember){% else %}var(--text-2){% endif %}">
+            {{ g.date_expiration|date:"d M Y" }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="d-flex justify-content-end gap-2 px-4 py-2"
+        style="border-top:1px solid var(--border);background:var(--surface)">
+        <a href="{% url 'apps_marketplace:groupe_detail' g.pk %}" class="btn-ghost"
+          style="font-size:.76rem;padding:.3rem .8rem;width:auto">
+          <i class="bi bi-eye"></i> Voir le groupe
+        </a>
+        <a href="{% url 'apps_core:produit_detail' g.produit.slug %}" class="btn-ghost"
+          style="font-size:.76rem;padding:.3rem .8rem;width:auto">
+          <i class="bi bi-box"></i> Voir le produit
+        </a>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if groupes.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+    {% if groupes.has_previous %}<a href="?statut={{ statut }}&q={{ q }}&page={{ groupes.previous_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-left"></i></a>{% endif %}
+    {% for p in groupes.paginator.page_range %}
+      {% if p == groupes.number %}<span class="btn-gold" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center">{{ p }}</span>
+      {% elif p >= groupes.number|add:"-2" and p <= groupes.number|add:"2" %}<a href="?statut={{ statut }}&q={{ q }}&page={{ p }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center;width:auto">{{ p }}</a>{% endif %}
+    {% endfor %}
+    {% if groupes.has_next %}<a href="?statut={{ statut }}&q={{ q }}&page={{ groupes.next_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-right"></i></a>{% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-people" style="font-size:1.8rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun groupe d'achat</div>
+    <div style="font-size:.82rem;color:var(--muted)">{% if statut or q %}Modifiez vos filtres.{% else %}Les groupes d'achat créés par les vendeurs apparaîtront ici.{% endif %}</div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

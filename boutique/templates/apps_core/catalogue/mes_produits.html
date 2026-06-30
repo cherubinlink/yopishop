@@ -1,0 +1,488 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes produits — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.vd-page{padding:2.5rem 0 4rem;min-height:80vh}
+
+/* Header */
+.vd-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;
+  position:relative;overflow:hidden;
+}
+.vd-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--saffron),var(--ember))}
+.vd-header::after{content:'';position:absolute;right:-5%;top:-40%;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--saffron-d) 0%,transparent 70%);pointer-events:none}
+
+/* Stats grid */
+.vd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.5rem}
+@media(max-width:767px){.vd-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.vd-stats{grid-template-columns:1fr 1fr}}
+.vdstat{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:1rem 1.1rem;display:flex;align-items:center;gap:.8rem;
+  transition:border-color var(--tr),transform var(--tr);cursor:pointer;text-decoration:none;
+}
+.vdstat:hover{border-color:var(--saffron);transform:translateY(-2px)}
+.vdstat.active{border-color:var(--saffron);background:var(--saffron-g,rgba(247,183,49,.04))}
+.vdstat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.vdstat-val{font-family:var(--fm);font-size:1.2rem;font-weight:800;line-height:1}
+.vdstat-lbl{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.12rem}
+
+/* Barre de recherche + filtres */
+.vd-toolbar{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:.85rem 1.1rem;margin-bottom:1.25rem;
+  display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+}
+.vd-search{
+  position:relative;flex:1;min-width:200px;
+}
+.vd-search i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+.vd-search input{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:99px;
+  color:var(--text);font-family:var(--fd);font-size:.85rem;
+  padding:.48rem .9rem .48rem 2.4rem;outline:none;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+.vd-search input:focus{border-color:var(--saffron);box-shadow:0 0 0 3px var(--saffron-d)}
+.vd-search input::placeholder{color:var(--muted)}
+.vd-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.fpill{
+  display:inline-flex;align-items:center;gap:.35rem;
+  padding:.32rem .85rem;border-radius:99px;font-size:.77rem;font-weight:600;
+  border:1.5px solid var(--border);color:var(--muted);cursor:pointer;
+  text-decoration:none;white-space:nowrap;
+  transition:border-color var(--tr),color var(--tr),background var(--tr);
+}
+.fpill:hover{border-color:var(--saffron);color:var(--saffron);background:var(--saffron-d)}
+.fpill.on{border-color:var(--saffron);background:var(--saffron-d);color:var(--saffron)}
+
+/* Tableau */
+.vd-table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.vd-table-head{
+  padding:.9rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+}
+.vd-table-title{font-size:.88rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.5rem}
+.vd-table-title i{color:var(--saffron)}
+
+/* Ligne produit */
+.prod-row{
+  display:flex;align-items:center;gap:1rem;
+  padding:.85rem 1.25rem;border-bottom:1px solid var(--border);
+  transition:background var(--tr);
+}
+.prod-row:last-child{border-bottom:none}
+.prod-row:hover{background:rgba(255,255,255,.02)}
+
+.prod-img{
+  width:52px;height:52px;border-radius:10px;flex-shrink:0;
+  overflow:hidden;background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:var(--muted);
+}
+.prod-img img{width:100%;height:100%;object-fit:cover}
+
+.prod-info{flex:1;min-width:0}
+.prod-title{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:.18rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-meta{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+
+.prod-price{font-family:var(--fm);font-size:.9rem;font-weight:700;color:var(--saffron);white-space:nowrap;flex-shrink:0}
+
+.prod-stock{
+  font-family:var(--fm);font-size:.82rem;font-weight:700;
+  padding:.22rem .65rem;border-radius:99px;white-space:nowrap;flex-shrink:0;
+}
+.stock-ok{background:var(--jade-d);color:var(--jade)}
+.stock-low{background:var(--saffron-d);color:var(--saffron)}
+.stock-zero{background:var(--ember-d);color:var(--ember)}
+
+.prod-status{
+  font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 7px;border-radius:99px;flex-shrink:0;
+}
+.ps-actif{background:var(--jade-d);color:var(--jade)}
+.ps-inactif{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.ps-vedette{background:var(--saffron-d);color:var(--saffron)}
+
+.prod-actions{display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.pa-btn{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:.85rem;text-decoration:none;cursor:pointer;
+  background:none;transition:border-color var(--tr),color var(--tr),background var(--tr);
+}
+.pa-btn:hover{border-color:var(--saffron);color:var(--saffron);background:var(--saffron-d)}
+.pa-btn.danger:hover{border-color:var(--ember);color:var(--ember);background:var(--ember-d)}
+
+/* Checkbox sélection */
+.prod-check{flex-shrink:0}
+.prod-check input[type="checkbox"]{
+  width:16px;height:16px;accent-color:var(--saffron);cursor:pointer;
+}
+
+/* Actions en masse */
+.bulk-bar{
+  background:var(--indigo-d);border:1px solid rgba(99,102,241,.25);border-radius:var(--r);
+  padding:.65rem 1.1rem;margin-bottom:1rem;
+  display:none;align-items:center;gap:.75rem;flex-wrap:wrap;
+}
+.bulk-bar.show{display:flex}
+.bulk-count{font-size:.82rem;font-weight:600;color:var(--indigo)}
+
+/* Pagination */
+.vd-pager{display:flex;justify-content:center;gap:.35rem;padding:1.1rem;flex-wrap:wrap;border-top:1px solid var(--border)}
+.pg-btn{min-width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:600;border:1.5px solid var(--border);color:var(--text-2);text-decoration:none;padding:0 .65rem;transition:border-color var(--tr),color var(--tr),background var(--tr)}
+.pg-btn:hover{border-color:var(--saffron);color:var(--saffron);background:var(--saffron-d)}
+.pg-btn.on{background:var(--saffron);border-color:var(--saffron);color:#0A0B1A}
+.pg-btn.disabled{opacity:.35;pointer-events:none}
+
+/* Empty */
+.vd-empty{text-align:center;padding:4rem 1rem}
+.vd-empty i{font-size:3rem;color:var(--muted);opacity:.35;display:block;margin-bottom:1rem}
+.vd-empty-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.4rem}
+.vd-empty-sub{font-size:.82rem;color:var(--muted);margin-bottom:1.25rem}
+
+/* Table header desktop */
+.prod-row-head{
+  display:flex;align-items:center;gap:1rem;
+  padding:.55rem 1.25rem;background:var(--surface);border-bottom:1px solid var(--border);
+}
+.th{font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+@media(max-width:767px){
+  .prod-price,.prod-stock,.col-hide{display:none}
+  .prod-row-head{display:none}
+}
+</style>
+
+<div class="vd-page">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+      <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <a href="{% url 'apps_core:tableau_de_bord' %}" style="color:var(--muted)">Tableau de bord</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <span style="color:var(--saffron)">Mes produits</span>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+      {{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- Header -->
+    <div class="vd-header fi">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:46px;height:46px;border-radius:13px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:var(--saffron);flex-shrink:0">
+            <i class="bi bi-bag-fill"></i>
+          </div>
+          <div>
+            <div style="font-family:var(--fg);font-size:1.2rem;font-weight:700;color:var(--text)">Mes produits</div>
+            <div style="font-size:.8rem;color:var(--muted)">Gérez votre catalogue de vente</div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'apps_core:ajouter_produit' %}" class="btn-gold" style="font-size:.83rem">
+            <i class="bi bi-plus-lg"></i> Ajouter un produit
+          </a>
+          <a href="{% url 'apps_core:tableau_de_bord' %}" class="btn-ghost" style="font-size:.83rem">
+            <i class="bi bi-speedometer2"></i> Tableau de bord
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="vd-stats fi">
+      <a href="?" class="vdstat {% if not statut %}active{% endif %} text-decoration-none">
+        <div class="vdstat-icon" style="background:var(--saffron-d)"><i class="bi bi-bag" style="color:var(--saffron)"></i></div>
+        <div><div class="vdstat-val" style="color:var(--saffron)">{{ stats.total }}</div><div class="vdstat-lbl">Total</div></div>
+      </a>
+      <a href="?statut=actif" class="vdstat {% if statut == 'actif' %}active{% endif %} text-decoration-none">
+        <div class="vdstat-icon" style="background:var(--jade-d)"><i class="bi bi-check-circle" style="color:var(--jade)"></i></div>
+        <div><div class="vdstat-val" style="color:var(--jade)">{{ stats.actifs }}</div><div class="vdstat-lbl">Actifs</div></div>
+      </a>
+      <a href="?statut=inactif" class="vdstat {% if statut == 'inactif' %}active{% endif %} text-decoration-none">
+        <div class="vdstat-icon" style="background:var(--surface)"><i class="bi bi-eye-slash" style="color:var(--muted)"></i></div>
+        <div><div class="vdstat-val" style="color:var(--muted)">{{ stats.inactifs }}</div><div class="vdstat-lbl">Inactifs</div></div>
+      </a>
+      <a href="?statut=rupture" class="vdstat {% if statut == 'rupture' %}active{% endif %} text-decoration-none">
+        <div class="vdstat-icon" style="background:var(--ember-d)"><i class="bi bi-exclamation-triangle" style="color:var(--ember)"></i></div>
+        <div><div class="vdstat-val" style="color:var(--ember)">{{ stats.rupture }}</div><div class="vdstat-lbl">Rupture</div></div>
+      </a>
+    </div>
+
+    <!-- Toolbar recherche + filtres -->
+    <form method="get" class="vd-toolbar fi">
+      <div class="vd-search">
+        <i class="bi bi-search"></i>
+        <input type="text" name="q" placeholder="Rechercher par titre, référence, SKU…" value="{{ q }}">
+      </div>
+      <div class="vd-sep d-none d-md-block"></div>
+      <div class="d-none d-md-flex gap-2 flex-wrap">
+        <a href="?" class="fpill {% if not statut %}on{% endif %}"><i class="bi bi-list-ul"></i> Tous</a>
+        <a href="?statut=actif" class="fpill {% if statut == 'actif' %}on{% endif %}"><i class="bi bi-check-circle"></i> Actifs</a>
+        <a href="?statut=inactif" class="fpill {% if statut == 'inactif' %}on{% endif %}"><i class="bi bi-eye-slash"></i> Inactifs</a>
+        <a href="?statut=rupture" class="fpill {% if statut == 'rupture' %}on{% endif %}"><i class="bi bi-exclamation-triangle"></i> Rupture</a>
+        <a href="?statut=vedette" class="fpill {% if statut == 'vedette' %}on{% endif %}"><i class="bi bi-star-fill"></i> Vedettes</a>
+      </div>
+      {% if q %}
+      <a href="?" class="fpill" style="border-color:var(--ember);color:var(--ember)"><i class="bi bi-x-lg"></i> Effacer</a>
+      {% endif %}
+      <button type="submit" class="btn-gold" style="font-size:.8rem;padding:.45rem 1rem"><i class="bi bi-search"></i> Rechercher</button>
+    </form>
+
+    <!-- Actions en masse -->
+    <div class="bulk-bar fi" id="bulkBar">
+      <span class="bulk-count" id="bulkCount">0 sélectionné(s)</span>
+      <div class="vd-sep"></div>
+      <button class="btn-ghost" style="font-size:.78rem" onclick="bulkAction('activer')"><i class="bi bi-check-circle"></i> Activer</button>
+      <button class="btn-ghost" style="font-size:.78rem" onclick="bulkAction('desactiver')"><i class="bi bi-eye-slash"></i> Désactiver</button>
+      <button class="btn-ghost" style="font-size:.78rem;border-color:var(--ember);color:var(--ember)" onclick="bulkAction('supprimer')"><i class="bi bi-trash3"></i> Supprimer</button>
+    </div>
+
+    <!-- Tableau -->
+    <div class="vd-table-wrap fi">
+
+      <div class="vd-table-head">
+        <div class="vd-table-title">
+          <i class="bi bi-bag"></i> Produits
+          <span style="font-size:.72rem;font-weight:400;color:var(--muted)">({{ produits.paginator.count }} au total)</span>
+        </div>
+        <div style="font-size:.75rem;color:var(--muted)">
+          Page {{ produits.number }}/{{ produits.paginator.num_pages }}
+        </div>
+      </div>
+
+      {% if produits %}
+
+      <!-- En-tête colonnes -->
+      <div class="prod-row-head">
+        <div class="prod-check"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"></div>
+        <div style="width:52px;flex-shrink:0"></div>
+        <div class="th" style="flex:1">Produit</div>
+        <div class="th col-hide" style="width:110px;text-align:right">Prix</div>
+        <div class="th col-hide" style="width:80px;text-align:center">Stock</div>
+        <div class="th col-hide" style="width:80px;text-align:center">Statut</div>
+        <div class="th" style="width:100px;text-align:right">Actions</div>
+      </div>
+
+      {% for p in produits %}
+      <div class="prod-row">
+
+        <!-- Checkbox -->
+        <div class="prod-check">
+          <input type="checkbox" class="row-check" value="{{ p.id }}" onchange="updateBulk()">
+        </div>
+
+        <!-- Image -->
+        <div class="prod-img">
+          {% if p.image_principale %}
+          <img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+          {% else %}
+          <i class="bi bi-image" style="font-size:1.2rem"></i>
+          {% endif %}
+        </div>
+
+        <!-- Infos -->
+        <div class="prod-info">
+          <div class="prod-title">{{ p.titre }}</div>
+          <div class="prod-meta">
+            {% if p.categorie %}<span><i class="bi bi-tag" style="font-size:.65rem"></i> {{ p.categorie.nom }}</span>{% endif %}
+            {% if p.reference %}<span style="font-family:var(--fm);font-size:.67rem">{{ p.reference }}</span>{% endif %}
+            {% if p.sku %}<span style="font-family:var(--fm);font-size:.67rem">SKU: {{ p.sku }}</span>{% endif %}
+            <span><i class="bi bi-calendar3" style="font-size:.65rem"></i> {{ p.date_creation|date:"d M Y" }}</span>
+          </div>
+          {% if p.est_vedette %}
+          <span style="font-size:.62rem;background:var(--saffron-d);color:var(--saffron);padding:1px 6px;border-radius:99px;font-weight:700;margin-top:.2rem;display:inline-block"><i class="bi bi-star-fill"></i> Vedette</span>
+          {% endif %}
+        </div>
+
+        <!-- Prix -->
+        <div class="prod-price col-hide" style="text-align:right">
+          {{ p.prix|floatformat:0 }} F
+          {% if p.prix_promotionnel and p.prix_promotionnel < p.prix %}
+          <div style="font-size:.68rem;color:var(--jade)">→ {{ p.prix_promotionnel|floatformat:0 }} F</div>
+          {% endif %}
+        </div>
+
+        <!-- Stock -->
+        <div class="col-hide" style="text-align:center">
+          <span class="prod-stock {% if p.quantite_stock == 0 %}stock-zero{% elif p.quantite_stock <= p.alerte_stock_min|default:5 %}stock-low{% else %}stock-ok{% endif %}">
+            {{ p.quantite_stock }}
+          </span>
+        </div>
+
+        <!-- Statut -->
+        <div class="col-hide" style="text-align:center">
+          <span class="prod-status {% if p.est_actif %}ps-actif{% else %}ps-inactif{% endif %}">
+            {% if p.est_actif %}Actif{% else %}Inactif{% endif %}
+          </span>
+        </div>
+
+        <!-- Actions -->
+        <div class="prod-actions">
+          <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pa-btn" title="Voir">
+            <i class="bi bi-eye"></i>
+          </a>
+          <a href="{% url 'apps_core:modifier_produit' p.slug %}" class="pa-btn" title="Modifier">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <a href="" class="pa-btn" title="Dupliquer">
+            <i class="bi bi-copy"></i>
+          </a>
+          <button class="pa-btn danger" title="Supprimer"
+                  onclick="confirmerSuppression({{ p.id }}, '{{ p.titre|escapejs }}')">
+            <i class="bi bi-trash3"></i>
+          </button>
+        </div>
+
+      </div>
+      {% endfor %}
+
+      <!-- Pagination -->
+      {% if produits.paginator.num_pages > 1 %}
+      <div class="vd-pager">
+        {% if produits.has_previous %}
+        <a href="?page=1{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="pg-btn"><i class="bi bi-chevron-double-left"></i></a>
+        <a href="?page={{ produits.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="pg-btn"><i class="bi bi-chevron-left"></i></a>
+        {% else %}
+        <span class="pg-btn disabled"><i class="bi bi-chevron-double-left"></i></span>
+        <span class="pg-btn disabled"><i class="bi bi-chevron-left"></i></span>
+        {% endif %}
+        {% for num in produits.paginator.page_range %}
+          {% if num == produits.number %}<span class="pg-btn on">{{ num }}</span>
+          {% elif num >= produits.number|add:"-2" and num <= produits.number|add:"2" %}
+          <a href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="pg-btn">{{ num }}</a>
+          {% elif num == 1 or num == produits.paginator.num_pages %}
+          <a href="?page={{ num }}" class="pg-btn">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if produits.has_next %}
+        <a href="?page={{ produits.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="pg-btn"><i class="bi bi-chevron-right"></i></a>
+        <a href="?page={{ produits.paginator.num_pages }}" class="pg-btn"><i class="bi bi-chevron-double-right"></i></a>
+        {% else %}
+        <span class="pg-btn disabled"><i class="bi bi-chevron-right"></i></span>
+        <span class="pg-btn disabled"><i class="bi bi-chevron-double-right"></i></span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="vd-empty">
+        <i class="bi bi-bag-x"></i>
+        <div class="vd-empty-title">
+          {% if q %}Aucun produit pour « {{ q }} »{% elif statut %}Aucun produit dans cette catégorie{% else %}Vous n'avez pas encore de produit{% endif %}
+        </div>
+        <div class="vd-empty-sub">
+          {% if q or statut %}Essayez d'autres filtres ou effacez la recherche.{% else %}Commencez par ajouter votre premier produit.{% endif %}
+        </div>
+        {% if q or statut %}
+        <a href="?" class="btn-ghost" style="font-size:.82rem;display:inline-flex;margin-top:.5rem"><i class="bi bi-x-lg"></i> Effacer les filtres</a>
+        {% endif %}
+        <a href="{% url 'apps_core:ajouter_produit' %}" class="btn-gold" style="font-size:.82rem;display:inline-flex;margin-top:.5rem">
+          <i class="bi bi-plus-lg"></i> Ajouter mon premier produit
+        </a>
+      </div>
+      {% endif %}
+
+    </div>
+    {# /vd-table-wrap #}
+
+  </div>
+</div>
+
+<!-- Modal confirmation suppression -->
+<div class="modal fade" id="modalSuppr" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
+    <div class="modal-content" style="background:var(--card);border:1px solid var(--border);border-radius:var(--rl)">
+      <div class="modal-header" style="border-bottom:1px solid var(--border)">
+        <h5 class="modal-title" style="font-size:.95rem;font-weight:700;color:var(--ember)">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem">
+        <p style="font-size:.85rem;color:var(--text-2)">Voulez-vous vraiment supprimer le produit <strong id="supprNom" style="color:var(--text)"></strong> ? Cette action est irréversible.</p>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border)">
+        <button class="btn-ghost" data-bs-dismiss="modal" style="font-size:.82rem">Annuler</button>
+        <form id="formSuppr" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn-gold" style="font-size:.82rem;background:var(--ember);box-shadow:none">
+            <i class="bi bi-trash3"></i> Supprimer définitivement
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.06});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* ── Sélection multiple ── */
+function toggleAll(cb){
+  document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+  updateBulk();
+}
+function updateBulk(){
+  const checked = document.querySelectorAll('.row-check:checked');
+  const bar = document.getElementById('bulkBar');
+  document.getElementById('bulkCount').textContent = checked.length + ' sélectionné(s)';
+  bar.classList.toggle('show', checked.length > 0);
+  document.getElementById('selectAll').indeterminate =
+    checked.length > 0 && checked.length < document.querySelectorAll('.row-check').length;
+}
+function bulkAction(action){
+  const ids = [...document.querySelectorAll('.row-check:checked')].map(c => c.value);
+  if(!ids.length) return;
+  if(action === 'supprimer' && !confirm(`Supprimer ${ids.length} produit(s) ? Action irréversible.`)) return;
+  // Envoyer vers la vue bulk action
+  const form = document.createElement('form');
+  form.method = 'post';
+  form.action = '/produits/bulk-action/';
+  form.innerHTML = `<input name="csrfmiddlewaretoken" value="${document.cookie.match(/csrftoken=([^;]+)/)?.[1]||''}">
+                    <input name="action" value="${action}">
+                    ${ids.map(id => `<input name="ids" value="${id}">`).join('')}`;
+  document.body.appendChild(form);
+  form.submit();
+}
+
+/* ── Suppression individuelle ── */
+function confirmerSuppression(id, nom){
+  document.getElementById('supprNom').textContent = nom;
+  document.getElementById('formSuppr').action = `/produits/${id}/supprimer/`;
+  new bootstrap.Modal(document.getElementById('modalSuppr')).show();
+}
+
+/* ── Toggle actif AJAX ── */
+async function toggleActif(id, btn){
+  try{
+    const r = await fetch(`/produits/${id}/toggle-actif/`, {
+      method:'POST',
+      headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}
+    });
+    const d = await r.json();
+    if(d.success) location.reload();
+  }catch(e){ console.warn(e) }
+}
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,475 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════
+   CHECKOUT — hérite des vars de base.html
+══════════════════════════════════════════════ */
+.checkout-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+
+/* Étapes */
+.checkout-steps {
+  display: flex; align-items: center; gap: .5rem;
+  margin-bottom: 2rem;
+}
+.step-item { display: flex; align-items: center; gap: .5rem; font-size: .78rem; }
+.step-dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; flex-shrink: 0;
+}
+.step-done { background: var(--jade); color: #fff; }
+.step-active { background: var(--saffron); color: #0A0B1A; }
+.step-pending { background: var(--surface); border: 2px solid var(--border); color: var(--muted); }
+.step-label-done { color: var(--jade); font-weight: 600; }
+.step-label-active { color: var(--saffron); font-weight: 600; }
+.step-label-pending { color: var(--muted); }
+.step-line { flex: 1; height: 2px; max-width: 60px; }
+.step-line-done { background: var(--jade); }
+.step-line-active { background: var(--saffron); }
+.step-line-pending { background: var(--border); }
+
+/* Carte section */
+.co-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.4rem 1.5rem; margin-bottom: 1.25rem;
+}
+.co-section-title {
+  font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: 1.1rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.co-section-title i { color: var(--saffron); }
+
+/* Inputs */
+.co-field { margin-bottom: .9rem; }
+.co-label { font-size: .75rem; font-weight: 600; color: var(--text-2); display: block; margin-bottom: .4rem; }
+.co-input, .co-select, .co-textarea {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--fd);
+  font-size: .85rem; padding: .6rem .9rem; outline: none; transition: border-color .2s;
+}
+.co-input:focus, .co-select:focus, .co-textarea:focus { border-color: var(--saffron); }
+.co-textarea { resize: none; }
+.co-select option { background: var(--card); }
+
+/* ═══════════════════════════════════════════════
+   BOUTONS DE PAIEMENT
+═══════════════════════════════════════════════ */
+.payment-options { display: flex; flex-direction: column; gap: .75rem; }
+
+.btn-pay-full {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(90deg, var(--saffron), #f5b942);
+  color: #0A0B1A; border: none; border-radius: 12px;
+  padding: .85rem 1.3rem; font-size: .92rem; font-weight: 800;
+  cursor: pointer; transition: opacity .2s, transform .2s; text-align: left; width: 100%;
+}
+.btn-pay-full:hover { opacity: .9; transform: translateY(-1px); }
+.btn-pay-full .price-badge {
+  font-family: var(--fm); font-size: 1.1rem; font-weight: 900;
+  background: rgba(10,11,26,.15); padding: .25rem .7rem; border-radius: 8px;
+}
+
+/* ── Bouton BNPL (paiement par tranches — YopiShop uniquement) ── */
+.btn-pay-bnpl {
+  display: flex; align-items: center; gap: .8rem;
+  background: var(--surface); border: 2px solid var(--indigo);
+  border-radius: 12px; padding: .85rem 1.2rem;
+  cursor: pointer; transition: all .2s; text-align: left; width: 100%;
+  text-decoration: none;
+}
+.btn-pay-bnpl:hover {
+  background: var(--indigo-d); transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(124,111,255,.25);
+}
+.btn-pay-bnpl-icon {
+  width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+  background: var(--indigo-d); display: flex; align-items: center;
+  justify-content: center; font-size: 1.1rem; color: var(--indigo);
+}
+.btn-pay-bnpl-title {
+  font-size: .9rem; font-weight: 700; color: var(--indigo); margin-bottom: .1rem;
+}
+.btn-pay-bnpl-sub {
+  font-size: .76rem; color: var(--muted); line-height: 1.3;
+}
+.btn-pay-bnpl-badge {
+  margin-left: auto; flex-shrink: 0;
+  background: var(--indigo-d); border: 1px solid rgba(124,111,255,.3);
+  color: var(--indigo); font-size: .7rem; font-weight: 700;
+  padding: .2rem .65rem; border-radius: 99px; text-align: center; white-space: nowrap;
+}
+
+/* Récapitulatif sticky */
+.co-recap {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.4rem; position: sticky; top: 1rem;
+}
+.co-recap-title { font-size: .88rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; }
+
+/* Liste articles checkout */
+.co-article-item {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .65rem 0; border-bottom: 1px solid var(--border);
+}
+.co-article-item:last-child { border-bottom: none; }
+.co-art-img {
+  width: 44px; height: 44px; border-radius: 8px; overflow: hidden;
+  background: var(--surface); flex-shrink: 0;
+}
+.co-art-img img { width: 100%; height: 100%; object-fit: cover; }
+.co-art-name { font-size: .8rem; font-weight: 600; color: var(--text); }
+.co-art-qte { font-size: .72rem; color: var(--muted); }
+.co-art-prix { font-size: .85rem; font-weight: 700; color: var(--saffron); flex-shrink: 0; }
+
+/* Totaux */
+.co-total-row { display: flex; justify-content: space-between; font-size: .82rem; margin-bottom: .4rem; }
+.co-total-row .lbl { color: var(--text-2); }
+.co-total-row .val { color: var(--text); font-weight: 600; }
+.co-total-final {
+  border-top: 1.5px solid var(--border); padding-top: .75rem;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.co-total-final-lbl { font-size: .95rem; font-weight: 700; color: var(--text); }
+.co-total-final-val { font-family: var(--fm); font-size: 1.25rem; font-weight: 900; color: var(--saffron); }
+
+/* Garanties */
+.co-guarantees { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: .8rem; }
+.co-guarantee { font-size: .7rem; color: var(--muted); display: flex; align-items: center; gap: .3rem; }
+
+/* Adresse même ── */
+.co-same-addr { display: flex; align-items: center; gap: .5rem; margin-bottom: .7rem; }
+.co-same-addr input { accent-color: var(--saffron); width: 16px; height: 16px; }
+.co-same-addr label { font-size: .78rem; color: var(--muted); cursor: pointer; }
+</style>
+
+
+<div class="checkout-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"><i class="bi bi-house-fill"></i> Accueil</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'apps_marketplace:voir_panier' %}" style="color:var(--muted);text-decoration:none">Panier</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Finaliser</span>
+      </div>
+    </nav>
+
+    <!-- Étapes -->
+    <div class="checkout-steps fi">
+      <div class="step-item">
+        <div class="step-dot step-done"><i class="bi bi-check-lg" style="font-size:.7rem"></i></div>
+        <span class="step-label-done">Panier</span>
+      </div>
+      <div class="step-line step-line-active"></div>
+      <div class="step-item">
+        <div class="step-dot step-active">2</div>
+        <span class="step-label-active">Commande</span>
+      </div>
+      <div class="step-line step-line-pending"></div>
+      <div class="step-item">
+        <div class="step-dot step-pending">3</div>
+        <span class="step-label-pending">Paiement</span>
+      </div>
+      <div class="step-line step-line-pending"></div>
+      <div class="step-item">
+        <div class="step-dot step-pending">4</div>
+        <span class="step-label-pending">Confirmation</span>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:var(--ember-d);border:1px solid rgba(255,90,71,.25);border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:var(--ember)">
+      <i class="bi bi-exclamation-triangle-fill"></i>{{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+
+    <form method="POST" id="formCheckout" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="source" value="web">
+
+      <div class="row g-4 align-items-start">
+
+        <!-- ══ COLONNE FORMULAIRE ══ -->
+        <div class="col-12 col-lg-7">
+
+          <!-- Adresses -->
+          <div class="co-card fi">
+            <div class="co-section-title"><i class="bi bi-geo-alt-fill"></i> Adresses</div>
+
+            <div class="co-field">
+              <label class="co-label">Adresse de facturation <span style="color:var(--ember)">*</span></label>
+              <textarea name="adresse_facturation" id="adresseFacturation" rows="2"
+                        class="co-textarea" required
+                        placeholder="Quartier, rue, numéro...">{{ request.user.adresse|default:'' }}</textarea>
+            </div>
+
+            <div class="co-field">
+              <label class="co-label">Adresse de livraison <span style="color:var(--ember)">*</span></label>
+              <div class="co-same-addr">
+                <input type="checkbox" id="sameAddr" onchange="toggleSameAddr(this)">
+                <label for="sameAddr">Identique à l'adresse de facturation</label>
+              </div>
+              <textarea name="adresse_livraison" id="adresseLivraison" rows="2"
+                        class="co-textarea" required
+                        placeholder="Quartier, rue, numéro..."></textarea>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12 col-sm-6">
+                <div class="co-field">
+                  <label class="co-label">Ville</label>
+                  <select name="ville_livraison" id="selectVille" class="co-select">
+                    <option value="">— Choisir une ville —</option>
+                    {% regroup villes by region as villes_par_region %}
+                    {% for region in villes_par_region %}
+                    <optgroup label="{{ region.grouper.nom }}">
+                      {% for v in region.list %}
+                      <option value="{{ v.pk }}">{{ v.nom }}</option>
+                      {% endfor %}
+                    </optgroup>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="co-field">
+                  <label class="co-label">Quartier</label>
+                  <select name="quartier_livraison" id="selectQuartier" class="co-select">
+                    <option value="">— Choisir un quartier —</option>
+
+                    {% for q in quartiers %}
+                    <option
+                        value="{{ q.pk }}"
+                        data-ville="{{ q.ville_id }}"
+                        hidden>
+                        {{ q.nom }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Instructions -->
+          <div class="co-card fi">
+            <div class="co-section-title"><i class="bi bi-truck"></i> Instructions de livraison</div>
+            <div class="co-field">
+              <label class="co-label">Indications pour le livreur</label>
+              <textarea name="instructions_livraison" rows="2" class="co-textarea"
+                        placeholder="Point de repère, horaires préférés, code d'accès..."></textarea>
+            </div>
+            <div class="co-field" style="margin-bottom:0">
+              <label class="co-label">Note au vendeur</label>
+              <textarea name="notes" rows="2" class="co-textarea"
+                        placeholder="Message au vendeur..."></textarea>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ RÉCAPITULATIF ══ -->
+        <div class="col-12 col-lg-5">
+          <div class="co-recap fi">
+            <div class="co-recap-title"><i class="bi bi-bag-check" style="color:var(--saffron)"></i> Votre commande</div>
+
+            <!-- Articles -->
+            <div style="max-height:240px;overflow-y:auto;margin-bottom:1rem">
+              {% for art in articles %}
+              <div class="co-article-item">
+                <div class="co-art-img">
+                  {% if art.produit.image_principale %}
+                  <img src="{{ art.produit.image_principale }}" alt="{{ art.produit.titre }}">
+                  {% else %}
+                  <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image"></i></div>
+                  {% endif %}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div class="co-art-name">{{ art.produit.titre|truncatechars:38 }}</div>
+                  {% if art.variante %}
+                  <div class="co-art-qte">{{ art.variante.nom }} · x{{ art.quantite }}</div>
+                  {% else %}
+                  <div class="co-art-qte">Quantité : {{ art.quantite }}</div>
+                  {% endif %}
+                </div>
+                <div class="co-art-prix">{{ art.sous_total|floatformat:0 }} F</div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- Totaux -->
+            <div style="margin-bottom:1rem">
+              <div class="co-total-row"><span class="lbl">Sous-total</span><span class="val">{{ sous_total|floatformat:0 }} FCFA</span></div>
+              <div class="co-total-row"><span class="lbl">Livraison</span><span class="val" style="color:var(--muted)">Calculée selon la ville</span></div>
+            </div>
+            <div class="co-total-final">
+              <span class="co-total-final-lbl">Total estimé</span>
+              <span class="co-total-final-val">{{ sous_total|floatformat:0 }} FCFA</span>
+            </div>
+
+            <!-- ════════════════════════════════════════
+                 OPTIONS DE PAIEMENT
+                 Le bouton BNPL est affiché uniquement
+                 pour les commandes YopiShop éligibles.
+                 Est passé depuis la vue via est_yopishop.
+            ════════════════════════════════════════ -->
+          <div class="payment-options" style="margin-top:1.25rem">
+
+            <!-- ── Paiement comptant (toujours affiché) ── -->
+            <button type="submit" name="mode_paiement" value="comptant"
+                    class="btn-pay-full">
+              <div>
+                <div style="font-size:.78rem;font-weight:600;opacity:.8">Paiement à la livraison</div>
+                <div style="font-size:.9rem">Confirmer la commande</div>
+              </div>
+              <span class="price-badge">{{ sous_total|floatformat:0 }} F</span>
+            </button>
+
+             <!-- ── Paiement fractionné BNPL ── -->
+              {% if est_bnpl_eligible %}
+              <div style="border:2px solid var(--indigo);border-radius:12px;padding:1rem 1.1rem;background:var(--surface)">
+                <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.9rem">
+                  <div class="btn-pay-bnpl-icon"><i class="bi bi-calendar2-check"></i></div>
+                  <div>
+                    <div class="btn-pay-bnpl-title">Payer en plusieurs fois</div>
+                    <div class="btn-pay-bnpl-sub">Sans intérêts · première tranche payable immédiatement</div>
+                  </div>
+                </div>
+
+                <!-- Sélecteur du nombre de tranches -->
+                <div class="d-flex gap-2 mb-3" id="tranches-selector">
+                  <label class="tranche-option" data-val="3" style="flex:1;text-align:center;border:1.5px solid var(--indigo);border-radius:8px;padding:.6rem;cursor:pointer;background:var(--indigo-d)">
+                    <div style="font-size:.78rem;font-weight:700;color:var(--indigo)">3×</div>
+                    <div style="font-size:.74rem;color:var(--text-2)">{{ montant_3x|floatformat:0 }} F/mois</div>
+                  </label>
+                  <label class="tranche-option" data-val="6" style="flex:1;text-align:center;border:1.5px solid var(--border);border-radius:8px;padding:.6rem;cursor:pointer">
+                    <div style="font-size:.78rem;font-weight:700;color:var(--text)">6×</div>
+                    <div style="font-size:.74rem;color:var(--text-2)">{{ montant_6x|floatformat:0 }} F/mois</div>
+                  </label>
+                  <label class="tranche-option" data-val="12" style="flex:1;text-align:center;border:1.5px solid var(--border);border-radius:8px;padding:.6rem;cursor:pointer">
+                    <div style="font-size:.78rem;font-weight:700;color:var(--text)">12×</div>
+                    <div style="font-size:.74rem;color:var(--text-2)">{{ montant_12x|floatformat:0 }} F/mois</div>
+                  </label>
+                </div>
+
+                <input type="hidden" name="nb_tranches" id="inputNbTranches" value="3">
+
+                <button type="submit" name="mode_paiement" value="bnpl" class="btn-pay-bnpl" style="border:none;background:linear-gradient(90deg,var(--indigo),#4f46e5);color:#fff">
+                  <i class="bi bi-credit-card" style="margin-right:.5rem"></i>
+                  <span id="bnplSubmitLabel">Commander en 3× sans frais</span>
+                </button>
+              </div>
+
+              <div style="background:var(--indigo-d);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.65rem .85rem;display:flex;align-items:flex-start;gap:.5rem">
+                <i class="bi bi-info-circle-fill flex-shrink-0" style="color:var(--indigo);margin-top:.1rem;font-size:.85rem"></i>
+                <div style="font-size:.74rem;color:var(--text-2);line-height:1.5">
+                  Votre plan de paiement est généré immédiatement. Vous pourrez régler votre première tranche dès la page suivante.
+                </div>
+              </div>
+              {% endif %}
+
+          </div>
+
+            <div style="font-size:.72rem;color:var(--muted);text-align:center;margin-top:.75rem">
+              En passant commande, vous acceptez nos
+              <a href="/cgu/" style="color:var(--saffron)">CGU</a>
+            </div>
+
+            <div class="co-guarantees">
+              <div class="co-guarantee"><i class="bi bi-shield-check" style="color:var(--jade)"></i> Paiement sécurisé</div>
+              <div class="co-guarantee"><i class="bi bi-arrow-counterclockwise" style="color:var(--indigo)"></i> Retour 7j</div>
+              <div class="co-guarantee"><i class="bi bi-headset" style="color:var(--saffron)"></i> Support 7j/7</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Adresse identique ── */
+function toggleSameAddr(cb){
+  const fact = document.getElementById('adresseFacturation');
+  const liv  = document.getElementById('adresseLivraison');
+  if(cb.checked){ liv.value = fact.value; liv.readOnly = true; }
+  else           { liv.value = ''; liv.readOnly = false; }
+}
+
+/* ── Chargement quartiers par ville (AJAX) ── */
+document.getElementById("selectVille").addEventListener("change", function () {
+
+    const villeId = this.value;
+    const selectQuartier = document.getElementById("selectQuartier");
+
+    selectQuartier.value = "";
+
+    Array.from(selectQuartier.options).forEach(option => {
+
+        if (!option.dataset.ville)
+            return;
+
+        option.hidden = option.dataset.ville !== villeId;
+
+    });
+
+});
+
+/* ── BNPL : soumettre d'abord la commande, puis rediriger vers le plan ──
+   L'acheteur clique sur "Payer en plusieurs fois" :
+   1. On soumet le formulaire avec mode_paiement=bnpl
+   2. La vue crée la commande et redirige vers /commandes/<pk>/plan-paiement/
+   3. L'admin peut ensuite valider le plan (ou il est auto-créé si YopiShop)
+── */
+function initierBnpl(e){
+  e.preventDefault();
+  const form  = document.getElementById('formCheckout');
+  const input = document.createElement('input');
+  input.type  = 'hidden';
+  input.name  = 'mode_paiement';
+  input.value = 'bnpl';
+  form.appendChild(input);
+  form.submit();
+  return false;
+}
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+
+/* ── Sélection du nombre de tranches BNPL ── */
+document.querySelectorAll('.tranche-option').forEach(opt => {
+  opt.addEventListener('click', function () {
+    document.querySelectorAll('.tranche-option').forEach(o => {
+      o.style.borderColor = 'var(--border)';
+      o.style.background  = '';
+      o.querySelector('div').style.color = 'var(--text)';
+    });
+    this.style.borderColor = 'var(--indigo)';
+    this.style.background  = 'var(--indigo-d)';
+    this.querySelector('div').style.color = 'var(--indigo)';
+
+    const val = this.dataset.val;
+    document.getElementById('inputNbTranches').value = val;
+    document.getElementById('bnplSubmitLabel').textContent = `Commander en ${val}× sans frais`;
+  });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

@@ -1,0 +1,215 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Gestion des opérateurs</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Opérateurs de paiement
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        <i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Vue admin
+        &bull; {{ operateurs|length }} opérateur{{ operateurs|length|pluralize }}
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'apps_marketplace:admin_numeros_versement' %}" class="btn-ghost" style="font-size:.82rem">
+        <i class="bi bi-phone"></i> Numéros de versement
+      </a>
+      <button class="btn-gold" style="font-size:.82rem"
+        onclick="document.getElementById('form-creer').classList.toggle('d-none')">
+        <i class="bi bi-plus-lg"></i> Ajouter un opérateur
+      </button>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
+      color:var(--text)">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Formulaire création (masqué par défaut) ── -->
+  <div id="form-creer" class="ycard p-4 mb-4 d-none" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+      <i class="bi bi-plus-circle me-2" style="color:var(--jade)"></i>Nouvel opérateur
+    </div>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="creer">
+      <div class="row g-3">
+
+        <!-- Nom -->
+        <div class="col-12 col-md-4">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+            Nom <span style="color:var(--ember)">*</span>
+          </label>
+          <input type="text" name="nom" required placeholder="Orange Money, MTN MoMo…"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+        </div>
+
+        <!-- Code -->
+        <div class="col-12 col-md-3">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+            Code court
+          </label>
+          <input type="text" name="code" placeholder="OM, MTN, WAVE…" maxlength="20"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;text-transform:uppercase">
+        </div>
+
+        <!-- Logo -->
+        <div class="col-12 col-md-3">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+            Logo (optionnel)
+          </label>
+          <input type="file" name="logo" accept="image/*"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.8rem">
+        </div>
+
+        <!-- Actif -->
+        <div class="col-12 col-md-2 d-flex align-items-end pb-1">
+          <div class="d-flex align-items-center gap-2">
+            <input type="checkbox" name="est_actif" id="chk-actif" checked style="accent-color:var(--jade);width:16px;height:16px">
+            <label for="chk-actif" style="font-size:.82rem;color:var(--text-2);cursor:pointer;margin:0">Actif</label>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-12 d-flex gap-2 justify-content-end">
+          <button type="button" class="btn-ghost" style="font-size:.82rem;width:auto"
+            onclick="document.getElementById('form-creer').classList.add('d-none')">
+            Annuler
+          </button>
+          <button type="submit" class="btn-gold" style="font-size:.82rem;width:auto">
+            <i class="bi bi-check-lg"></i> Créer l'opérateur
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Liste des opérateurs ── -->
+  {% if operateurs %}
+  <div class="row g-3">
+    {% for op in operateurs %}
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="ycard p-4" style="background:var(--card);border:1px solid {% if op.est_actif %}var(--border){% else %}rgba(239,68,68,.2){% endif %};border-radius:var(--r);height:100%" id="op-{{ op.pk }}">
+
+        <!-- Logo + nom -->
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div style="width:56px;height:56px;border-radius:14px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1px solid var(--border)">
+            {% if op.logo %}
+              <img src="{{ op.logo.url }}" alt="{{ op.nom }}" style="width:100%;height:100%;object-fit:contain;padding:6px">
+            {% else %}
+              <i class="bi bi-phone" style="color:var(--saffron);font-size:1.4rem"></i>
+            {% endif %}
+          </div>
+          <div class="flex-grow-1 min-width-0">
+            <div style="font-size:.95rem;font-weight:800;color:var(--text)">{{ op.nom }}</div>
+            {% if op.code %}
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">{{ op.code }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Stats + statut -->
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;
+            background:{% if op.est_actif %}rgba(16,185,129,.15){% else %}rgba(239,68,68,.12){% endif %};
+            color:{% if op.est_actif %}var(--jade){% else %}var(--ember){% endif %}">
+            {% if op.est_actif %}
+              <i class="bi bi-check-circle-fill me-1"></i>Actif
+            {% else %}
+              <i class="bi bi-pause-circle-fill me-1"></i>Inactif
+            {% endif %}
+          </span>
+          <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;background:var(--surface);color:var(--muted)">
+            <i class="bi bi-phone me-1"></i>{{ op.nb_numeros }} numéro{{ op.nb_numeros|pluralize }}
+          </span>
+        </div>
+
+        <!-- Lien vers numéros -->
+        {% if op.nb_numeros %}
+        <a href="{% url 'apps_marketplace:admin_numeros_versement' %}"
+          style="font-size:.74rem;color:var(--saffron);text-decoration:none;display:flex;align-items:center;gap:.3rem;margin-bottom:.8rem">
+          <i class="bi bi-arrow-right-circle"></i>Voir les numéros associés
+        </a>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 mt-auto pt-2" style="border-top:1px solid var(--border)">
+
+          <!-- Toggle actif/inactif -->
+          <form method="post" class="flex-grow-1">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="toggle">
+            <input type="hidden" name="pk" value="{{ op.pk }}">
+            <button type="submit" class="btn-ghost w-100 justify-content-center"
+              style="font-size:.78rem;{% if op.est_actif %}color:var(--muted){% else %}color:var(--jade);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08){% endif %}">
+              {% if op.est_actif %}
+                <i class="bi bi-pause-fill"></i> Désactiver
+              {% else %}
+                <i class="bi bi-play-fill"></i> Activer
+              {% endif %}
+            </button>
+          </form>
+
+          <!-- Supprimer -->
+          <form method="post"
+            onsubmit="return confirm('Supprimer l\'opérateur « {{ op.nom }} » ?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="supprimer">
+            <input type="hidden" name="pk" value="{{ op.pk }}">
+            <button type="submit" class="btn-ghost"
+              style="font-size:.78rem;padding:.38rem .7rem;color:var(--ember);border-color:rgba(239,68,68,.3);width:auto"
+              title="Supprimer">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- État vide -->
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:72px;height:72px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-phone" style="font-size:2rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun opérateur configuré</div>
+    <div style="font-size:.84rem;color:var(--muted);margin-bottom:1.5rem">
+      Ajoutez vos partenaires de paiement (Orange Money, MTN MoMo, Wave…)
+    </div>
+    <button class="btn-gold justify-content-center"
+      onclick="document.getElementById('form-creer').classList.remove('d-none');this.closest('.ycard').style.display='none'">
+      <i class="bi bi-plus-lg"></i> Ajouter le premier opérateur
+    </button>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

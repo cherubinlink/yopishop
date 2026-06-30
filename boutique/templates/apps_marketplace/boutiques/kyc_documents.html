@@ -1,0 +1,249 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'apps_marketplace:dashboard_vendeur' %}" style="color:var(--saffron);text-decoration:none">Tableau de bord</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Documents KYC</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Mes documents KYC
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        <i class="bi bi-shield-check me-1" style="color:{% if boutique.kyc_statut == 'valide' %}var(--jade){% elif boutique.kyc_statut == 'refuse' %}var(--ember){% else %}var(--saffron){% endif %}"></i>
+        Statut KYC boutique :
+        <strong style="color:{% if boutique.kyc_statut == 'valide' %}var(--jade){% elif boutique.kyc_statut == 'refuse' %}var(--ember){% else %}var(--saffron){% endif %}">
+          {% if boutique.kyc_statut == 'valide' %}Vérifié ✓{% elif boutique.kyc_statut == 'refuse' %}Refusé{% else %}En attente{% endif %}
+        </strong>
+      </p>
+    </div>
+    <a href="{% url 'apps_marketplace:dashboard_vendeur' %}" class="btn-ghost" style="font-size:.82rem">
+      <i class="bi bi-arrow-left"></i> Tableau de bord
+    </a>
+  </div>
+
+  <!-- Alerte statut KYC -->
+  {% if boutique.kyc_statut == 'valide' %}
+  <div class="d-flex align-items-center gap-3 p-3 mb-4" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:var(--r)">
+    <i class="bi bi-patch-check-fill" style="font-size:1.4rem;color:var(--jade);flex-shrink:0"></i>
+    <div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--jade)">Boutique vérifiée</div>
+      <div style="font-size:.76rem;color:var(--text-2)">Vos documents ont été validés. Votre badge « Vérifiée » est actif.{% if boutique.kyc_date %} Validé le {{ boutique.kyc_date|date:"d M Y" }}.{% endif %}</div>
+    </div>
+  </div>
+  {% elif boutique.kyc_statut == 'refuse' %}
+  <div class="d-flex align-items-center gap-3 p-3 mb-4" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:var(--r)">
+    <i class="bi bi-x-circle-fill" style="font-size:1.4rem;color:var(--ember);flex-shrink:0"></i>
+    <div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--ember)">Documents refusés</div>
+      <div style="font-size:.76rem;color:var(--text-2)">Certains documents ont été refusés. Veuillez les resoumettre en tenant compte des commentaires ci-dessous.</div>
+    </div>
+  </div>
+  {% else %}
+  <div class="d-flex align-items-center gap-3 p-3 mb-4" style="background:rgba(246,169,43,.1);border:1px solid rgba(246,169,43,.25);border-radius:var(--r)">
+    <i class="bi bi-hourglass-split" style="font-size:1.4rem;color:var(--saffron);flex-shrink:0"></i>
+    <div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--saffron)">Vérification en attente</div>
+      <div style="font-size:.76rem;color:var(--text-2)">Notre équipe vérifie vos documents sous 48h. Vous recevrez une notification dès la validation.</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};color:var(--text)">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- ══ Formulaire upload ══ -->
+    <div class="col-12 col-lg-4">
+      <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);position:sticky;top:1rem">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--indigo-d,rgba(99,102,241,.15));display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-cloud-upload-fill" style="color:var(--indigo)"></i>
+          </div>
+          <div>
+            <div style="font-size:.92rem;font-weight:700;color:var(--text)">Ajouter un document</div>
+            <div style="font-size:.72rem;color:var(--muted)">JPG, PNG ou PDF · max 5 Mo</div>
+          </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+              Type de document <span style="color:var(--ember)">*</span>
+            </label>
+            {{ form.type_document }}
+            {% if form.type_document.errors %}
+              <div style="font-size:.72rem;color:var(--ember);margin-top:.3rem">{{ form.type_document.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+              Fichier <span style="color:var(--ember)">*</span>
+            </label>
+            <!-- Zone drag & drop -->
+            <label for="{{ form.fichier.id_for_label }}"
+              id="drop-zone"
+              style="display:block;border:2px dashed var(--border);border-radius:var(--r);padding:1.5rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s">
+              <i class="bi bi-file-earmark-arrow-up" style="font-size:2rem;color:var(--muted);display:block;margin-bottom:.5rem"></i>
+              <span style="font-size:.78rem;color:var(--muted)">Cliquez ou glissez votre fichier ici</span>
+              <span id="file-name" style="display:block;font-size:.74rem;color:var(--saffron);margin-top:.4rem"></span>
+            </label>
+            <div style="display:none">{{ form.fichier }}</div>
+            {% if form.fichier.errors %}
+              <div style="font-size:.72rem;color:var(--ember);margin-top:.3rem">{{ form.fichier.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+              Description (optionnel)
+            </label>
+            {{ form.description }}
+          </div>
+
+          <button type="submit" class="btn-gold w-100 justify-content-center">
+            <i class="bi bi-cloud-upload"></i> Soumettre le document
+          </button>
+        </form>
+
+        <!-- Docs requis -->
+        <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div style="font-size:.76rem;font-weight:700;color:var(--text-2);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.08em">
+            Documents requis
+          </div>
+          <div class="d-grid gap-1">
+            {% with docs_types=documents|dictsort:"type_document" %}
+            {% endwith %}
+            <div style="font-size:.74rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-circle" style="font-size:.5rem;color:var(--muted)"></i>Carte nationale d'identité (recto/verso)
+            </div>
+            <div style="font-size:.74rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-circle" style="font-size:.5rem;color:var(--muted)"></i>Registre de commerce (vendeurs pro)
+            </div>
+            <div style="font-size:.74rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-circle" style="font-size:.5rem;color:var(--muted)"></i>Justificatif de domicile
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Liste des documents ══ -->
+    <div class="col-12 col-lg-8">
+
+      {% if documents %}
+      <div style="display:grid;gap:.75rem">
+        {% for doc in documents %}
+        <div class="ycard p-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+          <div class="d-flex align-items-center gap-3">
+
+            <!-- Icône type fichier -->
+            <div style="width:46px;height:46px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              {% if doc.fichier.name|lower|slice:"-3:" == "pdf" %}
+                <i class="bi bi-file-earmark-pdf-fill" style="font-size:1.4rem;color:var(--ember)"></i>
+              {% else %}
+                <i class="bi bi-file-earmark-image-fill" style="font-size:1.4rem;color:var(--indigo)"></i>
+              {% endif %}
+            </div>
+
+            <!-- Infos -->
+            <div class="flex-grow-1 min-width-0">
+              <div style="font-size:.86rem;font-weight:700;color:var(--text)">{{ doc.get_type_document_display }}</div>
+              <div style="font-size:.72rem;color:var(--muted)">Soumis le {{ doc.date_envoi|date:"d M Y à H:i" }}</div>
+              {% if doc.description %}
+              <div style="font-size:.74rem;color:var(--text-2);margin-top:.2rem">{{ doc.description }}</div>
+              {% endif %}
+              {% if doc.commentaire_admin and doc.statut != 'en_attente' %}
+              <div style="font-size:.74rem;color:{% if doc.statut == 'refuse' %}var(--ember){% else %}var(--jade){% endif %};margin-top:.3rem;padding:.3rem .6rem;background:{% if doc.statut == 'refuse' %}rgba(239,68,68,.08){% else %}rgba(16,185,129,.08){% endif %};border-radius:6px">
+                <i class="bi bi-chat-left-text me-1"></i>{{ doc.commentaire_admin }}
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Statut + actions -->
+            <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
+              <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;
+                background:{% if doc.statut == 'valide' %}rgba(16,185,129,.15){% elif doc.statut == 'refuse' %}rgba(239,68,68,.15){% else %}rgba(246,169,43,.15){% endif %};
+                color:{% if doc.statut == 'valide' %}var(--jade){% elif doc.statut == 'refuse' %}var(--ember){% else %}var(--saffron){% endif %}">
+                {% if doc.statut == 'valide' %}<i class="bi bi-check-circle-fill me-1"></i>Validé
+                {% elif doc.statut == 'refuse' %}<i class="bi bi-x-circle-fill me-1"></i>Refusé
+                {% else %}<i class="bi bi-hourglass me-1"></i>En attente
+                {% endif %}
+              </span>
+
+              <div class="d-flex gap-1">
+                <a href="{{ doc.fichier.url }}" target="_blank" class="btn-ghost" title="Voir le document"
+                  style="font-size:.72rem;padding:.25rem .55rem;width:auto">
+                  <i class="bi bi-eye"></i>
+                </a>
+                {% if doc.statut != 'valide' %}
+                <form method="post" action="{% url 'apps_marketplace:supprimer_document_kyc' doc.pk %}"
+                  onsubmit="return confirm('Supprimer ce document ?')">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-ghost" title="Supprimer"
+                    style="font-size:.72rem;padding:.25rem .55rem;color:var(--ember);border-color:rgba(239,68,68,.3);width:auto">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% else %}
+      <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--indigo-d,rgba(99,102,241,.15));display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+          <i class="bi bi-file-earmark-lock" style="font-size:1.8rem;color:var(--indigo)"></i>
+        </div>
+        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun document soumis</div>
+        <div style="font-size:.82rem;color:var(--muted)">Soumettez vos documents de vérification pour obtenir le badge « Boutique vérifiée ».</div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('{{ form.fichier.id_for_label }}');
+const fileName  = document.getElementById('file-name');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--saffron)'; dropZone.style.background='var(--saffron-d)' });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor=''; dropZone.style.background='' });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.style.borderColor=''; dropZone.style.background='';
+  const files = e.dataTransfer.files;
+  if (files.length) { fileInput.files = files; fileName.textContent = files[0].name; }
+});
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  fileName.textContent = fileInput.files[0]?.name || '';
+});
+</script>
+{% endblock %}

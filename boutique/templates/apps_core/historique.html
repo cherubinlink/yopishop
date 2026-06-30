@@ -1,0 +1,451 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Historique des transactions — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.hist-page{padding:2.5rem 0 4rem;min-height:80vh}
+
+/* Header */
+.hist-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;
+  position:relative;overflow:hidden;
+}
+.hist-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--jade),var(--indigo))}
+.hist-header::after{content:'';position:absolute;right:-5%;top:-40%;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--jade-d) 0%,transparent 70%);pointer-events:none}
+
+/* Stat mini-cards */
+.hist-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem}
+@media(max-width:575px){.hist-stats{grid-template-columns:1fr}}
+.hstat{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:1rem 1.1rem;display:flex;align-items:center;gap:.85rem;
+  transition:border-color var(--tr);
+}
+.hstat:hover{border-color:var(--border-h)}
+.hstat-icon{
+  width:40px;height:40px;border-radius:11px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;
+}
+.hstat-val{font-family:var(--fm);font-size:1.15rem;font-weight:700;line-height:1}
+.hstat-lbl{font-size:.68rem;color:var(--muted);margin-top:.15rem;text-transform:uppercase;letter-spacing:.07em}
+
+/* Filtres */
+.hist-filters{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:.85rem 1.1rem;margin-bottom:1.25rem;
+  display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;
+}
+.hf-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.hf-pill{
+  display:inline-flex;align-items:center;gap:.35rem;
+  padding:.32rem .9rem;border-radius:99px;font-size:.78rem;font-weight:600;
+  border:1.5px solid var(--border);color:var(--muted);cursor:pointer;
+  text-decoration:none;transition:border-color var(--tr),color var(--tr),background var(--tr);
+  white-space:nowrap;
+}
+.hf-pill:hover{border-color:var(--saffron);color:var(--saffron);background:var(--saffron-g,rgba(247,183,49,.04))}
+.hf-pill.on{border-color:var(--saffron);background:var(--saffron-d);color:var(--saffron)}
+.hf-pill.on-credit{border-color:var(--jade);background:var(--jade-d);color:var(--jade)}
+.hf-pill.on-debit{border-color:var(--ember);background:var(--ember-d);color:var(--ember)}
+.hf-sep{width:1px;height:18px;background:var(--border);flex-shrink:0}
+
+/* Tableau des transactions */
+.hist-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.hist-card-head{
+  padding:.9rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+}
+.hist-card-title{font-size:.88rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.5rem}
+.hist-card-title i{color:var(--saffron)}
+
+/* Ligne de transaction */
+.tx-row{
+  display:flex;align-items:center;gap:1rem;
+  padding:.9rem 1.25rem;border-bottom:1px solid var(--border);
+  transition:background var(--tr);
+}
+.tx-row:last-child{border-bottom:none}
+.tx-row:hover{background:rgba(255,255,255,.02)}
+
+.tx-icon{
+  width:40px;height:40px;border-radius:11px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+}
+.tx-icon.credit{background:var(--jade-d);color:var(--jade)}
+.tx-icon.debit{background:var(--ember-d);color:var(--ember)}
+.tx-icon.remboursement{background:var(--indigo-d);color:var(--indigo)}
+.tx-icon.bonus{background:var(--saffron-d);color:var(--saffron)}
+
+.tx-info{flex:1;min-width:0}
+.tx-desc{font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:.18rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-meta{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+
+.tx-amount{
+  font-family:var(--fm);font-size:.95rem;font-weight:700;
+  white-space:nowrap;flex-shrink:0;
+}
+.tx-amount.credit{color:var(--jade)}
+.tx-amount.debit{color:var(--ember)}
+.tx-amount.remboursement{color:var(--indigo)}
+
+.tx-status{
+  font-size:.63rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 8px;border-radius:99px;flex-shrink:0;
+}
+.ts-ok{background:var(--jade-d);color:var(--jade)}
+.ts-pending{background:var(--saffron-d);color:var(--saffron)}
+.ts-failed{background:var(--ember-d);color:var(--ember)}
+.ts-refund{background:var(--indigo-d);color:var(--indigo)}
+
+/* Groupe date */
+.tx-date-group{
+  padding:.55rem 1.25rem;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.tx-date-label{
+  font-size:.68rem;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;gap:.5rem;
+}
+.tx-date-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Pagination */
+.hist-pagination{
+  display:flex;align-items:center;justify-content:center;gap:.4rem;
+  padding:1.25rem 1rem;flex-wrap:wrap;
+}
+.pg-btn{
+  min-width:36px;height:36px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.82rem;font-weight:600;
+  border:1.5px solid var(--border);color:var(--text-2);
+  text-decoration:none;padding:0 .65rem;
+  transition:border-color var(--tr),color var(--tr),background var(--tr);
+}
+.pg-btn:hover{border-color:var(--saffron);color:var(--saffron);background:var(--saffron-d)}
+.pg-btn.on{background:var(--saffron);border-color:var(--saffron);color:#0A0B1A}
+.pg-btn.disabled{opacity:.35;pointer-events:none}
+.pg-sep{color:var(--muted);font-size:.8rem;padding:0 .2rem}
+
+/* Export button */
+.btn-export{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:99px;
+  color:var(--text-2);font-size:.78rem;font-weight:600;
+  padding:.38rem .95rem;display:inline-flex;align-items:center;gap:.4rem;
+  cursor:pointer;text-decoration:none;
+  transition:border-color var(--tr),color var(--tr);
+}
+.btn-export:hover{border-color:var(--jade);color:var(--jade)}
+
+/* Empty state */
+.hist-empty{
+  text-align:center;padding:3.5rem 1rem;
+}
+.hist-empty i{font-size:2.8rem;color:var(--muted);opacity:.4;display:block;margin-bottom:.9rem}
+.hist-empty-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.35rem}
+.hist-empty-sub{font-size:.82rem;color:var(--muted)}
+
+/* Solde actuel */
+.hist-balance{
+  background:linear-gradient(135deg,var(--card) 0%,var(--surface) 100%);
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:1.25rem 1.4rem;margin-bottom:1.5rem;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;
+  position:relative;overflow:hidden;
+}
+.hist-balance::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad-a)}
+.hist-balance::after{
+  content:'';position:absolute;right:-5%;bottom:-40%;
+  width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(circle,var(--saffron-d) 0%,transparent 70%);
+  pointer-events:none;
+}
+.hist-balance-val{
+  font-family:var(--fm);font-size:1.85rem;font-weight:700;
+  color:var(--saffron);line-height:1;
+}
+.hist-balance-lbl{font-size:.75rem;color:var(--muted);margin-top:.25rem}
+</style>
+
+<div class="hist-page">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+      <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <a href="{% url 'apps_core:tableau_de_bord' %}" style="color:var(--muted)">Mon compte</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <span style="color:var(--saffron)">Historique transactions</span>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+      {{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- Header -->
+    <div class="hist-header fi">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:46px;height:46px;border-radius:13px;background:var(--jade-d);display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:var(--jade);flex-shrink:0">
+            <i class="bi bi-clock-history"></i>
+          </div>
+          <div>
+            <div style="font-family:var(--fg);font-size:1.2rem;font-weight:700;color:var(--text)">Historique des transactions</div>
+            <div style="font-size:.8rem;color:var(--muted)">Tous vos mouvements de wallet YopiPay</div>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/wallet/recharger/" class="btn-gold" style="font-size:.8rem">
+            <i class="bi bi-plus-circle"></i> Recharger
+          </a>
+          <a href="?export=csv" class="btn-export">
+            <i class="bi bi-download"></i> Exporter CSV
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Solde actuel -->
+    <div class="hist-balance fi">
+      <div>
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">
+          <i class="bi bi-wallet2"></i> Solde actuel
+        </div>
+        <div class="hist-balance-val">
+          {{ request.user.solde_wallet|floatformat:0|default:"0" }}
+          <span style="font-size:1rem;font-weight:500;color:var(--muted)"> FCFA</span>
+        </div>
+        <div class="hist-balance-lbl">YopiPay Wallet</div>
+      </div>
+      <div class="d-flex gap-3 flex-wrap">
+        <div style="text-align:center">
+          <div style="font-family:var(--fm);font-size:1.1rem;font-weight:700;color:var(--jade)">
+            +{{ total_credits|floatformat:0|default:"0" }} F
+          </div>
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Total crédité</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div style="font-family:var(--fm);font-size:1.1rem;font-weight:700;color:var(--ember)">
+            -{{ total_debits|floatformat:0|default:"0" }} F
+          </div>
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Total débité</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini stats -->
+    <div class="hist-stats fi">
+      <div class="hstat">
+        <div class="hstat-icon" style="background:var(--jade-d)"><i class="bi bi-arrow-down-circle-fill" style="color:var(--jade)"></i></div>
+        <div>
+          <div class="hstat-val" style="color:var(--jade)">{{ nb_credits|default:"0" }}</div>
+          <div class="hstat-lbl">Crédits reçus</div>
+        </div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-icon" style="background:var(--ember-d)"><i class="bi bi-arrow-up-circle-fill" style="color:var(--ember)"></i></div>
+        <div>
+          <div class="hstat-val" style="color:var(--ember)">{{ nb_debits|default:"0" }}</div>
+          <div class="hstat-lbl">Débits effectués</div>
+        </div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-icon" style="background:var(--indigo-d)"><i class="bi bi-arrow-counterclockwise" style="color:var(--indigo)"></i></div>
+        <div>
+          <div class="hstat-val" style="color:var(--indigo)">{{ nb_remboursements|default:"0" }}</div>
+          <div class="hstat-lbl">Remboursements</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="hist-filters fi">
+      <span class="hf-label"><i class="bi bi-funnel"></i> Filtrer</span>
+      <div class="hf-sep"></div>
+      <a href="?" class="hf-pill {% if not request.GET.type %}on{% endif %}">
+        <i class="bi bi-list-ul"></i> Tout
+      </a>
+      <a href="?type=credit" class="hf-pill {% if request.GET.type == 'credit' %}on-credit{% endif %}">
+        <i class="bi bi-arrow-down-circle"></i> Crédits
+      </a>
+      <a href="?type=debit" class="hf-pill {% if request.GET.type == 'debit' %}on-debit{% endif %}">
+        <i class="bi bi-arrow-up-circle"></i> Débits
+      </a>
+      <a href="?type=remboursement" class="hf-pill {% if request.GET.type == 'remboursement' %}on{% endif %}" style="{% if request.GET.type == 'remboursement' %}border-color:var(--indigo);background:var(--indigo-d);color:var(--indigo){% endif %}">
+        <i class="bi bi-arrow-counterclockwise"></i> Remboursements
+      </a>
+      <div class="hf-sep"></div>
+      <!-- Période -->
+      <a href="?periode=7j" class="hf-pill {% if request.GET.periode == '7j' %}on{% endif %}">7 jours</a>
+      <a href="?periode=30j" class="hf-pill {% if request.GET.periode == '30j' %}on{% endif %}">30 jours</a>
+      <a href="?periode=3m" class="hf-pill {% if request.GET.periode == '3m' %}on{% endif %}">3 mois</a>
+    </div>
+
+    <!-- Tableau transactions -->
+    <div class="hist-card fi">
+      <div class="hist-card-head">
+        <div class="hist-card-title">
+          <i class="bi bi-receipt"></i>
+          Transactions
+          {% if transactions.paginator.count %}
+          <span style="font-size:.72rem;font-weight:400;color:var(--muted)">({{ transactions.paginator.count }} au total)</span>
+          {% endif %}
+        </div>
+        <div style="font-size:.78rem;color:var(--muted)">
+          Page {{ transactions.number }} / {{ transactions.paginator.num_pages }}
+        </div>
+      </div>
+
+      {% if transactions %}
+
+      {% regroup transactions by date_creation|date:"d F Y" as transactions_par_date %}
+
+      {% for groupe in transactions_par_date %}
+
+        <!-- Séparateur de date -->
+        <div class="tx-date-group">
+          <div class="tx-date-label">
+            <i class="bi bi-calendar3" style="font-size:.72rem"></i>
+            {{ groupe.grouper }}
+          </div>
+        </div>
+
+        {% for tx in groupe.list %}
+        <div class="tx-row">
+
+          <!-- Icône type -->
+          <div class="tx-icon {% if tx.type == 'credit' %}credit{% elif tx.type == 'debit' %}debit{% elif tx.type == 'remboursement' %}remboursement{% else %}bonus{% endif %}">
+            {% if tx.type == 'credit' %}
+              <i class="bi bi-arrow-down-circle-fill"></i>
+            {% elif tx.type == 'debit' %}
+              <i class="bi bi-arrow-up-circle-fill"></i>
+            {% elif tx.type == 'remboursement' %}
+              <i class="bi bi-arrow-counterclockwise"></i>
+            {% else %}
+              <i class="bi bi-gift-fill"></i>
+            {% endif %}
+          </div>
+
+          <!-- Description + méta -->
+          <div class="tx-info">
+            <div class="tx-desc">{{ tx.description|default:"Transaction YopiPay" }}</div>
+            <div class="tx-meta">
+              <span><i class="bi bi-clock" style="font-size:.68rem"></i> {{ tx.date_creation|date:"H:i" }}</span>
+              {% if tx.reference %}
+              <span><i class="bi bi-hash" style="font-size:.68rem"></i> {{ tx.reference }}</span>
+              {% endif %}
+              {% if tx.commande %}
+              <a href="/commandes/{{ tx.commande.id }}/" style="color:var(--saffron);font-size:.72rem;display:flex;align-items:center;gap:.2rem">
+                <i class="bi bi-bag"></i> Commande #{{ tx.commande.numero|default:tx.commande.id }}
+              </a>
+              {% endif %}
+              <span class="tx-status {% if tx.statut == 'succes' or tx.statut == 'complete' %}ts-ok{% elif tx.statut == 'en_attente' %}ts-pending{% elif tx.statut == 'echec' %}ts-failed{% elif tx.statut == 'rembourse' %}ts-refund{% else %}ts-ok{% endif %}">
+                {% if tx.statut == 'succes' or tx.statut == 'complete' %}✓ Validé
+                {% elif tx.statut == 'en_attente' %}⏳ En attente
+                {% elif tx.statut == 'echec' %}✕ Échoué
+                {% elif tx.statut == 'rembourse' %}↩ Remboursé
+                {% else %}{{ tx.get_statut_display|default:"Validé" }}
+                {% endif %}
+              </span>
+            </div>
+          </div>
+
+          <!-- Montant -->
+          <div class="tx-amount {% if tx.type == 'credit' %}credit{% elif tx.type == 'debit' %}debit{% elif tx.type == 'remboursement' %}remboursement{% else %}credit{% endif %}">
+            {% if tx.type == 'credit' or tx.type == 'remboursement' or tx.type == 'bonus' %}+{% else %}-{% endif %}{{ tx.montant|floatformat:0 }} F
+          </div>
+
+        </div>
+        {% endfor %}
+
+      {% endfor %}
+
+      {% else %}
+      <div class="hist-empty">
+        <i class="bi bi-receipt-cutoff"></i>
+        <div class="hist-empty-title">Aucune transaction pour l'instant</div>
+        <div class="hist-empty-sub">Vos mouvements de wallet apparaîtront ici dès votre première recharge.</div>
+        <a href="/wallet/recharger/" class="btn-gold mt-3" style="font-size:.82rem;display:inline-flex">
+          <i class="bi bi-plus-circle"></i> Recharger mon wallet
+        </a>
+      </div>
+      {% endif %}
+
+      <!-- Pagination -->
+      {% if transactions.paginator.num_pages > 1 %}
+      <div class="hist-pagination">
+
+        {% if transactions.has_previous %}
+        <a href="?page=1{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}" class="pg-btn" title="Première page">
+          <i class="bi bi-chevron-double-left"></i>
+        </a>
+        <a href="?page={{ transactions.previous_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}" class="pg-btn">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+        {% else %}
+        <span class="pg-btn disabled"><i class="bi bi-chevron-double-left"></i></span>
+        <span class="pg-btn disabled"><i class="bi bi-chevron-left"></i></span>
+        {% endif %}
+
+        {# Pages numérotées #}
+        {% for num in transactions.paginator.page_range %}
+          {% if num == transactions.number %}
+          <span class="pg-btn on">{{ num }}</span>
+          {% elif num >= transactions.number|add:"-2" and num <= transactions.number|add:"2" %}
+          <a href="?page={{ num }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}" class="pg-btn">{{ num }}</a>
+          {% elif num == 1 or num == transactions.paginator.num_pages %}
+          <a href="?page={{ num }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}" class="pg-btn">{{ num }}</a>
+          {% elif num == transactions.number|add:"-3" or num == transactions.number|add:"3" %}
+          <span class="pg-sep">…</span>
+          {% endif %}
+        {% endfor %}
+
+        {% if transactions.has_next %}
+        <a href="?page={{ transactions.next_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}" class="pg-btn">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+        <a href="?page={{ transactions.paginator.num_pages }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}" class="pg-btn" title="Dernière page">
+          <i class="bi bi-chevron-double-right"></i>
+        </a>
+        {% else %}
+        <span class="pg-btn disabled"><i class="bi bi-chevron-right"></i></span>
+        <span class="pg-btn disabled"><i class="bi bi-chevron-double-right"></i></span>
+        {% endif %}
+
+      </div>
+      {% endif %}
+
+    </div>
+    {# /hist-card #}
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Scroll to top on page change */
+document.querySelectorAll('.pg-btn:not(.disabled):not(.on)').forEach(btn => {
+  btn.addEventListener('click', () => window.scrollTo({top:0,behavior:'smooth'}));
+});
+</script>
+{% endblock %}
+
+{% endblock %}

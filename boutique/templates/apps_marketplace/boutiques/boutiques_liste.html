@@ -1,0 +1,346 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% load yopi_filters %}
+
+{% block title %}{{ page_titre|default:"Toutes les boutiques — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HERO ═══════ -->
+<section class="hero" style="min-height:300px;padding:2.5rem 0">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+
+  <!-- Float cards -->
+  <div class="fcard fcard-1">
+    <div class="fi-icon" style="background:var(--saffron-d)"><i class="bi bi-shop" style="color:var(--saffron)"></i></div>
+    <div><div class="fi-val" style="color:var(--saffron)">{{ nb_resultats }}+</div><div class="fi-lbl">Boutiques</div></div>
+  </div>
+  <div class="fcard fcard-3">
+    <div class="fi-icon" style="background:var(--indigo-d)"><i class="bi bi-patch-check-fill" style="color:var(--indigo)"></i></div>
+    <div><div class="fi-val" style="color:var(--indigo)">100%</div><div class="fi-lbl">Vérifiées</div></div>
+  </div>
+
+  <div class="container position-relative" style="z-index:2">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-7 fi">
+        <div class="hero-slide-eyebrow"><i class="bi bi-shop"></i>Marketplace YopiShop</div>
+        <h1 class="hero-title" style="font-size:clamp(2rem,5vw,3rem)">
+          Toutes les <span class="hl">boutiques</span>
+        </h1>
+        <p class="hero-desc">Découvrez des vendeurs vérifiés, des produits authentiques et des boutiques de confiance partout en Afrique.</p>
+        <div class="hero-actions">
+          {% if request.user.is_authenticated and request.user.peut_vendre %}
+            {% if request.user.boutique %}
+            <a href="{% url 'apps_marketplace:boutique_detail' request.user.boutique.slug %}" class="btn-gold">
+              <i class="bi bi-shop me-1"></i>Ma boutique
+            </a>
+            {% else %}
+            <a href="{% url 'apps_marketplace:creer_boutique' %}" class="btn-gold">
+              <i class="bi bi-plus-lg me-1"></i>Créer ma boutique
+            </a>
+            {% endif %}
+          {% elif not request.user.is_authenticated %}
+          <a href="{% url 'apps_core:devenir_vendeur' %}" class="btn-gold">
+            <i class="bi bi-shop me-1"></i>Ouvrir ma boutique
+          </a>
+          {% endif %}
+          <a href="#boutiques" class="btn-ghost"><i class="bi bi-grid"></i> Explorer</a>
+        </div>
+      </div>
+      <!-- Stats desktop -->
+      <div class="col-lg-5 d-none d-lg-flex justify-content-end gap-3 fi fi-d2">
+        <div class="ycard text-center px-4 py-3">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:700;color:var(--saffron)">{{ nb_resultats }}</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Boutiques actives</div>
+        </div>
+        <div class="ycard text-center px-4 py-3">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:700;color:var(--jade)">24h</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Support</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════ BARRE RECHERCHE + FILTRES ═══════ -->
+<div class="cat-strip d-block" style="position:sticky;top:0;z-index:100">
+  <div class="container">
+    <form method="get" class="d-flex align-items-center gap-3 flex-wrap py-1" id="filtreForm">
+      <!-- Recherche -->
+      <div class="search-wrap" style="max-width:300px;flex:1">
+        <i class="bi bi-search si"></i>
+        <input type="text" name="q" class="search-input"
+               placeholder="Nom, ville, description…"
+               value="{{ q }}" autocomplete="off" id="searchInput">
+        {% if ville %}<input type="hidden" name="ville" value="{{ ville }}">{% endif %}
+        {% if tri and tri != 'vedette' %}<input type="hidden" name="tri" value="{{ tri }}">{% endif %}
+        <button type="submit" class="search-submit"><i class="bi bi-arrow-right"></i></button>
+      </div>
+
+      <!-- Tri -->
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if ville %}ville={{ ville }}&{% endif %}tri=vedette"
+           class="cpill {% if tri == 'vedette' or not tri %}on{% endif %}">
+          <i class="bi bi-star"></i>Vedettes
+        </a>
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if ville %}ville={{ ville }}&{% endif %}tri=note"
+           class="cpill {% if tri == 'note' %}on{% endif %}">
+          <i class="bi bi-trophy"></i>Mieux notées
+        </a>
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if ville %}ville={{ ville }}&{% endif %}tri=ventes"
+           class="cpill {% if tri == 'ventes' %}on{% endif %}">
+          <i class="bi bi-bag-check"></i>Top ventes
+        </a>
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if ville %}ville={{ ville }}&{% endif %}tri=recent"
+           class="cpill {% if tri == 'recent' %}on{% endif %}">
+          <i class="bi bi-clock"></i>Récentes
+        </a>
+      </div>
+
+      <!-- Filtre ville -->
+      <div class="dropdown">
+        <a class="cpill dropdown-toggle {% if ville %}on{% endif %}" data-bs-toggle="dropdown" style="cursor:pointer">
+          <i class="bi bi-geo-alt"></i>{{ ville|default:"Ville" }}
+        </a>
+        <ul class="dropdown-menu py-1" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:180px;box-shadow:0 12px 32px rgba(0,0,0,.4)">
+          <li>
+            <a class="dropdown-item py-2 px-3" style="color:var(--text-2);font-size:.82rem"
+               href="?{% if q %}q={{ q }}&{% endif %}{% if tri %}tri={{ tri }}{% endif %}">
+              <i class="bi bi-globe2 me-2" style="color:var(--muted)"></i>Toutes les villes
+            </a>
+          </li>
+          <li><hr class="dropdown-divider" style="border-color:var(--border);margin:.3rem 0"></li>
+          {% for v in "Douala,Yaoundé,Bafoussam,Garoua,Maroua,Bamenda,Ngaoundéré,Bertoua,Ebolowa,Kribi"|split:"," %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+               style="color:{% if ville == v %}var(--saffron){% else %}var(--text-2){% endif %};font-size:.82rem"
+               href="?ville={{ v }}{% if q %}&q={{ q }}{% endif %}{% if tri %}&tri={{ tri }}{% endif %}">
+              <i class="bi bi-geo-alt-fill" style="color:var(--saffron);font-size:.72rem"></i>{{ v }}
+              {% if ville == v %}<i class="bi bi-check ms-auto" style="color:var(--jade)"></i>{% endif %}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      {% if q or ville %}
+      <a href="{% url 'apps_marketplace:boutiques_liste' %}" class="cpill" style="color:var(--ember)">
+        <i class="bi bi-x-circle me-1"></i>Effacer
+      </a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════ RÉSULTATS ═══════ -->
+<section class="ys bg-surface" id="boutiques">
+  <div class="container">
+
+    <!-- Titre résultats / section -->
+    {% if q or ville %}
+    <div class="mb-4 fi">
+      <div class="eyebrow mb-1">🔍 Résultats de recherche</div>
+      <h2 class="sec-title" style="font-size:1.5rem">
+        <span style="color:var(--saffron)">{{ nb_resultats }}</span> boutique{{ nb_resultats|pluralize }}
+        {% if q %} pour <span class="ac">« {{ q }} »</span>{% endif %}
+        {% if ville %} à <span class="ac">{{ ville }}</span>{% endif %}
+      </h2>
+    </div>
+    {% else %}
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🏆 Sélection YopiShop</div>
+        <h2 class="sec-title">Boutiques <span class="ac">vedettes</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ nb_resultats }} boutique{{ nb_resultats|pluralize }}</span>
+    </div>
+    {% endif %}
+
+    {% if boutiques %}
+    <div class="row g-3">
+      {% for boutique in boutiques %}
+      <div class="col-6 col-sm-4 col-md-3 col-lg-2 fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <a href="{% url 'apps_marketplace:boutique_detail' boutique.slug %}"
+           class="d-flex flex-column align-items-center text-decoration-none text-center"
+           style="border:1px solid {% if boutique.est_vedette %}rgba(246,169,43,.3){% else %}var(--border){% endif %};
+                  padding:1.4rem .9rem 1rem;border-radius:var(--r);
+                  background:{% if boutique.est_vedette %}var(--saffron-d){% else %}var(--card){% endif %};
+                  transition:border-color .25s,transform .25s,box-shadow .25s;
+                  position:relative;overflow:hidden"
+           onmouseover="this.style.borderColor='var(--saffron)';this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(246,169,43,.15)'"
+           onmouseout="this.style.borderColor='{% if boutique.est_vedette %}rgba(246,169,43,.3){% else %}var(--border){% endif %}';this.style.transform='';this.style.boxShadow=''">
+
+          {% if boutique.est_vedette %}
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--saffron),var(--ember))"></div>
+          {% endif %}
+
+          <!-- Logo -->
+          <div style="width:68px;height:68px;border-radius:16px;overflow:hidden;margin-bottom:.9rem;flex-shrink:0;
+                      background:var(--surface);
+                      border:2.5px solid {% if boutique.est_vedette %}var(--saffron){% elif boutique.est_verifiee %}var(--jade){% else %}var(--border){% endif %};
+                      display:flex;align-items:center;justify-content:center;
+                      box-shadow:0 4px 12px rgba(0,0,0,.2)">
+            {% if boutique.logo %}
+            <img src="{{ boutique.logo.url }}" alt="{{ boutique.nom }}"
+                 style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+            <i class="bi bi-shop" style="font-size:1.6rem;color:var(--muted)"></i>
+            {% endif %}
+          </div>
+
+          <!-- Nom -->
+          <div style="font-size:.86rem;font-weight:700;color:var(--text);margin-bottom:.3rem;
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+                      line-height:1.3">
+            {{ boutique.nom|truncatechars:18 }}
+          </div>
+
+          <!-- Note -->
+          <div style="font-size:.72rem;color:var(--saffron);margin-bottom:.3rem">
+            <i class="bi bi-star-fill"></i>
+            <strong style="color:var(--text)">{{ boutique.note_moyenne|default:"—"|floatformat:1 }}</strong>
+            <span style="color:var(--muted)">({{ boutique.nombre_avis }})</span>
+          </div>
+
+          <!-- Ville -->
+          {% if boutique.ville %}
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:.5rem">
+            <i class="bi bi-geo-alt me-1" style="color:var(--saffron);font-size:.62rem"></i>{{ boutique.ville }}
+          </div>
+          {% endif %}
+
+          <!-- Badges -->
+          <div class="d-flex flex-wrap gap-1 justify-content-center mb-1">
+            {% if boutique.est_verifiee %}
+            <span class="chip chip-jade" style="font-size:.58rem;padding:.1rem .4rem">
+              <i class="bi bi-patch-check-fill"></i> Vérifiée
+            </span>
+            {% endif %}
+            {% if boutique.est_vedette %}
+            <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.58rem;padding:.1rem .4rem">
+              <i class="bi bi-star-fill"></i> Vedette
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Nb produits -->
+          <div style="font-size:.67rem;color:var(--muted)">
+            <i class="bi bi-box me-1"></i>{{ boutique.nombre_produits|default:"0" }} produit{{ boutique.nombre_produits|pluralize }}
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if boutiques.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi" aria-label="Pagination boutiques">
+      <ul class="pagination" style="gap:.4rem">
+        {% if boutiques.has_previous %}
+        <li>
+          <a class="cpill" href="?page={{ boutiques.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if ville %}&ville={{ ville }}{% endif %}{% if tri %}&tri={{ tri }}{% endif %}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+        {% endif %}
+        {% for num in boutiques.paginator.page_range %}
+          {% if boutiques.number == num %}
+          <li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= boutiques.number and num|add:"2" >= boutiques.number %}
+          <li>
+            <a class="cpill" href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}{% if ville %}&ville={{ ville }}{% endif %}{% if tri %}&tri={{ tri }}{% endif %}">{{ num }}</a>
+          </li>
+          {% endif %}
+        {% endfor %}
+        {% if boutiques.has_next %}
+        <li>
+          <a class="cpill" href="?page={{ boutiques.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if ville %}&ville={{ ville }}{% endif %}{% if tri %}&tri={{ tri }}{% endif %}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-shop" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Aucune boutique trouvée</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+        {% if q %}Aucun résultat pour « {{ q }} ». {% endif %}
+        {% if ville %}Aucune boutique à {{ ville }}. {% endif %}
+        Essayez avec d'autres termes.
+      </div>
+      {% if q or ville %}
+      <a href="{% url 'apps_marketplace:boutiques_liste' %}" class="btn-ghost me-2">
+        <i class="bi bi-x-circle me-1"></i>Réinitialiser
+      </a>
+      {% endif %}
+      {% if request.user.peut_vendre %}
+      <a href="{% url 'apps_marketplace:creer_boutique' %}" class="btn-gold">
+        <i class="bi bi-plus-lg me-1"></i>Ouvrir la première
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+
+<!-- ═══════ CTA DEVENIR VENDEUR ═══════ -->
+{% if not request.user.is_authenticated or not request.user.peut_vendre %}
+<section class="nl-section">
+  <div class="container">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-7 fi">
+        <div class="eyebrow mb-3">🚀 Rejoignez-nous</div>
+        <div class="nl-title">Ouvrez votre boutique sur YopiShop</div>
+        <div class="nl-sub">Vendez à des milliers d'acheteurs au Cameroun — gratuit, sans abonnement, livraison intégrée.</div>
+        <div class="d-flex gap-3 flex-wrap mt-4">
+          <a href="{% url 'apps_core:devenir_vendeur' %}" class="btn-gold">
+            Commencer maintenant <i class="bi bi-arrow-right"></i>
+          </a>
+          <a href="/boutiques/comment-vendre/" class="btn-ghost">En savoir plus</a>
+        </div>
+      </div>
+      <div class="col-lg-5 d-none d-lg-flex justify-content-end gap-4 fi fi-d2">
+        <div class="text-center">
+          <div style="font-family:var(--fm);font-size:2.2rem;font-weight:800;color:var(--saffron)">0 F</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Inscription</div>
+        </div>
+        <div class="text-center">
+          <div style="font-family:var(--fm);font-size:2.2rem;font-weight:800;color:var(--jade)">24h</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Activation</div>
+        </div>
+        <div class="text-center">
+          <div style="font-family:var(--fm);font-size:2.2rem;font-weight:800;color:var(--indigo)">100%</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Sécurisé</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.06});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+document.querySelectorAll('.dropdown-item').forEach(item => {
+  item.addEventListener('mouseenter', function(){this.style.background='var(--saffron-d)';this.style.color='var(--saffron)';});
+  item.addEventListener('mouseleave', function(){this.style.background='';this.style.color='';});
+});
+</script>
+{% endblock %}
+
+{% endblock %}

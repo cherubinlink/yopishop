@@ -1,0 +1,940 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% load yopi_filters %}
+
+{% block title %}{{ page_titre|default:produit.titre }}{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════════════
+   PRODUIT DÉTAIL — hérite des vars de base.html
+══════════════════════════════════════════════════════ */
+.pd-wrap { padding: 2rem 0 4rem; min-height: 80vh; }
+
+/* ── Galerie images ── */
+.pd-gallery { display: flex; flex-direction: column; gap: .6rem; }
+.pd-main-img-wrap {
+  position: relative; aspect-ratio: 1/1; border-radius: var(--r);
+  overflow: hidden; background: var(--card); border: 1px solid var(--border);
+}
+.pd-main-img-wrap img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+.pd-thumbs { display: flex; gap: .5rem; overflow-x: auto; scrollbar-width: none; }
+.pd-thumbs::-webkit-scrollbar { display: none; }
+.pd-thumb {
+  flex: 0 0 64px; width: 64px; height: 64px; border-radius: 8px;
+  overflow: hidden; border: 1.5px solid var(--border); cursor: pointer;
+  transition: border-color .2s; background: var(--card);
+}
+.pd-thumb.active { border-color: var(--saffron); }
+.pd-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.pd-badges-row { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+.pd-badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .72rem; font-weight: 700; padding: .25rem .7rem; border-radius: 99px;
+}
+.badge-yopi    { background: var(--indigo-d); color: var(--indigo); border: 1px solid rgba(124,111,255,.25); }
+.badge-vedette { background: var(--saffron-d); color: var(--saffron); border: 1px solid rgba(247,183,49,.25); }
+.badge-promo   { background: var(--ember-d); color: var(--ember); border: 1px solid rgba(255,90,71,.25); }
+.badge-stock   { background: var(--jade-d); color: var(--jade); border: 1px solid rgba(0,200,150,.25); }
+.badge-rupture { background: var(--ember-d); color: var(--ember); border: 1px solid rgba(255,90,71,.25); }
+
+/* ── Infos produit ── */
+.pd-category {
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--saffron); margin-bottom: .4rem;
+}
+.pd-category a { color: inherit; text-decoration: none; }
+.pd-title {
+  font-family: var(--fg); font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800;
+  color: var(--text); line-height: 1.2; margin-bottom: .5rem;
+}
+.pd-ref { font-size: .75rem; color: var(--muted); font-family: var(--fm); margin-bottom: .75rem; }
+
+.pd-rating-row {
+  display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem;
+  font-size: .85rem; color: var(--text-2);
+}
+.pd-rating-stars { color: var(--saffron); display: flex; gap: .1rem; }
+.pd-rating-link { color: var(--muted); text-decoration: none; font-size: .8rem; }
+.pd-rating-link:hover { color: var(--saffron); }
+
+/* ── Prix ── */
+.pd-price-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: 1.25rem;
+}
+.pd-price-row { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
+.pd-price-now {
+  font-family: var(--fm); font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 800;
+  color: var(--saffron); line-height: 1;
+}
+.pd-price-old {
+  font-size: 1.05rem; color: var(--muted); text-decoration: line-through;
+}
+.pd-price-discount {
+  font-size: .75rem; font-weight: 700; background: var(--ember); color: #fff;
+  padding: .2rem .6rem; border-radius: 6px;
+}
+.pd-price-currency { font-size: .85rem; color: var(--muted); margin-top: .3rem; }
+
+/* ── Description courte ── */
+.pd-desc-courte {
+  font-size: .9rem; color: var(--text-2); line-height: 1.65; margin-bottom: 1.25rem;
+}
+
+/* ── Variantes ── */
+.pd-variant-group { margin-bottom: 1.1rem; }
+.pd-variant-label {
+  font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: .5rem;
+}
+.pd-variant-options { display: flex; flex-wrap: wrap; gap: .5rem; }
+.pd-variant-pill {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: .45rem .9rem; font-size: .82rem;
+  color: var(--text-2); cursor: pointer; transition: all .2s; position: relative;
+}
+.pd-variant-pill input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pd-variant-pill:has(input:checked) { border-color: var(--saffron); background: var(--saffron-d); color: var(--saffron); }
+.pd-variant-pill.disabled { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
+
+/* ── Quantité + Actions ── */
+.pd-qty-row { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.1rem; }
+.pd-qty-control {
+  display: flex; align-items: center; border: 1.5px solid var(--border);
+  border-radius: 8px; overflow: hidden; background: var(--surface);
+}
+.pd-qty-btn {
+  width: 38px; height: 38px; border: none; background: transparent;
+  color: var(--text); font-size: 1.1rem; cursor: pointer; transition: background .15s;
+}
+.pd-qty-btn:hover { background: var(--saffron-d); color: var(--saffron); }
+.pd-qty-input {
+  width: 50px; text-align: center; border: none; background: transparent;
+  color: var(--text); font-family: var(--fm); font-size: .95rem; outline: none;
+}
+.pd-stock-info { font-size: .8rem; color: var(--muted); }
+.pd-stock-info.ok    { color: var(--jade); }
+.pd-stock-info.low   { color: var(--saffron); }
+.pd-stock-info.empty { color: var(--ember); }
+
+.pd-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.btn-add-cart-lg {
+  flex: 1; min-width: 180px; background: linear-gradient(90deg, var(--saffron), #f5b942);
+  color: #0A0B1A; border: none; border-radius: 12px; padding: .85rem 1.5rem;
+  font-size: .92rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  transition: opacity .2s, transform .2s;
+}
+.btn-add-cart-lg:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+.btn-add-cart-lg:disabled { opacity: .5; cursor: not-allowed; }
+.btn-fav-lg, .btn-share-lg {
+  width: 52px; height: 52px; border-radius: 12px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  color: var(--text-2); font-size: 1.15rem; display: flex;
+  align-items: center; justify-content: center; cursor: pointer; transition: all .2s;
+}
+.btn-fav-lg:hover, .btn-fav-lg.active { border-color: var(--ember); color: var(--ember); background: var(--ember-d); }
+.btn-share-lg:hover { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-d); }
+
+/* ── Boutons enchère / live ── */
+.pd-extra-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.btn-enchere-lg {
+  flex: 1; min-width: 180px;
+  background: linear-gradient(90deg, var(--ember), #ff6b7a);
+  color: #fff; border: none; border-radius: 12px; padding: .8rem 1.5rem;
+  font-size: .88rem; font-weight: 700; cursor: pointer; text-decoration: none;
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  transition: opacity .2s;
+}
+.btn-enchere-lg:hover { opacity: .9; color: #fff; }
+
+/* ── Vendeur card ── */
+.pd-vendor-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem 1.2rem;
+  display: flex; align-items: center; gap: .9rem; margin-bottom: 1.25rem;
+}
+.pd-vendor-avatar {
+  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+  object-fit: cover; border: 2px solid var(--saffron);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--saffron-d); color: var(--saffron); font-weight: 700; font-size: 1.2rem;
+}
+.pd-vendor-name { font-size: .9rem; font-weight: 700; color: var(--text); }
+.pd-vendor-meta { font-size: .76rem; color: var(--muted); }
+.pd-vendor-link {
+  margin-left: auto; font-size: .8rem; font-weight: 600; color: var(--saffron);
+  text-decoration: none; flex-shrink: 0;
+}
+
+/* ── Livraison info ── */
+.pd-delivery-info {
+  display: flex; flex-direction: column; gap: .5rem;
+  border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem;
+}
+.pd-delivery-row { display: flex; align-items: center; gap: .6rem; font-size: .82rem; color: var(--text-2); }
+.pd-delivery-row i { color: var(--jade); font-size: .95rem; }
+
+/* ── Onglets description/attributs/avis ── */
+.pd-tabs {
+  display: flex; gap: .15rem; border-bottom: 2px solid var(--border);
+  margin: 2.5rem 0 1.5rem; overflow-x: auto; scrollbar-width: none;
+}
+.pd-tabs::-webkit-scrollbar { display: none; }
+.pd-tab {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .65rem 1.2rem;
+  font-size: .85rem; font-weight: 600; color: var(--muted);
+  border-bottom: 2.5px solid transparent; margin-bottom: -2px;
+  cursor: pointer; white-space: nowrap; transition: color .2s, border-color .2s;
+}
+.pd-tab:hover { color: var(--text); }
+.pd-tab.on { color: var(--saffron); border-bottom-color: var(--saffron); }
+
+.pd-tab-content { font-size: .88rem; color: var(--text-2); line-height: 1.75; }
+
+/* ── Attributs ── */
+.pd-attrs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+@media (max-width: 575px) { .pd-attrs-grid { grid-template-columns: 1fr; } }
+.pd-attr-item {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: .6rem 1rem; font-size: .82rem;
+}
+.pd-attr-name { color: var(--muted); }
+.pd-attr-val { color: var(--text); font-weight: 600; }
+
+/* ── Avis ── */
+.pd-avis-summary {
+  display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.3rem; margin-bottom: 1.5rem;
+}
+.pd-avis-score { text-align: center; }
+.pd-avis-score-n {
+  font-family: var(--fm); font-size: 2.6rem; font-weight: 800; color: var(--saffron); line-height: 1;
+}
+.pd-avis-score-stars { color: var(--saffron); font-size: .95rem; margin: .35rem 0; }
+.pd-avis-score-total { font-size: .78rem; color: var(--muted); }
+
+.pd-avis-bars { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: .4rem; }
+.pd-avis-bar-row { display: flex; align-items: center; gap: .6rem; font-size: .78rem; color: var(--muted); }
+.pd-avis-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.pd-avis-bar-fill { height: 100%; background: var(--saffron); border-radius: 4px; }
+
+.pd-avis-item {
+  border-bottom: 1px solid var(--border); padding: 1.1rem 0;
+}
+.pd-avis-item:last-child { border-bottom: none; }
+.pd-avis-header { display: flex; align-items: center; gap: .7rem; margin-bottom: .5rem; }
+.pd-avis-avatar {
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+  background: var(--indigo-d); color: var(--indigo);
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.pd-avis-name { font-size: .85rem; font-weight: 600; color: var(--text); }
+.pd-avis-date { font-size: .72rem; color: var(--muted); }
+.pd-avis-stars { color: var(--saffron); font-size: .82rem; margin-bottom: .35rem; }
+.pd-avis-title { font-size: .85rem; font-weight: 600; color: var(--text); margin-bottom: .25rem; }
+.pd-avis-text { font-size: .83rem; color: var(--text-2); line-height: 1.6; }
+.pd-avis-verified {
+  font-size: .68rem; font-weight: 700; color: var(--jade); background: var(--jade-d);
+  border-radius: 99px; padding: 1px 8px; margin-left: .5rem;
+}
+.pd-avis-images { display: flex; gap: .5rem; margin-top: .6rem; }
+.pd-avis-img { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; cursor: pointer; }
+.pd-avis-helpful {
+  display: inline-flex; align-items: center; gap: .35rem; margin-top: .5rem;
+  font-size: .76rem; color: var(--muted); background: none; border: 1px solid var(--border);
+  border-radius: 99px; padding: .25rem .8rem; cursor: pointer; transition: all .2s;
+}
+.pd-avis-helpful:hover { border-color: var(--saffron); color: var(--saffron); }
+
+/* ── Formulaire avis ── */
+.pd-avis-form-stars { display: flex; gap: .35rem; font-size: 1.6rem; cursor: pointer; }
+.pd-avis-form-stars i { color: var(--border); transition: color .15s; }
+.pd-avis-form-stars i.active { color: var(--saffron); }
+
+/* ── Produits similaires ── */
+.pd-similar-scroll { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: .5rem; scrollbar-width: none; }
+.pd-similar-scroll::-webkit-scrollbar { display: none; }
+.pd-similar-scroll .pcard { flex: 0 0 195px; }
+
+@media (max-width: 767px) {
+  .pd-price-now { font-size: 1.6rem; }
+  .pd-actions { flex-direction: column; }
+  .btn-fav-lg, .btn-share-lg { width: 100%; }
+}
+</style>
+
+
+<div class="pd-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'apps_core:catalogue' %}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          Catalogue
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'apps_core:catalogue' %}?categorie={{ produit.categorie.slug }}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          {{ produit.categorie.nom }}
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">{{ produit.titre|truncatechars:40 }}</span>
+      </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>{{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem;line-height:1">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- ══════════ TOP : galerie + infos ══════════ -->
+    <div class="row g-4">
+
+      <!-- Galerie -->
+      <div class="col-lg-6">
+        <div class="pd-gallery fi">
+          <div class="pd-main-img-wrap">
+            {% with produit.images.all as imgs %}
+            {% if imgs %}
+            <img src="{{ imgs.0.image.url }}" alt="{{ produit.titre }}" id="pdMainImg">
+            {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)">
+              <i class="bi bi-image" style="font-size:4rem"></i>
+            </div>
+            {% endif %}
+            {% endwith %}
+          </div>
+          {% if produit.images.all|length > 1 %}
+          <div class="pd-thumbs">
+            {% for img in produit.images.all %}
+            <div class="pd-thumb {% if forloop.first %}active{% endif %}" onclick="changeMainImg('{{ img.image.url }}', this)">
+              <img src="{{ img.image.url }}" alt="{{ img.texte_alternatif|default:produit.titre }}">
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Badges -->
+          <div class="pd-badges-row">
+            {% if produit.est_produit_yopishop %}
+            <span class="pd-badge badge-yopi"><i class="bi bi-patch-check-fill"></i> YopiShop Officiel</span>
+            {% endif %}
+            {% if produit.est_vedette %}
+            <span class="pd-badge badge-vedette"><i class="bi bi-star-fill"></i> Vedette</span>
+            {% endif %}
+            {% if produit.prix_promotionnel < produit.prix %}
+            <span class="pd-badge badge-promo"><i class="bi bi-percent"></i> Promotion</span>
+            {% endif %}
+            {% if produit.est_en_stock %}
+            <span class="pd-badge badge-stock"><i class="bi bi-check-circle-fill"></i> En stock</span>
+            {% else %}
+            <span class="pd-badge badge-rupture"><i class="bi bi-x-circle-fill"></i> Rupture de stock</span>
+            {% endif %}
+            {% if produit.autorise_enchere %}
+            <span class="pd-badge" style="background:rgba(255,90,71,.1);color:var(--ember);border:1px solid rgba(255,90,71,.25)"><i class="bi bi-hammer"></i> Enchère disponible</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Infos produit -->
+      <div class="col-lg-6">
+        <div class="fi">
+
+          <!-- Catégorie -->
+          <div class="pd-category">
+            <a href="{% url 'apps_core:catalogue' %}?categorie={{ produit.categorie.slug }}">
+              {{ produit.categorie.nom }}
+            </a>
+            {% if produit.marque %} &bull; {{ produit.marque.nom }}{% endif %}
+          </div>
+
+          <!-- Titre -->
+          <h1 class="pd-title">{{ produit.titre }}</h1>
+          <div class="pd-ref">Réf: {{ produit.reference }}{% if produit.sku %} &bull; SKU: {{ produit.sku }}{% endif %}</div>
+
+          <!-- Note -->
+          {% if avis_stats.total > 0 %}
+          <div class="pd-rating-row">
+            <div class="pd-rating-stars">
+              {% for i in "12345" %}
+              <i class="bi bi-star{% if forloop.counter <= avis_stats.moyenne %}-fill{% elif forloop.counter|add:'-1' < avis_stats.moyenne %}-half{% endif %}"></i>
+              {% endfor %}
+            </div>
+            <span>{{ avis_stats.moyenne|floatformat:1 }}</span>
+            <a href="#avis" class="pd-rating-link">({{ avis_stats.total }} avis)</a>
+            <span style="color:var(--border)">|</span>
+            <span style="color:var(--muted)"><i class="bi bi-eye"></i> {{ produit.nb_vues }} vues</span>
+            <span style="color:var(--border)">|</span>
+            <span style="color:var(--muted)"><i class="bi bi-bag-check"></i> {{ produit.nb_ventes }} vendu{{ produit.nb_ventes|pluralize }}</span>
+          </div>
+          {% else %}
+          <div class="pd-rating-row">
+            <span style="color:var(--muted)">Aucun avis pour le moment</span>
+            <span style="color:var(--border)">|</span>
+            <span style="color:var(--muted)"><i class="bi bi-eye"></i> {{ produit.nb_vues }} vues</span>
+          </div>
+          {% endif %}
+
+          <!-- Prix -->
+          <div class="pd-price-box">
+            <div class="pd-price-row">
+              <span class="pd-price-now">{{ produit.prix_promotionnel|floatformat:0 }} {{ produit.devise }}</span>
+              {% if produit.prix_promotionnel < produit.prix %}
+              <span class="pd-price-old">{{ produit.prix|floatformat:0 }} {{ produit.devise }}</span>
+              <span class="pd-price-discount">
+                -{% widthratio produit.prix|sub:produit.prix_promotionnel produit.prix 100 %}%
+              </span>
+              {% endif %}
+            </div>
+            {% if produit.est_b2b %}
+            <div class="pd-price-currency">Prix unitaire — quantité minimum : {{ produit.quantite_min_commande }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Description courte -->
+          {% if produit.description_courte %}
+          <p class="pd-desc-courte">{{ produit.description_courte }}</p>
+          {% endif %}
+
+          <!-- Variantes -->
+          {% regroup produit.variantes.all by nom as variantes_groupees %}
+          {% for groupe in variantes_groupees %}
+          <div class="pd-variant-group">
+            <div class="pd-variant-label">{{ groupe.grouper }}</div>
+            <div class="pd-variant-options">
+              {% for v in groupe.list %}
+              <label class="pd-variant-pill {% if v.stock == 0 %}disabled{% endif %}">
+                <input type="radio" name="variante_{{ groupe.grouper }}" value="{{ v.id }}"
+                       data-supplement="{{ v.prix_supplementaire }}"
+                       {% if v.stock == 0 %}disabled{% endif %}
+                       {% if forloop.first %}checked{% endif %}>
+                {{ v.valeur }}
+                {% if v.prix_supplementaire > 0 %}<span style="font-size:.7rem;color:var(--saffron)">+{{ v.prix_supplementaire|floatformat:0 }}</span>{% endif %}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+
+          <!-- Quantité -->
+          {% if produit.autorise_vente_directe and produit.est_en_stock %}
+          <div class="pd-qty-row">
+            <div class="pd-qty-control">
+              <button class="pd-qty-btn" onclick="changeQty(-1)">−</button>
+              <input type="number" class="pd-qty-input" id="pdQty" value="{{ produit.quantite_min_commande }}" min="{{ produit.quantite_min_commande }}" max="{% if produit.en_fulfillment %}{{ produit.quantite_fulfillment }}{% else %}{{ produit.quantite_stock }}{% endif %}">
+              <button class="pd-qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+            {% with stock=produit.quantite_fulfillment|default:produit.quantite_stock %}
+            <div class="pd-stock-info {% if stock > 10 %}ok{% elif stock > 0 %}low{% else %}empty{% endif %}">
+              {% if produit.en_fulfillment %}
+              <i class="bi bi-box-seam"></i> {{ produit.quantite_fulfillment }} en stock (YopiFulfillment)
+              {% else %}
+              <i class="bi bi-box-seam"></i> {{ produit.quantite_stock }} en stock
+              {% endif %}
+            </div>
+            {% endwith %}
+          </div>
+          {% endif %}
+
+          <!-- Actions principales -->
+          <div class="pd-actions">
+            {% if produit.autorise_vente_directe and produit.est_en_stock %}
+            <button class="btn-add-cart-lg" id="btnAddCartLg" data-id="{{ produit.id }}">
+              <i class="bi bi-bag-plus-fill"></i> Ajouter au panier
+            </button>
+            {% else %}
+            <button class="btn-add-cart-lg" disabled>
+              <i class="bi bi-x-circle"></i> Indisponible
+            </button>
+            {% endif %}
+
+            {% if request.user.is_authenticated %}
+            <button class="btn-fav-lg {% if est_favori %}active{% endif %}" id="btnFavLg" data-id="{{ produit.id }}" title="Ajouter aux favoris">
+              <i class="bi bi-heart{% if est_favori %}-fill{% endif %}"></i>
+            </button>
+            {% else %}
+            <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" class="btn-fav-lg" title="Connectez-vous pour ajouter aux favoris">
+              <i class="bi bi-heart"></i>
+            </a>
+            {% endif %}
+
+            <button class="btn-share-lg" onclick="partagerProduit()" title="Partager">
+              <i class="bi bi-share"></i>
+            </button>
+          </div>
+
+          <!-- Action enchère -->
+          {% if produit.autorise_enchere %}
+          <div class="pd-extra-actions">
+            <a href="/encheres/produit/{{ produit.slug }}/" class="btn-enchere-lg">
+              <i class="bi bi-hammer"></i> Voir / Lancer une enchère sur ce produit
+            </a>
+          </div>
+          {% endif %}
+
+          <!-- Vendeur -->
+          <div class="pd-vendor-card">
+            {% if produit.vendeur.avatar %}
+            <img src="{{ produit.vendeur.avatar.url }}" alt="{{ produit.vendeur.username }}" class="pd-vendor-avatar">
+            {% else %}
+            <div class="pd-vendor-avatar">{{ produit.vendeur.username|first|upper }}</div>
+            {% endif %}
+            <div>
+              <div class="pd-vendor-name">
+                {{ produit.vendeur.boutique.nom|default:produit.vendeur.username }}
+                {% if produit.est_produit_yopishop %}<i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.8rem;margin-left:.2rem"></i>{% endif %}
+              </div>
+              <div class="pd-vendor-meta">
+                {% if produit.vendeur.ville %}<i class="bi bi-geo-alt"></i> {{ produit.vendeur.ville }}{% endif %}
+                {% if produit.vendeur.est_verifie %} &bull; <span style="color:var(--jade)"><i class="bi bi-check-circle-fill"></i> Vérifié</span>{% endif %}
+              </div>
+            </div>
+            <a href="{% url 'apps_core:profil_vendeur_public' produit.vendeur.username %}" class="pd-vendor-link">
+              Voir la boutique <i class="bi bi-arrow-right"></i>
+            </a>
+          </div>
+
+          <!-- Livraison -->
+          <div class="pd-delivery-info">
+            {% if produit.livraison_disponible %}
+            <div class="pd-delivery-row">
+              <i class="bi bi-truck"></i>
+              {% if produit.livraison_locale_uniquement %}
+              Livraison locale uniquement {% if produit.ville %}({{ produit.ville }}){% endif %}
+              {% else %}
+              Livraison disponible partout
+              {% endif %}
+            </div>
+            {% endif %}
+            {% if produit.retrait_sur_place %}
+            <div class="pd-delivery-row">
+              <i class="bi bi-geo-alt"></i> Retrait sur place possible
+              {% if produit.ville %} — {{ produit.ville }}{% endif %}
+            </div>
+            {% endif %}
+            <div class="pd-delivery-row">
+              <i class="bi bi-shield-check"></i> Paiement 100% sécurisé via YopiPay
+            </div>
+            {% if produit.en_fulfillment %}
+            <div class="pd-delivery-row">
+              <i class="bi bi-box-seam-fill"></i> Expédié par YopiFulfillment
+            </div>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══════════ ONGLETS ══════════ -->
+    <div class="pd-tabs fi" id="pdTabs">
+      <span class="pd-tab on" data-tab="description"><i class="bi bi-file-text"></i> Description</span>
+      {% if produit.attributs.all %}
+      <span class="pd-tab" data-tab="caracteristiques"><i class="bi bi-list-check"></i> Caractéristiques</span>
+      {% endif %}
+      <span class="pd-tab" data-tab="avis" id="avis"><i class="bi bi-star"></i> Avis ({{ avis_stats.total|default:0 }})</span>
+      <span class="pd-tab" data-tab="livraison"><i class="bi bi-truck"></i> Livraison & retours</span>
+    </div>
+
+    <!-- Contenu onglets -->
+    <div class="fi">
+
+      <!-- Description -->
+      <div class="pd-tab-content tab-pane-pd active" id="tabpd-description">
+        {{ produit.description|linebreaks }}
+      </div>
+
+      <!-- Caractéristiques -->
+      {% if produit.attributs.all %}
+      <div class="pd-tab-content tab-pane-pd" id="tabpd-caracteristiques" style="display:none">
+        <div class="pd-attrs-grid">
+          {% for attr in produit.attributs.all %}
+          <div class="pd-attr-item">
+            <span class="pd-attr-name">{{ attr.nom }}</span>
+            <span class="pd-attr-val">{{ attr.valeur }}{{ attr.unite }}</span>
+          </div>
+          {% endfor %}
+          {% if produit.poids %}
+          <div class="pd-attr-item"><span class="pd-attr-name">Poids</span><span class="pd-attr-val">{{ produit.poids }} kg</span></div>
+          {% endif %}
+          {% if produit.dimensions %}
+          <div class="pd-attr-item"><span class="pd-attr-name">Dimensions</span><span class="pd-attr-val">{{ produit.dimensions }}</span></div>
+          {% endif %}
+          <div class="pd-attr-item"><span class="pd-attr-name">État</span><span class="pd-attr-val">{{ produit.get_etat_display }}</span></div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Avis -->
+      <div class="pd-tab-content tab-pane-pd" id="tabpd-avis" style="display:none">
+
+        <!-- Résumé -->
+        {% if avis_stats.total > 0 %}
+        <div class="pd-avis-summary">
+          <div class="pd-avis-score">
+            <div class="pd-avis-score-n">{{ avis_stats.moyenne|floatformat:1 }}</div>
+            <div class="pd-avis-score-stars">
+              {% for i in "12345" %}<i class="bi bi-star{% if forloop.counter <= avis_stats.moyenne %}-fill{% endif %}"></i>{% endfor %}
+            </div>
+            <div class="pd-avis-score-total">{{ avis_stats.total }} avis</div>
+          </div>
+          <div class="pd-avis-bars">
+            {% for note, count in repartition_notes.items %}
+            <div class="pd-avis-bar-row">
+              <span style="width:30px">{{ note }} ★</span>
+              <div class="pd-avis-bar-track">
+                <div class="pd-avis-bar-fill" style="width:{% widthratio count avis_stats.total 100 %}%"></div>
+              </div>
+              <span style="width:30px;text-align:right">{{ count }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Formulaire avis -->
+        {% if peut_laisser_avis %}
+        <div class="ycard mb-3" style="padding:1.2rem">
+          <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.75rem">
+            <i class="bi bi-pencil-square" style="color:var(--saffron)"></i> Laisser un avis
+          </div>
+          <form method="post" action="{% url 'apps_core:ajouter_avis' produit.slug %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem">
+              <label class="pd-variant-label" style="display:block;margin-bottom:.4rem;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Votre note</label>
+              <div class="pd-avis-form-stars" id="avisStars">
+                {% for i in "12345" %}
+                <i class="bi bi-star" data-val="{{ forloop.counter }}"></i>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="note" id="avisNoteInput" value="0" required>
+            </div>
+            <div style="margin-bottom:1rem">
+              <input type="text" name="titre" class="filter-input" placeholder="Titre de votre avis" required maxlength="200" style="background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem .9rem;width:100%;font-family:var(--fd);font-size:.85rem">
+            </div>
+            <div style="margin-bottom:1rem">
+              <textarea name="commentaire" rows="3" placeholder="Votre commentaire (min. 10 caractères)" required minlength="10"
+                        style="background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem .9rem;width:100%;font-family:var(--fd);font-size:.85rem;resize:vertical"></textarea>
+            </div>
+            <div style="margin-bottom:1rem">
+              <input type="file" name="images" multiple accept="image/*" style="font-size:.8rem;color:var(--muted)">
+            </div>
+            <button type="submit" class="btn-gold" style="font-size:.85rem">
+              <i class="bi bi-send"></i> Publier mon avis
+            </button>
+          </form>
+        </div>
+        {% elif not request.user.is_authenticated %}
+        <div style="background:var(--saffron-d);border:1px solid rgba(247,183,49,.25);border-radius:var(--r);padding:.9rem 1.1rem;font-size:.85rem;color:var(--saffron);margin-bottom:1.25rem">
+          <i class="bi bi-info-circle-fill"></i> <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" style="color:var(--saffron);font-weight:700">Connectez-vous</a> pour laisser un avis sur ce produit.
+        </div>
+        {% endif %}
+
+        <!-- Liste avis -->
+        {% if avis_liste %}
+        {% for av in avis_liste %}
+        <div class="pd-avis-item">
+          <div class="pd-avis-header">
+            {% if av.utilisateur.avatar %}
+            <img src="{{ av.utilisateur.avatar.url }}" alt="{{ av.utilisateur.username }}" class="pd-avis-avatar">
+            {% else %}
+            <div class="pd-avis-avatar">{{ av.utilisateur.username|first|upper }}</div>
+            {% endif %}
+            <div>
+              <div class="pd-avis-name">
+                {{ av.utilisateur.username }}
+                {% if av.est_achat_verifie %}<span class="pd-avis-verified"><i class="bi bi-check-circle-fill"></i> Achat vérifié</span>{% endif %}
+              </div>
+              <div class="pd-avis-date">{{ av.date_creation|date:"d M Y" }}</div>
+            </div>
+          </div>
+          <div class="pd-avis-stars">
+            {% for i in "12345" %}<i class="bi bi-star{% if forloop.counter <= av.note %}-fill{% endif %}"></i>{% endfor %}
+          </div>
+          <div class="pd-avis-title">{{ av.titre }}</div>
+          <div class="pd-avis-text">{{ av.commentaire }}</div>
+          {% if av.images.all %}
+          <div class="pd-avis-images">
+            {% for img in av.images.all %}
+            <img src="{{ img.image.url }}" alt="" class="pd-avis-img" onclick="window.open('{{ img.image.url }}','_blank')">
+            {% endfor %}
+          </div>
+          {% endif %}
+          <button class="pd-avis-helpful" data-pk="{{ av.pk }}" onclick="voterUtile(this)">
+            <i class="bi bi-hand-thumbs-up"></i> Utile (<span>{{ av.votes_utiles }}</span>)
+          </button>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">
+          <i class="bi bi-chat-square-dots" style="font-size:2.2rem;opacity:.4;display:block;margin-bottom:.6rem"></i>
+          Aucun avis pour ce produit. Soyez le premier à partager votre expérience !
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Livraison & retours -->
+      <div class="pd-tab-content tab-pane-pd" id="tabpd-livraison" style="display:none">
+        <p><strong style="color:var(--text)">Livraison :</strong> {% if produit.livraison_disponible %}Ce produit peut être livré{% if produit.livraison_locale_uniquement %} dans la zone locale du vendeur uniquement{% else %} partout {% endif %}.{% else %}Ce produit n'est pas éligible à la livraison.{% endif %}</p>
+        {% if produit.retrait_sur_place %}
+        <p><strong style="color:var(--text)">Retrait :</strong> Possible directement chez le vendeur{% if produit.ville %} à {{ produit.ville }}{% endif %}.</p>
+        {% endif %}
+        <p><strong style="color:var(--text)">Paiement :</strong> Tous les paiements sont sécurisés via YopiPay (Orange Money, MTN MoMo, Wave, carte bancaire).</p>
+        <p><strong style="color:var(--text)">Retours :</strong> Pour toute réclamation, contactez le vendeur directement ou notre support sous 7 jours après réception.</p>
+      </div>
+
+    </div>
+
+
+    <!-- ══════════ PRODUITS SIMILAIRES ══════════ -->
+    {% if produits_similaires %}
+    <div class="fi" style="margin-top:3rem">
+      <h2 style="font-family:var(--fg);font-size:1.15rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+        Produits similaires
+      </h2>
+      <div class="pd-similar-scroll">
+        {% for p in produits_similaires %}
+        <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard text-decoration-none">
+          <div class="pcard-img">
+            {% if p.image_principale %}<img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+            {% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:1.8rem"></i></div>{% endif %}
+            {% if p.est_produit_yopishop %}<div class="pcard-badge pb-vip"><i class="bi bi-patch-check-fill me-1"></i>Officiel</div>{% endif %}
+          </div>
+          <div class="pcard-body">
+            <div class="pcard-name">{{ p.titre|truncatechars:40 }}</div>
+            <div class="pcard-price"><span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span></div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+
+<script>
+window.YOPI_URLS = {
+  ajouterPanier: "{% url 'apps_marketplace:ajouter_au_panier' '00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', '{id}'),
+};
+</script>
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Scroll-to-top ── */
+const goTop = document.getElementById('goTop');
+if (goTop) {
+  window.addEventListener('scroll', () => goTop.classList.toggle('vis', scrollY > 400));
+}
+
+/* ── Galerie ── */
+function changeMainImg(url, el){
+  document.getElementById('pdMainImg').src = url;
+  document.querySelectorAll('.pd-thumb').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ── Quantité ── */
+function changeQty(delta){
+  const inp = document.getElementById('pdQty');
+  if(!inp) return;
+  let val = parseInt(inp.value) + delta;
+  const min = parseInt(inp.min) || 1;
+  const max = parseInt(inp.max) || 9999;
+  val = Math.max(min, Math.min(max, val));
+  inp.value = val;
+}
+
+/* ── Onglets ── */
+document.querySelectorAll('.pd-tab').forEach(tab=>{
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('.pd-tab').forEach(t=>t.classList.remove('on'));
+    document.querySelectorAll('.tab-pane-pd').forEach(p=>p.style.display='none');
+    this.classList.add('on');
+    document.getElementById('tabpd-'+this.dataset.tab).style.display='block';
+  });
+});
+
+/* Ouvrir l'onglet avis si on arrive avec #avis */
+if(location.hash === '#avis'){
+  document.querySelector('.pd-tab[data-tab="avis"]')?.click();
+}
+
+/* ── Étoiles formulaire avis ── */
+const avisStars = document.querySelectorAll('#avisStars i');
+avisStars.forEach(star=>{
+  star.addEventListener('click', function(){
+    const val = parseInt(this.dataset.val);
+    document.getElementById('avisNoteInput').value = val;
+    avisStars.forEach(s=>{
+      s.className = parseInt(s.dataset.val) <= val ? 'bi bi-star-fill active' : 'bi bi-star';
+    });
+  });
+});
+
+/* ── Voter utile ── */
+async function voterUtile(btn){
+  const pk = btn.dataset.pk;
+  try{
+    const r = await fetch(`/avis/${pk}/utile/`, {method:'POST', headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}});
+    const d = await r.json();
+    if(d.success){
+      btn.querySelector('span').textContent = d.votes_utiles;
+      btn.style.borderColor = 'var(--jade)'; btn.style.color = 'var(--jade)';
+      btn.disabled = true;
+    }
+  }catch{}
+}
+
+/* ── Partager ── */
+function partagerProduit(){
+  if(navigator.share){
+    navigator.share({title: document.title, url: location.href}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(location.href);
+    alert('Lien copié dans le presse-papier !');
+  }
+}
+
+//* ── Ajouter au panier ── */
+document.addEventListener('click', async function(e) {
+
+  const btn = e.target.closest('.btn-add-cart-lg');
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  const produitId = btn.dataset.id;
+  if (!produitId) {
+    console.error('Produit ID manquant sur le bouton', btn);
+    return;
+  }
+
+  // ✅ Construction de l'URL correcte
+  const url = window.YOPI_URLS.ajouterPanier.replace('{id}', produitId);
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></span>';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken':      document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type':     'application/x-www-form-urlencoded',
+      },
+      body: 'quantite=1',
+    });
+
+    // ✅ Vérifier HTTP avant de parser JSON
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error(`HTTP ${response.status}`, errData.message || '');
+      btn.innerHTML     = `<i class="bi bi-x-lg"></i> ${errData.message || 'Stock épuisé'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      btn.innerHTML         = '<i class="bi bi-check-lg"></i> Ajouté !';
+      btn.style.background  = 'var(--jade)';
+      btn.style.color       = '#0A0B1A';
+      btn.style.borderColor = 'var(--jade)';
+
+      // ✅ Mise à jour du badge panier dans la navbar
+      // Cible le lien panier spécifiquement via l'icône .bi-bag
+      const panierNavIcon = document.querySelector('.nav-acts .nav-icon .bi-bag')?.closest('.nav-icon');
+      if (panierNavIcon) {
+        let bc = panierNavIcon.querySelector('.bc');
+        if (bc) {
+          bc.textContent = data.nb_articles;
+        } else if (data.nb_articles > 0) {
+          bc             = document.createElement('span');
+          bc.className   = 'bc';
+          bc.textContent = data.nb_articles;
+          panierNavIcon.appendChild(bc);
+        }
+      }
+
+      // Événement custom pour d'autres composants éventuels
+      document.dispatchEvent(new CustomEvent('panier:maj', { detail: data }));
+
+    } else {
+      btn.innerHTML         = `<i class="bi bi-x-lg"></i> ${data.message || 'Erreur'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+    }
+
+  } catch (error) {
+    console.error('Panier fetch error:', error);
+    btn.innerHTML         = '<i class="bi bi-x-lg"></i> Erreur réseau';
+    btn.style.background  = 'var(--ember)';
+    btn.style.color       = '#fff';
+    btn.style.borderColor = 'var(--ember)';
+
+  } finally {
+    setTimeout(() => {
+      btn.innerHTML         = originalHtml;
+      btn.disabled          = false;
+      btn.style.background  = '';
+      btn.style.color       = '';
+      btn.style.borderColor = '';
+    }, 2200);
+  }
+});
+
+/* ── Favoris ── */
+const btnFavLg = document.getElementById('btnFavLg');
+if(btnFavLg){
+  btnFavLg.addEventListener('click', async function(){
+    try{
+      const r = await fetch(`/favoris/toggle/${this.dataset.id}/`, {method:'POST', headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}});
+      const d = await r.json();
+      if(d.success){
+        const ic = this.querySelector('i');
+        ic.className = d.ajoute ? 'bi bi-heart-fill' : 'bi bi-heart';
+        this.classList.toggle('active', d.ajoute);
+      }
+    }catch{}
+  });
+}
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

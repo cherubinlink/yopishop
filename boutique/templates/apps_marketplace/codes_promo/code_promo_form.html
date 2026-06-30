@@ -1,0 +1,463 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════
+   CODE PROMO FORM — hérite des vars de base.html
+══════════════════════════════════════════════ */
+.cpf-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+
+.cpf-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.4rem 1.5rem; margin-bottom: 1.25rem;
+}
+.cpf-section-title {
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 1rem;
+  display: flex; align-items: center; gap: .45rem;
+}
+.cpf-section-title i { color: var(--saffron); font-size: .9rem; }
+
+.cpf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 575px) { .cpf-grid { grid-template-columns: 1fr; } }
+
+.cpf-field { margin-bottom: .85rem; }
+.cpf-label {
+  font-size: .72rem; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted); display: block; margin-bottom: .4rem;
+}
+.cpf-label .req { color: var(--ember); margin-left: .2rem; }
+.cpf-label .opt { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: .3rem; }
+.cpf-input, .cpf-select, .cpf-textarea {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--fd); font-size: .86rem;
+  padding: .6rem .9rem; outline: none; transition: border-color .2s;
+}
+.cpf-input:focus, .cpf-select:focus, .cpf-textarea:focus { border-color: var(--saffron); }
+.cpf-input::placeholder { color: var(--muted); }
+.cpf-input[style*="text-transform:uppercase"]::placeholder { text-transform: none; }
+.cpf-select option { background: var(--card); color: var(--text); }
+.cpf-textarea { resize: vertical; min-height: 80px; }
+.cpf-hint { font-size: .7rem; color: var(--muted); margin-top: .3rem; }
+.cpf-error { font-size: .72rem; color: var(--ember); margin-top: .3rem; display: flex; align-items: center; gap: .3rem; }
+
+/* Type de réduction — pills visuelles */
+.cpf-type-pills { display: flex; gap: .6rem; flex-wrap: wrap; }
+.cpf-type-pill {
+  flex: 1; min-width: 130px; position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: .4rem;
+  padding: .85rem .7rem; border-radius: 10px; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--surface);
+  transition: all .2s;
+}
+.cpf-type-pill input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cpf-type-pill:has(input:checked) { border-color: var(--saffron); background: var(--saffron-d); }
+.cpf-type-icon { font-size: 1.3rem; }
+.cpf-type-label { font-size: .78rem; font-weight: 600; color: var(--text-2); text-align: center; }
+.cpf-type-pill:has(input:checked) .cpf-type-label { color: var(--saffron); }
+
+/* Champ valeur réduction conditionnel */
+.cpf-reduction-val { display: flex; align-items: center; gap: .5rem; }
+.cpf-suffix {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 0 8px 8px 0; padding: .6rem .9rem; font-size: .86rem;
+  color: var(--muted); border-left: none; white-space: nowrap;
+  margin-left: -2px;
+}
+.cpf-input-with-suffix {
+  border-radius: 8px 0 0 8px; flex: 1;
+}
+
+/* Toggle checkbox stylisé */
+.cpf-toggle-row {
+  display: flex; align-items: center; gap: .85rem;
+  padding: .85rem 1rem; background: var(--surface);
+  border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer;
+}
+.cpf-toggle-row:has(input:checked) { border-color: var(--jade); background: var(--jade-d); }
+.cpf-toggle-icon {
+  width: 36px; height: 36px; border-radius: 9px; background: var(--indigo-d);
+  display: flex; align-items: center; justify-content: center; font-size: .95rem;
+  color: var(--indigo); flex-shrink: 0;
+}
+.cpf-toggle-title { font-size: .84rem; font-weight: 600; color: var(--text); }
+.cpf-toggle-sub { font-size: .73rem; color: var(--muted); }
+.cpf-toggle-input { width: 18px; height: 18px; margin-left: auto; accent-color: var(--jade); cursor: pointer; }
+
+/* Bouton soumettre */
+.btn-submit-cpf {
+  width: 100%; background: linear-gradient(90deg, var(--saffron), #f5b942);
+  color: #0A0B1A; border: none; border-radius: 12px; padding: .85rem;
+  font-size: .9rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  transition: opacity .2s, transform .2s;
+}
+.btn-submit-cpf:hover { opacity: .9; transform: translateY(-1px); }
+
+/* Aperçu en temps réel */
+.cpf-preview {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 1.3rem; position: sticky; top: 1rem;
+}
+.cpf-preview-title {
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1rem;
+}
+.cpf-preview-code {
+  font-family: var(--fm); font-size: 1.5rem; font-weight: 800;
+  color: var(--saffron); letter-spacing: .15em;
+  background: var(--saffron-d); border: 1.5px solid rgba(247,183,49,.25);
+  border-radius: 10px; text-align: center; padding: .7rem;
+  margin-bottom: .8rem; word-break: break-all;
+}
+.cpf-preview-row { display: flex; justify-content: space-between; font-size: .82rem; margin-bottom: .4rem; }
+.cpf-preview-label { color: var(--muted); }
+.cpf-preview-val { color: var(--text); font-weight: 600; }
+</style>
+
+
+<div class="cpf-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'app_marketplace:mes_codes_promo' %}" style="color:var(--muted);text-decoration:none">
+          Codes promo
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">{% if mode == 'creation' %}Nouveau code{% else %}Modifier{% endif %}</span>
+      </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}var(--jade-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>{{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <div class="row g-4 align-items-start">
+
+      <!-- ══ Formulaire ══ -->
+      <div class="col-lg-8">
+
+        <!-- Hero card -->
+        <div class="fi" style="background:linear-gradient(135deg,#0e1038 0%,#1a1050 45%,#0e2444 100%);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;margin-bottom:1.25rem;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse 55% 70% at 85% 30%,rgba(124,111,255,.2) 0%,transparent 60%);pointer-events:none"></div>
+          <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--saffron);margin-bottom:.5rem">
+            <i class="bi bi-ticket-perforated"></i> {% if mode == 'creation' %}Nouveau{% else %}Éditer{% endif %}
+          </div>
+          <div style="font-family:var(--fg);font-size:1.5rem;font-weight:800;color:var(--text)">{{ page_titre }}</div>
+        </div>
+
+        <form method="POST" id="formCodePromo">
+          {% csrf_token %}
+
+          <!-- ── Identité ── -->
+          <div class="cpf-section fi">
+            <div class="cpf-section-title"><i class="bi bi-card-text"></i> Identité du code</div>
+
+            <div class="cpf-grid">
+              <div class="cpf-field">
+                <label class="cpf-label" for="{{ form.code.id_for_label }}">
+                  Code promo <span class="req">*</span>
+                </label>
+                <input type="text" id="{{ form.code.id_for_label }}" name="{{ form.code.html_name }}"
+                       class="cpf-input" placeholder="EX: YOPI20" required maxlength="50"
+                       value="{{ form.code.value|default:'' }}"
+                       style="text-transform:uppercase;font-family:var(--fm);letter-spacing:.08em"
+                       oninput="this.value=this.value.toUpperCase();updatePreview()">
+                {% for err in form.code.errors %}
+                <div class="cpf-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+                <div class="cpf-hint">Uniquement lettres, chiffres, tirets et underscores.</div>
+              </div>
+
+              <div class="cpf-field">
+                <label class="cpf-label" for="{{ form.nom.id_for_label }}">
+                  Nom interne <span class="req">*</span>
+                </label>
+                <input type="text" id="{{ form.nom.id_for_label }}" name="{{ form.nom.html_name }}"
+                       class="cpf-input" placeholder="Ex: Promo été 2025"
+                       value="{{ form.nom.value|default:'' }}" required oninput="updatePreview()">
+                {% for err in form.nom.errors %}
+                <div class="cpf-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="cpf-field">
+              <label class="cpf-label" for="{{ form.description.id_for_label }}">
+                Description <span class="opt">(optionnel)</span>
+              </label>
+              <textarea id="{{ form.description.id_for_label }}" name="{{ form.description.html_name }}"
+                        class="cpf-textarea" rows="2"
+                        placeholder="Description visible par les clients...">{{ form.description.value|default:'' }}</textarea>
+            </div>
+          </div>
+
+          <!-- ── Type de réduction ── -->
+          <div class="cpf-section fi">
+            <div class="cpf-section-title"><i class="bi bi-percent"></i> Type de réduction</div>
+
+            <div class="cpf-field">
+              <div class="cpf-type-pills">
+                <label class="cpf-type-pill">
+                  <input type="radio" name="{{ form.type_reduction.html_name }}" value="pourcentage"
+                         {% if form.type_reduction.value == 'pourcentage' or not form.type_reduction.value %}checked{% endif %}
+                         onchange="majSuffixe(this.value);updatePreview()">
+                  <span class="cpf-type-icon" style="color:var(--saffron)"><i class="bi bi-percent"></i></span>
+                  <span class="cpf-type-label">Pourcentage</span>
+                </label>
+                <label class="cpf-type-pill">
+                  <input type="radio" name="{{ form.type_reduction.html_name }}" value="montant_fixe"
+                         {% if form.type_reduction.value == 'montant_fixe' %}checked{% endif %}
+                         onchange="majSuffixe(this.value);updatePreview()">
+                  <span class="cpf-type-icon" style="color:var(--jade)"><i class="bi bi-currency-exchange"></i></span>
+                  <span class="cpf-type-label">Montant fixe</span>
+                </label>
+                <label class="cpf-type-pill">
+                  <input type="radio" name="{{ form.type_reduction.html_name }}" value="livraison_gratuite"
+                         {% if form.type_reduction.value == 'livraison_gratuite' %}checked{% endif %}
+                         onchange="majSuffixe(this.value);updatePreview()">
+                  <span class="cpf-type-icon" style="color:var(--indigo)"><i class="bi bi-truck"></i></span>
+                  <span class="cpf-type-label">Livraison gratuite</span>
+                </label>
+              </div>
+              {% for err in form.type_reduction.errors %}
+              <div class="cpf-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+              {% endfor %}
+            </div>
+
+            <!-- Valeur + plafond (masqués si livraison_gratuite) -->
+            <div id="valeurReductionGroup">
+              <div class="cpf-grid">
+                <div class="cpf-field">
+                  <label class="cpf-label">
+                    Valeur de la réduction <span class="req">*</span>
+                  </label>
+                  <div class="cpf-reduction-val">
+                    <input type="number" name="{{ form.valeur_reduction.html_name }}"
+                           class="cpf-input cpf-input-with-suffix" placeholder="Ex: 20"
+                           min="0.01" step="0.01"
+                           value="{{ form.valeur_reduction.value|default:'' }}"
+                           oninput="updatePreview()">
+                    <span class="cpf-suffix" id="suffixeVal">%</span>
+                  </div>
+                  {% for err in form.valeur_reduction.errors %}
+                  <div class="cpf-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="cpf-field">
+                  <label class="cpf-label">
+                    Réduction max <span class="opt">(optionnel)</span>
+                  </label>
+                  <div class="cpf-reduction-val">
+                    <input type="number" name="{{ form.montant_max_reduction.html_name }}"
+                           class="cpf-input cpf-input-with-suffix" placeholder="Plafond"
+                           min="0" step="0.01"
+                           value="{{ form.montant_max_reduction.value|default:'' }}">
+                    <span class="cpf-suffix">FCFA</span>
+                  </div>
+                  <div class="cpf-hint">Plafond en FCFA pour les codes en pourcentage.</div>
+                </div>
+              </div>
+
+              <div class="cpf-field">
+                <label class="cpf-label">Montant minimum de commande (FCFA)</label>
+                <input type="number" name="{{ form.montant_min_commande.html_name }}"
+                       class="cpf-input" placeholder="0 = sans minimum"
+                       min="0" step="100"
+                       value="{{ form.montant_min_commande.value|default:'0' }}"
+                       oninput="updatePreview()">
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Période de validité ── -->
+          <div class="cpf-section fi">
+            <div class="cpf-section-title"><i class="bi bi-calendar-range"></i> Période de validité</div>
+            <div class="cpf-grid">
+              <div class="cpf-field">
+                <label class="cpf-label">Date de début <span class="req">*</span></label>
+                <input type="datetime-local" name="{{ form.date_debut.html_name }}"
+                       class="cpf-input" required
+                       value="{{ form.date_debut.value|default:'' }}">
+                {% for err in form.date_debut.errors %}
+                <div class="cpf-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+              </div>
+              <div class="cpf-field">
+                <label class="cpf-label">Date de fin <span class="req">*</span></label>
+                <input type="datetime-local" name="{{ form.date_fin.html_name }}"
+                       class="cpf-input" required
+                       value="{{ form.date_fin.value|default:'' }}">
+                {% for err in form.date_fin.errors %}
+                <div class="cpf-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Limites d'utilisation ── -->
+          <div class="cpf-section fi">
+            <div class="cpf-section-title"><i class="bi bi-shield-check"></i> Limites d'utilisation</div>
+            <div class="cpf-grid">
+              <div class="cpf-field">
+                <label class="cpf-label">
+                  Limite globale <span class="opt">(optionnel)</span>
+                </label>
+                <input type="number" name="{{ form.limite_utilisation_globale.html_name }}"
+                       class="cpf-input" placeholder="∞ illimité"
+                       min="1" value="{{ form.limite_utilisation_globale.value|default:'' }}">
+                <div class="cpf-hint">Nombre total d'utilisations sur toute la plateforme.</div>
+              </div>
+              <div class="cpf-field">
+                <label class="cpf-label">Limite par utilisateur <span class="req">*</span></label>
+                <input type="number" name="{{ form.limite_par_utilisateur.html_name }}"
+                       class="cpf-input" min="1" required
+                       value="{{ form.limite_par_utilisateur.value|default:'1' }}">
+              </div>
+            </div>
+
+            <!-- Cumulable -->
+            <label class="cpf-toggle-row">
+              <div class="cpf-toggle-icon"><i class="bi bi-layers"></i></div>
+              <div>
+                <div class="cpf-toggle-title">Cumulable avec d'autres promotions</div>
+                <div class="cpf-toggle-sub">Si coché, peut s'appliquer en plus d'une promo automatique.</div>
+              </div>
+              <input type="checkbox" name="{{ form.cumulable.html_name }}" class="cpf-toggle-input"
+                     {% if form.cumulable.value %}checked{% endif %}>
+            </label>
+          </div>
+
+          <!-- ── Ciblage ── -->
+          <div class="cpf-section fi">
+            <div class="cpf-section-title"><i class="bi bi-people"></i> Ciblage</div>
+            <div class="cpf-field">
+              <label class="cpf-label">Type de cible</label>
+              <select name="{{ form.type_cible.html_name }}" class="cpf-select">
+                {% for val, lbl in form.type_cible.field.choices %}
+                <option value="{{ val }}" {% if form.type_cible.value == val %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- ── Erreurs globales ── -->
+          {% if form.non_field_errors %}
+          <div style="background:var(--ember-d);border:1px solid rgba(255,90,71,.25);border-radius:var(--r);padding:.85rem 1.1rem;font-size:.84rem;color:var(--ember);margin-bottom:1rem">
+            {% for err in form.non_field_errors %}<div><i class="bi bi-exclamation-circle-fill"></i> {{ err }}</div>{% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- ── Submit ── -->
+          <button type="submit" class="btn-submit-cpf fi">
+            <i class="bi bi-check-lg"></i>
+            {% if mode == 'creation' %}Créer le code promo{% else %}Enregistrer les modifications{% endif %}
+          </button>
+
+          {% if mode == 'edition' %}
+          <a href="{% url 'app_marketplace:mes_codes_promo' %}"
+             class="btn-ghost fi" style="width:100%;justify-content:center;margin-top:.6rem;font-size:.85rem">
+            Annuler
+          </a>
+          {% endif %}
+        </form>
+      </div>
+
+      <!-- ══ Aperçu ══ -->
+      <div class="col-lg-4 fi">
+        <div class="cpf-preview">
+          <div class="cpf-preview-title"><i class="bi bi-eye"></i> Aperçu du code</div>
+          <div class="cpf-preview-code" id="previewCode">MONCODE</div>
+          <div class="cpf-preview-row">
+            <span class="cpf-preview-label">Nom</span>
+            <span class="cpf-preview-val" id="previewNom">—</span>
+          </div>
+          <div class="cpf-preview-row">
+            <span class="cpf-preview-label">Réduction</span>
+            <span class="cpf-preview-val" id="previewReduction">—</span>
+          </div>
+          <div class="cpf-preview-row">
+            <span class="cpf-preview-label">Minimum</span>
+            <span class="cpf-preview-val" id="previewMin">Aucun</span>
+          </div>
+          <hr style="border-color:var(--border);margin:.75rem 0">
+          <div style="font-size:.78rem;color:var(--muted);text-align:center">
+            Ce code apparaîtra dans le panier de vos clients.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Suffix selon type de réduction ── */
+function majSuffixe(type){
+  const suf = document.getElementById('suffixeVal');
+  const grp = document.getElementById('valeurReductionGroup');
+  if(type === 'livraison_gratuite'){
+    grp.style.display = 'none';
+  } else {
+    grp.style.display = 'block';
+    if(suf) suf.textContent = type === 'pourcentage' ? '%' : 'FCFA';
+  }
+  updatePreview();
+}
+
+/* ── Aperçu dynamique ── */
+function updatePreview(){
+  const code    = document.querySelector('[name="{{ form.code.html_name }}"]')?.value || '—';
+  const nom     = document.querySelector('[name="{{ form.nom.html_name }}"]')?.value || '—';
+  const type    = document.querySelector('[name="{{ form.type_reduction.html_name }}"]:checked')?.value;
+  const valeur  = document.querySelector('[name="{{ form.valeur_reduction.html_name }}"]')?.value;
+  const min_cmd = document.querySelector('[name="{{ form.montant_min_commande.html_name }}"]')?.value;
+
+  document.getElementById('previewCode').textContent = code || 'MONCODE';
+  document.getElementById('previewNom').textContent  = nom.substring(0, 28) || '—';
+
+  let reductionStr = '—';
+  if(type === 'pourcentage' && valeur)  reductionStr = `-${parseFloat(valeur).toFixed(0)} %`;
+  else if(type === 'montant_fixe' && valeur) reductionStr = `-${parseInt(valeur).toLocaleString('fr')} FCFA`;
+  else if(type === 'livraison_gratuite') reductionStr = '🚚 Livraison gratuite';
+  document.getElementById('previewReduction').textContent = reductionStr;
+
+  const minVal = parseFloat(min_cmd || 0);
+  document.getElementById('previewMin').textContent = minVal > 0 ? `${minVal.toLocaleString('fr')} FCFA` : 'Aucun';
+}
+
+/* ── Initialisation au chargement ── */
+(function init(){
+  const typeSelectionne = document.querySelector('[name="{{ form.type_reduction.html_name }}"]:checked')?.value;
+  if(typeSelectionne) majSuffixe(typeSelectionne);
+  updatePreview();
+})();
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

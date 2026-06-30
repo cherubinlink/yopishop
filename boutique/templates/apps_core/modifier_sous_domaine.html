@@ -1,0 +1,617 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% load yopi_filters %}
+
+{% block title %}{{ page_titre|default:"Mon sous-domaine — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.edit-page{padding:2.5rem 0 4rem;min-height:80vh}
+
+/* ── Header card ── */
+.edit-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;
+  position:relative;overflow:hidden;
+}
+.edit-header::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--saffron),var(--ember))
+}
+.edit-header::after{
+  content:'';position:absolute;right:-4%;top:-35%;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,var(--saffron-d) 0%,transparent 70%);
+  pointer-events:none
+}
+
+/* ── Edit card ── */
+.edit-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem
+}
+.edit-card-head{
+  padding:.85rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.6rem
+}
+.edit-card-head i{color:var(--saffron);font-size:1rem}
+.edit-card-title{font-size:.88rem;font-weight:700;color:var(--text)}
+.edit-card-body{padding:1.4rem 1.25rem}
+
+/* ── Champ sous-domaine ── */
+.ef-label{
+  font-size:.72rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:.5rem;display:block
+}
+.sd-input-wrap{
+  display:flex;align-items:stretch;
+  border:1.5px solid var(--border);
+  border-radius:var(--r);
+  overflow:hidden;
+  transition:border-color .2s,box-shadow .2s;
+  background:var(--surface);
+}
+.sd-input-wrap:focus-within{
+  border-color:var(--saffron);
+  box-shadow:0 0 0 3px var(--saffron-d)
+}
+.sd-input-wrap.err-border{
+  border-color:var(--ember);
+  box-shadow:0 0 0 3px rgba(255,61,90,.15)
+}
+.sd-prefix,.sd-suffix{
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  font-size:.82rem;font-weight:600;
+  padding:.65rem .95rem;
+  display:flex;align-items:center;
+  white-space:nowrap;flex-shrink:0;
+  border:none;
+}
+.sd-prefix{border-right:1px solid var(--border)}
+.sd-suffix{border-left:1px solid var(--border)}
+.sd-input{
+  flex:1;
+  background:transparent;
+  border:none;outline:none;
+  color:var(--text);
+  font-family:var(--fm,monospace);
+  font-size:.92rem;font-weight:600;
+  padding:.65rem .8rem;
+  min-width:0;
+}
+.sd-input::placeholder{color:var(--muted);font-weight:400}
+
+/* Feedback validation inline */
+.sd-feedback{
+  display:flex;align-items:center;gap:.4rem;
+  font-size:.74rem;margin-top:.5rem;
+  min-height:1.2rem;
+}
+.sd-feedback.ok {color:#00C9A7}
+.sd-feedback.err{color:var(--ember)}
+.sd-feedback.checking{color:var(--muted)}
+.ef-error-list{
+  margin-top:.45rem;padding:0;list-style:none;
+  display:flex;flex-direction:column;gap:.2rem;
+}
+.ef-error-list li{
+  font-size:.74rem;color:var(--ember);
+  display:flex;align-items:center;gap:.35rem;
+}
+.ef-hint{font-size:.74rem;color:var(--muted);margin-top:.45rem;line-height:1.5}
+
+/* Aperçu URL live */
+.sd-preview{
+  display:flex;align-items:center;gap:.6rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:.75rem 1rem;
+  margin-top:1rem;
+  transition:border-color .2s;
+}
+.sd-preview.active{border-color:var(--saffron)}
+.sd-preview-ico{
+  width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  background:var(--saffron-d);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.9rem;color:var(--saffron);
+}
+.sd-preview-url{
+  font-family:var(--fm,monospace);
+  font-size:.82rem;color:var(--muted);
+  word-break:break-all;
+}
+.sd-preview-url strong{color:var(--saffron)}
+
+/* Règles de validation visuelles */
+.rules-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:.4rem .8rem;
+  margin-top:.9rem;
+}
+@media(max-width:480px){.rules-grid{grid-template-columns:1fr}}
+.rule-item{
+  display:flex;align-items:center;gap:.4rem;
+  font-size:.74rem;color:var(--muted);
+  transition:color .2s;
+}
+.rule-item i{font-size:.78rem;flex-shrink:0}
+.rule-item.ok {color:#00C9A7}
+.rule-item.ok i::before{content:"\F26B"} /* bi-check-circle-fill */
+.rule-item.err{color:var(--ember)}
+
+/* Sous-domaine actuel (si déjà configuré) */
+.current-sd{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:.85rem 1rem;
+  display:flex;align-items:center;gap:.75rem;
+  margin-bottom:1.25rem;
+}
+.current-sd-ico{
+  width:36px;height:36px;border-radius:9px;flex-shrink:0;
+  background:var(--saffron-d);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.95rem;color:var(--saffron);
+}
+.current-sd-lbl{font-size:.7rem;color:var(--muted);margin-bottom:.1rem}
+.current-sd-val{
+  font-family:var(--fm,monospace);
+  font-size:.88rem;font-weight:700;color:var(--text);
+}
+.current-sd-link{
+  margin-left:auto;
+  font-size:.72rem;color:var(--saffron);
+  text-decoration:none;
+  display:flex;align-items:center;gap:.25rem;
+  flex-shrink:0;
+}
+.current-sd-link:hover{text-decoration:underline}
+
+/* Info box vendeur requis */
+.vendor-required{
+  background:rgba(255,61,90,.07);
+  border:1px solid rgba(255,61,90,.2);
+  border-radius:var(--r);
+  padding:1.2rem;
+  display:flex;gap:.9rem;align-items:flex-start;
+}
+.vendor-required-ico{
+  width:40px;height:40px;border-radius:10px;flex-shrink:0;
+  background:rgba(255,61,90,.12);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;color:var(--ember);
+}
+</style>
+
+
+<div class="edit-page">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-7 col-xl-6">
+
+        {# ── Breadcrumb ── #}
+        <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+          <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"
+             onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+            <i class="bi bi-house-fill"></i> Accueil
+          </a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <a href="{% url 'apps_core:profil' %}" style="color:var(--muted);text-decoration:none"
+             onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+            Mon profil
+          </a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <span style="color:var(--saffron)">Sous-domaine</span>
+        </nav>
+
+        {# ── Messages Django ── #}
+        {% if messages %}
+          {% for msg in messages %}
+          <div class="fi mb-3" style="
+               background:{% if msg.tags == 'success' %}rgba(0,201,167,.1){% else %}rgba(255,61,90,.1){% endif %};
+               border:1px solid {% if msg.tags == 'success' %}rgba(0,201,167,.25){% else %}rgba(255,61,90,.25){% endif %};
+               border-radius:var(--r);padding:.85rem 1.1rem;
+               display:flex;align-items:center;gap:.7rem;font-size:.84rem;
+               color:{% if msg.tags == 'success' %}#00C9A7{% else %}var(--ember){% endif %}">
+            <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+            {{ msg }}
+            <button onclick="this.parentElement.remove()"
+                    style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+          </div>
+          {% endfor %}
+        {% endif %}
+
+        {# ── En-tête ── #}
+        <div class="edit-header fi">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:46px;height:46px;border-radius:12px;background:var(--saffron-d);
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:1.3rem;color:var(--saffron);flex-shrink:0;">
+              <i class="bi bi-globe"></i>
+            </div>
+            <div>
+              <div style="font-size:1.15rem;font-weight:800;color:var(--text)">Sous-domaine boutique</div>
+              <div style="font-size:.8rem;color:var(--muted)">
+                Votre adresse personnalisée sur YopiShop
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# ── Sous-domaine actuel (si déjà configuré) ── #}
+        {% if request.user.sous_domaine %}
+        <div class="current-sd fi">
+          <div class="current-sd-ico"><i class="bi bi-check-circle-fill"></i></div>
+          <div>
+            <div class="current-sd-lbl">Sous-domaine actuel</div>
+            <div class="current-sd-val">{{ request.user.sous_domaine }}.yopishop.com</div>
+          </div>
+          <a href="https://{{ request.user.sous_domaine }}.yopishop.com"
+             target="_blank" rel="noopener" class="current-sd-link">
+            <i class="bi bi-box-arrow-up-right"></i> Visiter
+          </a>
+        </div>
+        {% endif %}
+
+        {# ── Formulaire ── #}
+        <form method="post"
+              action="{% url 'apps_core:modifier_sous_domaine' %}"
+              novalidate
+              id="sdForm">
+          {% csrf_token %}
+
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <i class="bi bi-link-45deg"></i>
+              <span class="edit-card-title">Choisir votre sous-domaine</span>
+            </div>
+            <div class="edit-card-body">
+
+              {# ── Champ principal ── #}
+              <label class="ef-label" for="{{ form.sous_domaine.id_for_label }}">
+                Sous-domaine
+              </label>
+
+              <div class="sd-input-wrap {% if form.sous_domaine.errors %}err-border{% endif %}"
+                   id="sdWrap">
+                <span class="sd-prefix">
+                  <i class="bi bi-globe me-1" style="font-size:.78rem"></i>
+                  https://
+                </span>
+                <input type="text"
+                       id="{{ form.sous_domaine.id_for_label }}"
+                       name="{{ form.sous_domaine.html_name }}"
+                       value="{{ form.sous_domaine.value|default:'' }}"
+                       class="sd-input"
+                       placeholder="mon-shop"
+                       maxlength="50"
+                       autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       spellcheck="false"
+                       id="sdInput" />
+                <span class="sd-suffix">.yopishop.com</span>
+              </div>
+
+              {# Erreurs Django #}
+              {% if form.sous_domaine.errors %}
+              <ul class="ef-error-list">
+                {% for err in form.sous_domaine.errors %}
+                <li><i class="bi bi-exclamation-circle-fill"></i>{{ err }}</li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+
+              {# Feedback JS temps réel #}
+              <div class="sd-feedback" id="sdFeedback"></div>
+
+              {# Aide textuelle #}
+              <div class="ef-hint">
+                <i class="bi bi-info-circle me-1"></i>
+                {{ form.sous_domaine.help_text }}
+              </div>
+
+              {# ── Aperçu URL live ── #}
+              <div class="sd-preview" id="sdPreview">
+                <div class="sd-preview-ico"><i class="bi bi-link-45deg"></i></div>
+                <div>
+                  <div style="font-size:.68rem;color:var(--muted);margin-bottom:.2rem;text-transform:uppercase;letter-spacing:.07em;">Aperçu de votre URL</div>
+                  <div class="sd-preview-url" id="sdPreviewUrl">
+                    https://<strong id="sdPreviewSlug">{% if form.sous_domaine.value %}{{ form.sous_domaine.value }}{% else %}mon-shop{% endif %}</strong>.yopishop.com
+                  </div>
+                </div>
+              </div>
+
+              {# ── Règles de validation visuelles ── #}
+              <div class="rules-grid" id="rulesGrid">
+                <div class="rule-item" id="rule-len">
+                  <i class="bi bi-circle" style="color:var(--muted)"></i>
+                  3 à 50 caractères
+                </div>
+                <div class="rule-item" id="rule-chars">
+                  <i class="bi bi-circle" style="color:var(--muted)"></i>
+                  Lettres minuscules, chiffres, tirets
+                </div>
+                <div class="rule-item" id="rule-start">
+                  <i class="bi bi-circle" style="color:var(--muted)"></i>
+                  Commence et finit par une lettre/chiffre
+                </div>
+                <div class="rule-item" id="rule-reserved">
+                  <i class="bi bi-circle" style="color:var(--muted)"></i>
+                  Pas un mot réservé
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {# ── Exemples ── #}
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <i class="bi bi-lightbulb"></i>
+              <span class="edit-card-title">Exemples de sous-domaines</span>
+            </div>
+            <div class="edit-card-body">
+              <div class="d-flex flex-wrap gap-2">
+                {% for ex in "ma-boutique,mode-cm,tech-yopi,beaute-shop,electro-plus,artisan-cm"|split:"," %}{% endfor %}
+                {# Exemples statiques — le filtre split n'est pas natif Django #}
+                {% for ex in "ma-boutique,mode-cameroun,tech-shop,artisan-cm,beaute-plus,electro-yopi"|split:"," %}{% endfor %}
+                <button type="button" class="sd-example chip"
+                        style="padding:.35rem .85rem;border-radius:99px;font-size:.78rem;font-weight:600;
+                               background:var(--surface);border:1px solid var(--border);color:var(--muted);
+                               cursor:pointer;transition:background .2s,color .2s,border-color .2s;font-family:var(--fm,monospace);"
+                        data-val="ma-boutique">ma-boutique</button>
+                <button type="button" class="sd-example chip"
+                        style="padding:.35rem .85rem;border-radius:99px;font-size:.78rem;font-weight:600;
+                               background:var(--surface);border:1px solid var(--border);color:var(--muted);
+                               cursor:pointer;transition:background .2s,color .2s,border-color .2s;font-family:var(--fm,monospace);"
+                        data-val="mode-cameroun">mode-cameroun</button>
+                <button type="button" class="sd-example chip"
+                        style="padding:.35rem .85rem;border-radius:99px;font-size:.78rem;font-weight:600;
+                               background:var(--surface);border:1px solid var(--border);color:var(--muted);
+                               cursor:pointer;transition:background .2s,color .2s,border-color .2s;font-family:var(--fm,monospace);"
+                        data-val="tech-shop">tech-shop</button>
+                <button type="button" class="sd-example chip"
+                        style="padding:.35rem .85rem;border-radius:99px;font-size:.78rem;font-weight:600;
+                               background:var(--surface);border:1px solid var(--border);color:var(--muted);
+                               cursor:pointer;transition:background .2s,color .2s,border-color .2s;font-family:var(--fm,monospace);"
+                        data-val="artisan-cm">artisan-cm</button>
+                <button type="button" class="sd-example chip"
+                        style="padding:.35rem .85rem;border-radius:99px;font-size:.78rem;font-weight:600;
+                               background:var(--surface);border:1px solid var(--border);color:var(--muted);
+                               cursor:pointer;transition:background .2s,color .2s,border-color .2s;font-family:var(--fm,monospace);"
+                        data-val="beaute-plus">beaute-plus</button>
+                <button type="button" class="sd-example chip"
+                        style="padding:.35rem .85rem;border-radius:99px;font-size:.78rem;font-weight:600;
+                               background:var(--surface);border:1px solid var(--border);color:var(--muted);
+                               cursor:pointer;transition:background .2s,color .2s,border-color .2s;font-family:var(--fm,monospace);"
+                        data-val="electro-yopi">electro-yopi</button>
+              </div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:.65rem;">
+                <i class="bi bi-cursor me-1"></i>Cliquez sur un exemple pour l'utiliser
+              </div>
+            </div>
+          </div>
+
+          {# ── Info importante ── #}
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <i class="bi bi-shield-check" style="color:#00C9A7"></i>
+              <span class="edit-card-title">Informations importantes</span>
+            </div>
+            <div class="edit-card-body">
+              <div style="display:flex;flex-direction:column;gap:.6rem;">
+                <div style="display:flex;align-items:flex-start;gap:.7rem;font-size:.82rem;color:var(--text-2)">
+                  <i class="bi bi-1-circle-fill" style="color:var(--saffron);flex-shrink:0;margin-top:.1rem"></i>
+                  <span>Votre boutique sera accessible à l'adresse <strong style="font-family:var(--fm,monospace);color:var(--text)">votre-nom.yopishop.com</strong></span>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:.7rem;font-size:.82rem;color:var(--text-2)">
+                  <i class="bi bi-2-circle-fill" style="color:var(--saffron);flex-shrink:0;margin-top:.1rem"></i>
+                  <span>Le sous-domaine est <strong style="color:var(--text)">unique</strong> — s'il est déjà pris, vous devrez en choisir un autre.</span>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:.7rem;font-size:.82rem;color:var(--text-2)">
+                  <i class="bi bi-3-circle-fill" style="color:var(--saffron);flex-shrink:0;margin-top:.1rem"></i>
+                  <span>Vous pouvez le <strong style="color:var(--text)">modifier ultérieurement</strong>, mais l'ancienne URL sera perdue.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {# ── Boutons ── #}
+          <div class="d-flex gap-3 justify-content-end fi">
+            <a href="{% url 'apps_core:profil' %}" class="btn-ghost">
+              <i class="bi bi-x-lg"></i> Annuler
+            </a>
+            <button type="submit" class="btn-gold" id="sdSubmit" disabled>
+              <i class="bi bi-check-lg"></i> Confirmer le sous-domaine
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Fade-in observer ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); }
+  });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+
+/* ── Validation temps réel ── */
+const RESERVED = ['www','api','admin','shop','app','mail','ftp','yopishop'];
+const RE       = /^[a-z0-9-]{3,50}$/;
+
+const sdInput    = document.getElementById('{{ form.sous_domaine.id_for_label }}');
+const sdWrap     = document.getElementById('sdWrap');
+const sdFeedback = document.getElementById('sdFeedback');
+const sdPreview  = document.getElementById('sdPreview');
+const sdSlug     = document.getElementById('sdPreviewSlug');
+const sdSubmit   = document.getElementById('sdSubmit');
+
+// Règles
+const rules = {
+  len:      document.getElementById('rule-len'),
+  chars:    document.getElementById('rule-chars'),
+  start:    document.getElementById('rule-start'),
+  reserved: document.getElementById('rule-reserved'),
+};
+
+function setRule(el, ok){
+  if(!el) return;
+  el.classList.toggle('ok',  ok);
+  el.classList.toggle('err', !ok && el.classList.contains('touched'));
+  const ico = el.querySelector('i');
+  if(!ico) return;
+  ico.className = ok ? 'bi bi-check-circle-fill' : 'bi bi-circle';
+  ico.style.color = ok ? '#00C9A7' : 'var(--muted)';
+}
+
+function validate(val){
+  const len      = val.length >= 3 && val.length <= 50;
+  const chars    = /^[a-z0-9-]*$/.test(val);
+  const start    = /^[a-z0-9]/.test(val) && /[a-z0-9]$/.test(val);
+  const reserved = !RESERVED.includes(val);
+  const full     = RE.test(val) && reserved && start;
+
+  setRule(rules.len,      len);
+  setRule(rules.chars,    chars);
+  setRule(rules.start,    start);
+  setRule(rules.reserved, reserved);
+
+  return { len, chars, start, reserved, full };
+}
+
+function setFeedback(type, msg){
+  sdFeedback.className = 'sd-feedback ' + type;
+  sdFeedback.innerHTML = msg;
+}
+
+let debounceT;
+
+if(sdInput){
+  // Activer le bouton si valeur pré-remplie valide
+  if(sdInput.value.trim()){
+    const { full } = validate(sdInput.value.trim());
+    sdSubmit.disabled = !full;
+    if(full) sdPreview.classList.add('active');
+  }
+
+  sdInput.addEventListener('input', function(){
+    // Force minuscules
+    const pos = this.selectionStart;
+    this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g,'');
+    try{ this.setSelectionRange(pos, pos); }catch(e){}
+
+    const val = this.value.trim();
+
+    // Aperçu live
+    sdSlug.textContent = val || 'mon-shop';
+    sdPreview.classList.toggle('active', val.length >= 3);
+
+    if(!val){
+      setFeedback('', '');
+      sdWrap.classList.remove('err-border');
+      sdSubmit.disabled = true;
+      return;
+    }
+
+    clearTimeout(debounceT);
+    setFeedback('checking', '<i class="bi bi-hourglass-split me-1"></i>Vérification…');
+
+    const { full, reserved, start, chars, len } = validate(val);
+
+    debounceT = setTimeout(() => {
+      sdWrap.classList.toggle('err-border', !full);
+      if(!len){
+        setFeedback('err','<i class="bi bi-x-circle-fill me-1"></i>Entre 3 et 50 caractères.');
+      } else if(!chars){
+        setFeedback('err','<i class="bi bi-x-circle-fill me-1"></i>Lettres minuscules, chiffres et tirets uniquement.');
+      } else if(!start){
+        setFeedback('err','<i class="bi bi-x-circle-fill me-1"></i>Doit commencer et finir par une lettre ou un chiffre.');
+      } else if(!reserved){
+        setFeedback('err','<i class="bi bi-x-circle-fill me-1"></i>Ce sous-domaine est réservé.');
+      } else {
+        setFeedback('ok','<i class="bi bi-check-circle-fill me-1"></i>Format valide — disponibilité vérifiée à la sauvegarde.');
+        sdWrap.classList.remove('err-border');
+      }
+      sdSubmit.disabled = !full;
+    }, 350);
+  });
+}
+
+
+/* ── Exemples cliquables ── */
+document.querySelectorAll('.sd-example').forEach(btn => {
+  btn.addEventListener('click', function(){
+    if(!sdInput) return;
+    sdInput.value = this.dataset.val;
+    sdInput.dispatchEvent(new Event('input'));
+    sdInput.focus();
+    // Style actif sur le bouton
+    document.querySelectorAll('.sd-example').forEach(b => {
+      b.style.borderColor=''; b.style.color=''; b.style.background='';
+    });
+    this.style.borderColor = 'var(--saffron)';
+    this.style.color       = 'var(--saffron)';
+    this.style.background  = 'var(--saffron-d)';
+  });
+  btn.addEventListener('mouseover', function(){
+    this.style.borderColor='var(--saffron)';this.style.color='var(--saffron)';
+  });
+  btn.addEventListener('mouseout', function(){
+    if(sdInput && sdInput.value !== this.dataset.val){
+      this.style.borderColor='';this.style.color='';this.style.background='';
+    }
+  });
+});
+
+
+/* ── Copier l'URL au clic sur l'aperçu ── */
+const previewUrl = document.getElementById('sdPreview');
+if(previewUrl){
+  previewUrl.style.cursor = 'pointer';
+  previewUrl.title = 'Cliquer pour copier';
+  previewUrl.addEventListener('click', function(){
+    const slug = sdInput?.value?.trim();
+    if(!slug) return;
+    const url = `https://${slug}.yopishop.com`;
+    navigator.clipboard?.writeText(url).then(()=>{
+      const orig = this.querySelector('.sd-preview-ico').innerHTML;
+      this.querySelector('.sd-preview-ico').innerHTML = '<i class="bi bi-clipboard-check" style="color:#00C9A7"></i>';
+      setTimeout(()=>{
+        this.querySelector('.sd-preview-ico').innerHTML = orig;
+      }, 1800);
+    });
+  });
+}
+
+
+/* ── Confirmation avant soumission ── */
+document.getElementById('sdForm')?.addEventListener('submit', function(e){
+  const val = sdInput?.value?.trim();
+  const current = '{{ request.user.sous_domaine|default:"" }}';
+  if(current && val !== current){
+    if(!confirm(`Êtes-vous sûr de vouloir changer votre sous-domaine ?\n\n"${current}.yopishop.com" ne sera plus accessible.\n\nNouveau sous-domaine : "${val}.yopishop.com"`)){
+      e.preventDefault();
+    }
+  }
+});
+</script>
+{% endblock %}
+
+{% endblock %}

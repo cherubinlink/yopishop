@@ -1,0 +1,194 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'app_marketplace:admin_operateurs' %}" style="color:var(--saffron);text-decoration:none">Opérateurs</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Numéros de versement</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Numéros de versement
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        <i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Vue admin
+        &bull; {{ numeros|length }} numéro{{ numeros|length|pluralize }}
+      </p>
+    </div>
+    <button class="btn-gold" style="font-size:.82rem" onclick="document.getElementById('form-creer').classList.toggle('d-none')">
+      <i class="bi bi-plus-lg"></i> Ajouter un numéro
+    </button>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
+      color:var(--text)">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Formulaire création (masqué par défaut) ── -->
+  <div id="form-creer" class="ycard p-4 mb-4 d-none" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+      <i class="bi bi-plus-circle me-2" style="color:var(--jade)"></i>Nouveau numéro de versement
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="creer">
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+            Opérateur <span style="color:var(--ember)">*</span>
+          </label>
+          <select name="operateur" required class="form-select"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+            <option value="">— Choisir —</option>
+            {% for op in operateurs_actifs %}
+            <option value="{{ op.pk }}">{{ op.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+            Pays <span style="color:var(--ember)">*</span>
+          </label>
+          <select name="pays" required class="form-select"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+            <option value="">— Choisir —</option>
+            {% for p in pays_disponibles %}
+            <option value="{{ p.pk }}">{{ p.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+            Numéro <span style="color:var(--ember)">*</span>
+          </label>
+          <input type="text" name="numero" required placeholder="+237 6XX XXX XXX"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+        </div>
+        <div class="col-12 col-md-6">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">Nom du compte</label>
+          <input type="text" name="nom_compte" placeholder="YopiShop Cameroun"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+        </div>
+        <div class="col-12 col-md-6">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">Description</label>
+          <input type="text" name="description" placeholder="Numéro principal Orange Money"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+        </div>
+        <div class="col-12 d-flex gap-2 justify-content-end">
+          <button type="button" class="btn-ghost" style="font-size:.82rem;width:auto"
+            onclick="document.getElementById('form-creer').classList.add('d-none')">Annuler</button>
+          <button type="submit" class="btn-gold" style="font-size:.82rem;width:auto">
+            <i class="bi bi-check-lg"></i> Créer le numéro
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Liste des numéros ── -->
+  {% if numeros %}
+  <div style="display:grid;gap:.75rem">
+    {% for nv in numeros %}
+    <div class="ycard p-3" style="background:var(--card);border:1px solid {% if nv.est_actif %}var(--border){% else %}rgba(239,68,68,.2){% endif %};border-radius:var(--r)">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+
+        <!-- Logo opérateur -->
+        <div style="width:48px;height:48px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+          {% if nv.operateur.logo %}
+            <img src="{{ nv.operateur.logo.url }}" alt="{{ nv.operateur.nom }}" style="width:100%;height:100%;object-fit:contain;padding:4px">
+          {% else %}
+            <i class="bi bi-phone" style="color:var(--saffron);font-size:1.2rem"></i>
+          {% endif %}
+        </div>
+
+        <!-- Infos -->
+        <div class="flex-grow-1 min-width-0">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">{{ nv.numero }}</span>
+            <span class="chip" style="font-size:.68rem;padding:.18rem .55rem;background:var(--saffron-d);color:var(--saffron)">
+              {{ nv.operateur.nom }}
+            </span>
+            <span class="chip" style="font-size:.68rem;padding:.18rem .55rem;background:var(--surface);color:var(--muted)">
+              <i class="bi bi-geo-alt me-1"></i>{{ nv.pays.nom }}
+            </span>
+            {% if not nv.est_actif %}
+            <span class="chip" style="font-size:.68rem;padding:.18rem .55rem;background:rgba(239,68,68,.12);color:var(--ember)">
+              <i class="bi bi-eye-slash me-1"></i>Inactif
+            </span>
+            {% endif %}
+          </div>
+          {% if nv.nom_compte %}
+          <div style="font-size:.76rem;color:var(--text-2);margin-top:.2rem">
+            <i class="bi bi-person me-1" style="color:var(--muted)"></i>{{ nv.nom_compte }}
+          </div>
+          {% endif %}
+          {% if nv.description %}
+          <div style="font-size:.74rem;color:var(--muted);margin-top:.1rem">{{ nv.description }}</div>
+          {% endif %}
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">
+            <i class="bi bi-calendar3 me-1"></i>Ajouté le {{ nv.date_creation|date:"d M Y" }}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 flex-shrink-0">
+          <!-- Toggle actif -->
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="toggle">
+            <input type="hidden" name="pk" value="{{ nv.pk }}">
+            <button type="submit" class="btn-ghost" title="{% if nv.est_actif %}Désactiver{% else %}Activer{% endif %}"
+              style="font-size:.74rem;padding:.3rem .65rem;width:auto;{% if nv.est_actif %}color:var(--jade);border-color:rgba(16,185,129,.3){% else %}color:var(--muted){% endif %}">
+              <i class="bi {% if nv.est_actif %}bi-eye{% else %}bi-eye-slash{% endif %}"></i>
+            </button>
+          </form>
+          <!-- Supprimer -->
+          <form method="post" onsubmit="return confirm('Supprimer ce numéro ?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="supprimer">
+            <input type="hidden" name="pk" value="{{ nv.pk }}">
+            <button type="submit" class="btn-ghost"
+              style="font-size:.74rem;padding:.3rem .65rem;color:var(--ember);border-color:rgba(239,68,68,.3);width:auto">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-phone" style="font-size:1.8rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun numéro configuré</div>
+    <div style="font-size:.82rem;color:var(--muted)">Ajoutez les numéros de versement officiels YopiShop pour les afficher aux acheteurs.</div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,409 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% load yopi_filters %}
+
+{% block title %}{{ page_titre|default:"Mes préférences — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.edit-page{padding:2.5rem 0 4rem;min-height:80vh}
+.edit-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;position:relative;overflow:hidden;
+}
+.edit-header::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--indigo,#6366F1),var(--jade))
+}
+.edit-header::after{
+  content:'';position:absolute;right:-5%;top:-40%;
+  width:220px;height:220px;border-radius:50%;
+  background:radial-gradient(circle,var(--jade-d,rgba(0,201,167,.12)) 0%,transparent 70%);
+  pointer-events:none
+}
+.edit-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem
+}
+.edit-card-head{
+  padding:.85rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between
+}
+.edit-card-head-left{display:flex;align-items:center;gap:.6rem}
+.edit-card-head i{color:var(--saffron);font-size:1rem}
+.edit-card-title{font-size:.88rem;font-weight:700;color:var(--text)}
+.edit-card-body{padding:1.25rem}
+.ef-label{
+  font-size:.72rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:.4rem;display:block
+}
+.ef-input{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--r);color:var(--text);font-family:var(--fd,inherit);
+  font-size:.87rem;padding:.62rem .95rem;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.ef-input:focus{border-color:var(--saffron);box-shadow:0 0 0 3px var(--saffron-d)}
+.ef-input::placeholder{color:var(--muted)}
+select.ef-input option{background:var(--card)}
+.ef-hint{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+.ef-error{font-size:.72rem;color:var(--ember);margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+
+/* Toggle switch */
+.pref-toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.75rem 0;border-bottom:1px solid var(--border);gap:1rem;
+}
+.pref-toggle-row:last-child{border-bottom:none}
+.pref-toggle-info{flex:1;min-width:0}
+.pref-toggle-title{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:.1rem}
+.pref-toggle-sub{font-size:.74rem;color:var(--muted);line-height:1.4}
+.toggle-wrap{position:relative;flex-shrink:0}
+.toggle-cb{position:absolute;opacity:0;width:0;height:0}
+.toggle-lbl{
+  display:block;width:44px;height:24px;border-radius:99px;
+  background:var(--surface);border:1.5px solid var(--border);
+  cursor:pointer;position:relative;
+  transition:background .2s,border-color .2s;
+}
+.toggle-lbl::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:16px;height:16px;border-radius:50%;
+  background:var(--muted);
+  transition:transform .2s,background .2s;
+}
+.toggle-cb:checked + .toggle-lbl{background:var(--saffron-d);border-color:var(--saffron)}
+.toggle-cb:checked + .toggle-lbl::after{transform:translateX(20px);background:var(--saffron)}
+
+/* Radio stylés */
+.radio-opts{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.4rem}
+.radio-opts input[type="radio"]{display:none}
+.radio-opts label{
+  padding:.42rem 1rem;border-radius:99px;font-size:.8rem;font-weight:600;
+  border:1.5px solid var(--border);color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;gap:.4rem;
+  transition:border-color .2s,color .2s,background .2s;
+}
+.radio-opts label:hover{border-color:var(--saffron);color:var(--saffron)}
+.radio-opts input[type="radio"]:checked + label{
+  border-color:var(--saffron);background:var(--saffron-d);color:var(--saffron);
+}
+</style>
+
+<div class="edit-page">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8 col-xl-7">
+
+        {# Breadcrumb #}
+        <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+          <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"
+             onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+            <i class="bi bi-house-fill"></i> Accueil
+          </a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <a href="{% url 'apps_core:profil' %}" style="color:var(--muted);text-decoration:none"
+             onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+            Mon profil
+          </a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <span style="color:var(--saffron)">Préférences</span>
+        </nav>
+
+        {# Messages Django #}
+        {% if messages %}
+          {% for msg in messages %}
+          <div class="fi mb-3" style="
+               background:{% if msg.tags == 'success' %}rgba(0,201,167,.1){% else %}rgba(255,61,90,.1){% endif %};
+               border:1px solid {% if msg.tags == 'success' %}rgba(0,201,167,.25){% else %}rgba(255,61,90,.25){% endif %};
+               border-radius:var(--r);padding:.85rem 1.1rem;
+               display:flex;align-items:center;gap:.7rem;font-size:.84rem;
+               color:{% if msg.tags == 'success' %}#00C9A7{% else %}var(--ember){% endif %}">
+            <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+            {{ msg }}
+            <button onclick="this.parentElement.remove()"
+                    style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+          </div>
+          {% endfor %}
+        {% endif %}
+
+        {# Erreurs globales #}
+        {% if form.non_field_errors %}
+        <div class="fi mb-3" style="background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.25);
+             border-radius:var(--r);padding:.85rem 1.1rem;font-size:.84rem;color:var(--ember)">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+        </div>
+        {% endif %}
+
+        {# En-tête #}
+        <div class="edit-header fi">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;border-radius:12px;background:var(--jade-d,rgba(0,201,167,.12));
+                        display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#00C9A7;flex-shrink:0;">
+              <i class="bi bi-sliders"></i>
+            </div>
+            <div>
+              <div style="font-size:1.15rem;font-weight:700;color:var(--text)">Mes préférences</div>
+              <div style="font-size:.8rem;color:var(--muted)">Langue, devise et notifications</div>
+            </div>
+          </div>
+        </div>
+
+     
+        <form method="post"
+              action="{% url 'apps_core:modifier_preferences' %}"
+              novalidate>
+          {% csrf_token %}
+
+          {# ── Langue & Devise ── #}
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <div class="edit-card-head-left">
+                <i class="bi bi-globe2"></i>
+                <span class="edit-card-title">Langue &amp; Devise</span>
+              </div>
+            </div>
+            <div class="edit-card-body">
+              <div class="row g-4">
+
+                {# langue_preference — vrai nom colonne modèle #}
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label">Langue d'affichage</label>
+                  <div class="radio-opts">
+                    <input type="radio" id="lang_fr"
+                           name="langue_preference" value="fr"
+                           {% if form.langue_preference.value == 'fr' or not form.langue_preference.value %}checked{% endif %}>
+                    <label for="lang_fr"><i class="bi bi-translate"></i> Français</label>
+
+                    <input type="radio" id="lang_en"
+                           name="langue_preference" value="en"
+                           {% if form.langue_preference.value == 'en' %}checked{% endif %}>
+                    <label for="lang_en"><i class="bi bi-translate"></i> English</label>
+                  </div>
+                  {% if form.langue_preference.errors %}
+                  <div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.langue_preference.errors.0 }}</div>
+                  {% endif %}
+                </div>
+
+                {# devise_preference — vrai nom colonne modèle #}
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label">Devise</label>
+                  <div class="radio-opts">
+                    <input type="radio" id="dev_xaf"
+                           name="devise_preference" value="XAF"
+                           {% if form.devise_preference.value == 'XAF' or not form.devise_preference.value %}checked{% endif %}>
+                    <label for="dev_xaf">🇨🇲 FCFA</label>
+
+                    <input type="radio" id="dev_eur"
+                           name="devise_preference" value="EUR"
+                           {% if form.devise_preference.value == 'EUR' %}checked{% endif %}>
+                    <label for="dev_eur">🇪🇺 EUR</label>
+
+                    <input type="radio" id="dev_usd"
+                           name="devise_preference" value="USD"
+                           {% if form.devise_preference.value == 'USD' %}checked{% endif %}>
+                    <label for="dev_usd">🇺🇸 USD</label>
+                  </div>
+                  {% if form.devise_preference.errors %}
+                  <div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.devise_preference.errors.0 }}</div>
+                  {% endif %}
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {# ── Notifications ── #}
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <div class="edit-card-head-left">
+                <i class="bi bi-bell-fill"></i>
+                <span class="edit-card-title">Notifications</span>
+              </div>
+              <span style="font-size:.72rem;color:var(--muted)">Choisissez ce que vous recevez</span>
+            </div>
+            <div class="edit-card-body">
+
+              {# notifications_email — vrai nom colonne modèle #}
+              <div class="pref-toggle-row">
+                <div class="pref-toggle-info">
+                  <div class="pref-toggle-title">
+                    <i class="bi bi-envelope" style="color:var(--saffron);margin-right:.35rem"></i>
+                    Notifications par e-mail
+                  </div>
+                  <div class="pref-toggle-sub">Confirmations de commande, mises à jour de livraison</div>
+                </div>
+                <div class="toggle-wrap">
+                  <input type="checkbox" class="toggle-cb"
+                         id="id_notifications_email"
+                         name="notifications_email"
+                         {% if form.notifications_email.value %}checked{% endif %}>
+                  <label class="toggle-lbl" for="id_notifications_email"></label>
+                </div>
+              </div>
+
+              {# notifications_sms — vrai nom colonne modèle #}
+              <div class="pref-toggle-row">
+                <div class="pref-toggle-info">
+                  <div class="pref-toggle-title">
+                    <i class="bi bi-phone" style="color:var(--indigo);margin-right:.35rem"></i>
+                    Notifications SMS
+                  </div>
+                  <div class="pref-toggle-sub">Alertes de livraison et confirmations par SMS</div>
+                </div>
+                <div class="toggle-wrap">
+                  <input type="checkbox" class="toggle-cb"
+                         id="id_notifications_sms"
+                         name="notifications_sms"
+                         {% if form.notifications_sms.value %}checked{% endif %}>
+                  <label class="toggle-lbl" for="id_notifications_sms"></label>
+                </div>
+              </div>
+
+              {# notifications_push — vrai nom colonne modèle #}
+              <div class="pref-toggle-row">
+                <div class="pref-toggle-info">
+                  <div class="pref-toggle-title">
+                    <i class="bi bi-bell" style="color:#00C9A7;margin-right:.35rem"></i>
+                    Notifications push
+                  </div>
+                  <div class="pref-toggle-sub">Alertes en temps réel dans l'application</div>
+                </div>
+                <div class="toggle-wrap">
+                  <input type="checkbox" class="toggle-cb"
+                         id="id_notifications_push"
+                         name="notifications_push"
+                         {% if form.notifications_push.value %}checked{% endif %}>
+                  <label class="toggle-lbl" for="id_notifications_push"></label>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {# ── Niveau & Gamification (lecture seule) ── #}
+          {% if profil %}
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <div class="edit-card-head-left">
+                <i class="bi bi-trophy-fill" style="color:var(--saffron)"></i>
+                <span class="edit-card-title">Mon niveau YopiShop</span>
+              </div>
+              <span style="font-size:.72rem;color:var(--muted)">Lecture seule</span>
+            </div>
+            <div class="edit-card-body">
+              <div class="d-flex align-items-center gap-4 flex-wrap">
+
+                <div style="text-align:center;min-width:90px;">
+                  <div style="font-size:2.5rem;line-height:1;margin-bottom:.3rem;">
+                    {% if profil.niveau == 'diamant' %}💠
+                    {% elif profil.niveau == 'platine' %}💎
+                    {% elif profil.niveau == 'or' %}🥇
+                    {% elif profil.niveau == 'argent' %}🥈
+                    {% else %}🥉{% endif %}
+                  </div>
+                  <div style="font-size:.75rem;font-weight:700;color:var(--saffron);text-transform:uppercase;letter-spacing:.08em;">
+                    {{ profil.get_niveau_display|default:profil.niveau|capfirst }}
+                  </div>
+                </div>
+
+                <div style="flex:1;min-width:200px;">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:.4rem;">
+                    <span style="font-size:.75rem;color:var(--muted);">Points accumulés</span>
+                    <span style="font-family:var(--fm,monospace);font-size:.82rem;font-weight:700;color:var(--saffron);">
+                      {{ profil.points_total|default:0 }} pts
+                    </span>
+                  </div>
+                  {% with pts=profil.points_total|default:0 %}
+                  {% if profil.niveau == 'bronze' %}
+                    {% widthratio pts 1000 100 as pct %}
+                    <div style="background:var(--border);border-radius:99px;height:7px;overflow:hidden;">
+                      <div style="height:100%;width:{{ pct }}%;background:linear-gradient(90deg,#cd7f32,var(--saffron));border-radius:99px;transition:width 1s ease;"></div>
+                    </div>
+                    <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">{{ pts }} / 1 000 pts → 🥈 Argent</div>
+                  {% elif profil.niveau == 'argent' %}
+                    {% widthratio pts 5000 100 as pct %}
+                    <div style="background:var(--border);border-radius:99px;height:7px;overflow:hidden;">
+                      <div style="height:100%;width:{{ pct }}%;background:linear-gradient(90deg,#aaa,#eee);border-radius:99px;transition:width 1s ease;"></div>
+                    </div>
+                    <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">{{ pts }} / 5 000 pts → 🥇 Or</div>
+                  {% elif profil.niveau == 'or' %}
+                    {% widthratio pts 20000 100 as pct %}
+                    <div style="background:var(--border);border-radius:99px;height:7px;overflow:hidden;">
+                      <div style="height:100%;width:{{ pct }}%;background:linear-gradient(90deg,var(--saffron),#ffe066);border-radius:99px;transition:width 1s ease;"></div>
+                    </div>
+                    <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">{{ pts }} / 20 000 pts → 💎 Platine</div>
+                  {% elif profil.niveau == 'platine' %}
+                    {% widthratio pts 50000 100 as pct %}
+                    <div style="background:var(--border);border-radius:99px;height:7px;overflow:hidden;">
+                      <div style="height:100%;width:{{ pct }}%;background:linear-gradient(90deg,var(--indigo),#a78bfa);border-radius:99px;transition:width 1s ease;"></div>
+                    </div>
+                    <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">{{ pts }} / 50 000 pts → 💠 Diamant</div>
+                  {% else %}
+                    <div style="background:linear-gradient(90deg,var(--indigo),#67e8f9);border-radius:99px;height:7px;"></div>
+                    <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">Niveau maximum atteint 🎉</div>
+                  {% endif %}
+                  {% endwith %}
+                </div>
+
+              </div>
+
+              <div class="d-flex gap-2 flex-wrap mt-3">
+                {% for niv, label, ico in "bronze,Bronze,🥉|argent,Argent,🥈|or,Or,🥇|platine,Platine,💎|diamant,Diamant,💠"|split:"|" %}{% endfor %}
+                {# badges statiques — pas de filtre split custom nécessaire #}
+                {% for b in ""|make_list %}{% endfor %}
+                <span style="padding:.3rem .7rem;border-radius:99px;font-size:.72rem;background:{% if profil.niveau == 'bronze' %}var(--saffron-d){% else %}var(--surface){% endif %};border:1px solid {% if profil.niveau == 'bronze' %}var(--saffron){% else %}var(--border){% endif %};color:{% if profil.niveau == 'bronze' %}var(--saffron){% else %}var(--muted){% endif %};">🥉 Bronze</span>
+                <span style="padding:.3rem .7rem;border-radius:99px;font-size:.72rem;background:{% if profil.niveau == 'argent' %}var(--saffron-d){% else %}var(--surface){% endif %};border:1px solid {% if profil.niveau == 'argent' %}var(--saffron){% else %}var(--border){% endif %};color:{% if profil.niveau == 'argent' %}var(--saffron){% else %}var(--muted){% endif %};">🥈 Argent</span>
+                <span style="padding:.3rem .7rem;border-radius:99px;font-size:.72rem;background:{% if profil.niveau == 'or' %}var(--saffron-d){% else %}var(--surface){% endif %};border:1px solid {% if profil.niveau == 'or' %}var(--saffron){% else %}var(--border){% endif %};color:{% if profil.niveau == 'or' %}var(--saffron){% else %}var(--muted){% endif %};">🥇 Or</span>
+                <span style="padding:.3rem .7rem;border-radius:99px;font-size:.72rem;background:{% if profil.niveau == 'platine' %}var(--indigo-d){% else %}var(--surface){% endif %};border:1px solid {% if profil.niveau == 'platine' %}var(--indigo){% else %}var(--border){% endif %};color:{% if profil.niveau == 'platine' %}var(--indigo){% else %}var(--muted){% endif %};">💎 Platine</span>
+                <span style="padding:.3rem .7rem;border-radius:99px;font-size:.72rem;background:{% if profil.niveau == 'diamant' %}var(--indigo-d){% else %}var(--surface){% endif %};border:1px solid {% if profil.niveau == 'diamant' %}var(--indigo){% else %}var(--border){% endif %};color:{% if profil.niveau == 'diamant' %}var(--indigo){% else %}var(--muted){% endif %};">💠 Diamant</span>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {# ── Boutons d'action ── #}
+          <div class="d-flex gap-3 justify-content-end fi">
+            <a href="{% url 'apps_core:profil' %}" class="btn-ghost">
+              <i class="bi bi-x-lg"></i> Annuler
+            </a>
+            <button type="submit" class="btn-gold">
+              <i class="bi bi-check-lg"></i> Enregistrer les préférences
+            </button>
+          </div>
+
+        </form>{# ← fermeture correcte de la balise form #}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* Fade-in observer */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); }
+  });
+}, {threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Feedback visuel toggles */
+document.querySelectorAll('.toggle-cb').forEach(cb => {
+  cb.addEventListener('change', function(){
+    const info = this.closest('.pref-toggle-row')?.querySelector('.pref-toggle-title');
+    if(!info) return;
+    info.style.transition = 'color .2s';
+    info.style.color = this.checked ? 'var(--saffron)' : '';
+    setTimeout(() => info.style.color = '', 800);
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,475 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes notifications — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_core:accueil' %}" class="cpill">
+          <i class="bi bi-house me-1"></i>Accueil
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;color:var(--text-2);font-weight:600">
+          <i class="bi bi-bell me-1" style="color:var(--saffron)"></i>Notifications
+          {% if nb_non_lues %}
+          <span class="chip chip-ember ms-1" style="font-size:.62rem;padding:.15rem .55rem">{{ nb_non_lues }} nouvelle{{ nb_non_lues|pluralize }}</span>
+          {% endif %}
+        </span>
+      </div>
+      <!-- Actions groupées -->
+      <div class="d-flex gap-2">
+        {% if nb_non_lues %}
+        <form method="post" action="{% url 'apps_core:marquer_toutes_lues' %}" id="markAllForm">
+          {% csrf_token %}
+          {% if type_filtre %}<input type="hidden" name="type" value="{{ type_filtre }}">{% endif %}
+          <button type="submit" class="cpill" style="border:none;cursor:pointer"
+                  title="Tout marquer comme lu">
+            <i class="bi bi-check2-all me-1" style="color:var(--jade)"></i>Tout lire
+          </button>
+        </form>
+        {% endif %}
+        <div class="dropdown">
+          <button class="cpill dropdown-toggle text-danger" data-bs-toggle="dropdown" style="border:none;cursor:pointer">
+            <i class="bi bi-trash me-1"></i>Supprimer
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end py-1"
+              style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:200px">
+            <li>
+              <form method="post" action="{% url 'apps_core:supprimer_notifications_lues' %}">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                        style="color:var(--text-2);font-size:.82rem;border:none;background:none;width:100%;cursor:pointer">
+                  <i class="bi bi-check2-circle" style="color:var(--muted)"></i>Supprimer les lues
+                </button>
+              </form>
+            </li>
+            <li>
+              <form method="post" action="{% url 'apps_core:supprimer_toutes_notifications' %}"
+                    onsubmit="return confirm('Supprimer toutes vos notifications ?')">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                        style="color:var(--ember);font-size:.82rem;border:none;background:none;width:100%;cursor:pointer">
+                  <i class="bi bi-trash"></i>Tout supprimer
+                </button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ FILTRES PAR TYPE ═══════ -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="?{% if q %}q={{ q }}&{% endif %}{% if lu_filtre %}lu={{ lu_filtre }}&{% endif %}{% if canal_filtre %}canal={{ canal_filtre }}{% endif %}"
+         class="cpill {% if not type_filtre %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Tout
+        {% with total=compteurs_type.values|add:"" %}{% endwith %}
+      </a>
+      {% for code, label in types %}
+      {% with cnt=compteurs_type|default:""  %}
+      <a href="?type={{ code }}{% if q %}&q={{ q }}{% endif %}{% if lu_filtre %}&lu={{ lu_filtre }}{% endif %}{% if canal_filtre %}&canal={{ canal_filtre }}{% endif %}"
+         class="cpill {% if type_filtre == code %}on{% endif %}">
+        {% if code == 'commande' %}<i class="bi bi-box"></i>
+        {% elif code == 'paiement' %}<i class="bi bi-credit-card"></i>
+        {% elif code == 'enchere' %}<i class="bi bi-hammer"></i>
+        {% elif code == 'live' %}<i class="bi bi-broadcast"></i>
+        {% elif code == 'promo' %}<i class="bi bi-percent"></i>
+        {% elif code == 'message' %}<i class="bi bi-chat"></i>
+        {% elif code == 'systeme' %}<i class="bi bi-gear"></i>
+        {% else %}<i class="bi bi-bell"></i>
+        {% endif %}
+        {{ label }}
+        {% if compteurs_type %}
+          {% for k, v in compteurs_type.items %}{% if k == code and v > 0 %}
+          <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.6rem;padding:.1rem .4rem;margin-left:.2rem">{{ v }}</span>
+          {% endif %}{% endfor %}
+        {% endif %}
+      </a>
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ BARRE RECHERCHE + FILTRES SECONDAIRES ═══════ -->
+<section class="ys" style="padding:1.2rem 0">
+  <div class="container">
+    <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+      {% if type_filtre %}<input type="hidden" name="type" value="{{ type_filtre }}">{% endif %}
+
+      <!-- Recherche -->
+      <div class="search-wrap" style="max-width:320px;flex:1">
+        <i class="bi bi-search si"></i>
+        <input type="text" name="q" class="search-input"
+               placeholder="Rechercher dans les notifications…"
+               value="{{ q }}">
+        <button type="submit" class="search-submit"><i class="bi bi-arrow-right"></i></button>
+      </div>
+
+      <!-- Filtre lu / non lu -->
+      <div class="d-flex gap-2">
+        <a href="?{% if type_filtre %}type={{ type_filtre }}&{% endif %}{% if q %}q={{ q }}&{% endif %}{% if canal_filtre %}canal={{ canal_filtre }}{% endif %}"
+           class="cpill {% if not lu_filtre %}on{% endif %}">Toutes</a>
+        <a href="?{% if type_filtre %}type={{ type_filtre }}&{% endif %}{% if q %}q={{ q }}&{% endif %}lu=false{% if canal_filtre %}&canal={{ canal_filtre }}{% endif %}"
+           class="cpill {% if lu_filtre == 'false' %}on{% endif %}" style="{% if lu_filtre == 'false' %}color:var(--saffron){% endif %}">
+          <i class="bi bi-circle-fill" style="font-size:.45rem;color:var(--ember)"></i>Non lues
+        </a>
+        <a href="?{% if type_filtre %}type={{ type_filtre }}&{% endif %}{% if q %}q={{ q }}&{% endif %}lu=true{% if canal_filtre %}&canal={{ canal_filtre }}{% endif %}"
+           class="cpill {% if lu_filtre == 'true' %}on{% endif %}">
+          <i class="bi bi-check2"></i>Lues
+        </a>
+      </div>
+
+      <!-- Filtre canal -->
+      {% if canaux %}
+      <div class="dropdown">
+        <a class="cpill dropdown-toggle {% if canal_filtre %}on{% endif %}" data-bs-toggle="dropdown">
+          <i class="bi bi-funnel"></i>{{ canal_filtre|default:"Canal" }}
+        </a>
+        <ul class="dropdown-menu py-1" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:160px">
+          <li>
+            <a class="dropdown-item py-2 px-3" style="color:var(--text-2);font-size:.82rem"
+               href="?{% if type_filtre %}type={{ type_filtre }}&{% endif %}{% if q %}q={{ q }}&{% endif %}{% if lu_filtre %}lu={{ lu_filtre }}{% endif %}">
+              Tous les canaux
+            </a>
+          </li>
+          {% for code, label in canaux %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+               style="color:var(--text-2);font-size:.82rem"
+               href="?{% if type_filtre %}type={{ type_filtre }}&{% endif %}{% if q %}q={{ q }}&{% endif %}{% if lu_filtre %}lu={{ lu_filtre }}&{% endif %}canal={{ code }}">
+              {% if code == 'in_app' %}<i class="bi bi-app" style="color:var(--saffron)"></i>
+              {% elif code == 'email' %}<i class="bi bi-envelope" style="color:var(--indigo)"></i>
+              {% elif code == 'sms' %}<i class="bi bi-phone" style="color:var(--jade)"></i>
+              {% elif code == 'push' %}<i class="bi bi-bell" style="color:var(--ember)"></i>
+              {% endif %}{{ label }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if type_filtre or lu_filtre or canal_filtre or q %}
+      <a href="{% url 'apps_core:notifications_filtrees' %}" class="cpill" style="color:var(--ember)">
+        <i class="bi bi-x-circle me-1"></i>Effacer
+      </a>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+
+<!-- ═══════ LISTE NOTIFICATIONS ═══════ -->
+<section class="ys bg-surface" style="padding-top:0">
+  <div class="container">
+
+    {% if notifications %}
+    <div class="d-flex flex-column gap-2" id="notifList">
+      {% for notif in notifications %}
+      <div class="ycard fi notif-item {% if not notif.est_lu %}notif-unread{% endif %}"
+           id="notif-{{ notif.pk }}"
+           style="transition-delay:{{ forloop.counter0 }}0ms;
+                  {% if not notif.est_lu %}border-left:3px solid var(--saffron);{% endif %}
+                  transition:opacity .3s,transform .3s,border-color .3s">
+        <div class="d-flex align-items-start gap-3">
+
+          <!-- Icône type -->
+          <div style="flex-shrink:0;margin-top:.1rem">
+            {% if notif.type_notification == 'commande' %}
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-box" style="color:var(--indigo);font-size:.95rem"></i>
+            </div>
+            {% elif notif.type_notification == 'paiement' %}
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-credit-card" style="color:var(--jade);font-size:.95rem"></i>
+            </div>
+            {% elif notif.type_notification == 'enchere' %}
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--ember-d);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-hammer" style="color:var(--ember);font-size:.95rem"></i>
+            </div>
+            {% elif notif.type_notification == 'live' %}
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--ember-d);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-broadcast" style="color:var(--ember);font-size:.95rem"></i>
+            </div>
+            {% elif notif.type_notification == 'promo' %}
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-percent" style="color:var(--saffron);font-size:.95rem"></i>
+            </div>
+            {% elif notif.type_notification == 'message' %}
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-chat-dots" style="color:var(--indigo);font-size:.95rem"></i>
+            </div>
+            {% elif notif.type_notification == 'systeme' %}
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-gear" style="color:var(--muted);font-size:.95rem"></i>
+            </div>
+            {% else %}
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-bell" style="color:var(--muted);font-size:.95rem"></i>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Contenu -->
+          <div style="flex:1;min-width:0">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div style="min-width:0">
+                <div style="font-size:.88rem;font-weight:{% if not notif.est_lu %}700{% else %}500{% endif %};color:var(--text);margin-bottom:.2rem;line-height:1.4">
+                  {% if notif.titre %}{{ notif.titre }}{% endif %}
+                </div>
+                <div style="font-size:.8rem;color:{% if not notif.est_lu %}var(--text-2){% else %}var(--muted){% endif %};line-height:1.5">
+                  {{ notif.message }}
+                </div>
+              </div>
+
+              <!-- Point non-lu + heure -->
+              <div class="d-flex flex-column align-items-end gap-1" style="flex-shrink:0">
+                {% if not notif.est_lu %}
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--saffron);flex-shrink:0;margin-top:.2rem"></div>
+                {% endif %}
+                <span style="font-size:.68rem;color:var(--muted);white-space:nowrap">
+                  {{ notif.date_creation|timesince }} ago
+                </span>
+              </div>
+            </div>
+
+            <!-- Métadonnées + actions -->
+            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+              <!-- Badge type -->
+              <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.62rem;padding:.15rem .5rem">
+                {% if notif.type_notification == 'commande' %}<i class="bi bi-box me-1"></i>
+                {% elif notif.type_notification == 'paiement' %}<i class="bi bi-credit-card me-1"></i>
+                {% elif notif.type_notification == 'enchere' %}<i class="bi bi-hammer me-1"></i>
+                {% elif notif.type_notification == 'live' %}<i class="bi bi-broadcast me-1"></i>
+                {% elif notif.type_notification == 'promo' %}<i class="bi bi-percent me-1"></i>
+                {% elif notif.type_notification == 'message' %}<i class="bi bi-chat me-1"></i>
+                {% elif notif.type_notification == 'systeme' %}<i class="bi bi-gear me-1"></i>
+                {% else %}<i class="bi bi-bell me-1"></i>{% endif %}
+                {{ notif.get_type_notification_display|default:notif.type_notification }}
+              </span>
+
+              <!-- Badge canal -->
+              {% if notif.canal and notif.canal != 'in_app' %}
+              <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.62rem;padding:.15rem .5rem">
+                {{ notif.get_canal_display|default:notif.canal }}
+              </span>
+              {% endif %}
+
+              <!-- Date complète -->
+              <span style="font-size:.68rem;color:var(--muted)">
+                <i class="bi bi-calendar3 me-1"></i>{{ notif.date_creation|date:"d M Y à H:i" }}
+              </span>
+
+              <!-- Actions -->
+              <div class="d-flex align-items-center gap-1 ms-auto">
+                {% if notif.lien %}
+                <a href="{{ notif.lien }}" class="cpill" style="font-size:.72rem;padding:.2rem .65rem"
+                   onclick="marquerLue({{ notif.pk }})">
+                  <i class="bi bi-arrow-right me-1"></i>Voir
+                </a>
+                {% endif %}
+                {% if not notif.est_lu %}
+                <button class="cpill btn-marquer-lue" data-pk="{{ notif.pk }}"
+                        style="font-size:.72rem;padding:.2rem .65rem;border:none;cursor:pointer"
+                        title="Marquer comme lue">
+                  <i class="bi bi-check2" style="color:var(--jade)"></i>
+                </button>
+                {% endif %}
+                <button class="cpill btn-supprimer-notif" data-pk="{{ notif.pk }}"
+                        style="font-size:.72rem;padding:.2rem .65rem;border:none;cursor:pointer;color:var(--ember)"
+                        title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if notifications.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi" aria-label="Pagination notifications">
+      <ul class="pagination" style="gap:.4rem">
+        {% if notifications.has_previous %}
+        <li>
+          <a class="cpill" href="?page={{ notifications.previous_page_number }}{% if type_filtre %}&type={{ type_filtre }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if lu_filtre %}&lu={{ lu_filtre }}{% endif %}{% if canal_filtre %}&canal={{ canal_filtre }}{% endif %}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+        {% endif %}
+        {% for num in notifications.paginator.page_range %}
+          {% if notifications.number == num %}
+          <li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= notifications.number and num|add:"2" >= notifications.number %}
+          <li>
+            <a class="cpill" href="?page={{ num }}{% if type_filtre %}&type={{ type_filtre }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if lu_filtre %}&lu={{ lu_filtre }}{% endif %}{% if canal_filtre %}&canal={{ canal_filtre }}{% endif %}">{{ num }}</a>
+          </li>
+          {% endif %}
+        {% endfor %}
+        {% if notifications.has_next %}
+        <li>
+          <a class="cpill" href="?page={{ notifications.next_page_number }}{% if type_filtre %}&type={{ type_filtre }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if lu_filtre %}&lu={{ lu_filtre }}{% endif %}{% if canal_filtre %}&canal={{ canal_filtre }}{% endif %}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <!-- État vide -->
+    <div class="text-center py-5 fi">
+      <i class="bi bi-bell-slash" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+        {% if q or type_filtre or lu_filtre or canal_filtre %}
+        Aucune notification trouvée
+        {% else %}
+        Vous êtes à jour !
+        {% endif %}
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+        {% if q or type_filtre or lu_filtre or canal_filtre %}
+        Essayez avec d'autres filtres ou termes de recherche.
+        {% else %}
+        Vos notifications apparaîtront ici dès qu'il y aura de l'activité.
+        {% endif %}
+      </div>
+      {% if q or type_filtre or lu_filtre or canal_filtre %}
+      <a href="{% url 'apps_core:notifications_filtrees' %}" class="btn-ghost">
+        <i class="bi bi-x-circle me-1"></i>Réinitialiser les filtres
+      </a>
+      {% else %}
+      <a href="{% url 'apps_core:catalogue' %}" class="btn-gold">
+        <i class="bi bi-bag me-1"></i>Explorer le catalogue
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); } });
+}, { threshold: .05 });
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* ── Marquer une notif comme lue (AJAX) ── */
+async function marquerLue(pk) {
+  try {
+    await fetch(`/compte/notifications/${pk}/lue/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+    });
+  } catch {}
+}
+
+document.querySelectorAll('.btn-marquer-lue').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const pk   = this.dataset.pk;
+    const card = document.getElementById(`notif-${pk}`);
+    await marquerLue(pk);
+    /* Mise à jour optimiste */
+    if (card) {
+      card.style.borderLeft = '3px solid var(--border)';
+      card.classList.remove('notif-unread');
+      const dot = card.querySelector('[style*="background:var(--saffron)"]');
+      if (dot) dot.remove();
+      const titleEl = card.querySelector('[style*="font-weight:700"]');
+      if (titleEl) titleEl.style.fontWeight = '500';
+      this.remove();
+    }
+    /* Décrémenter le badge nb non lues dans la navbar */
+    const bc = document.querySelector('.nav-icon .bc');
+    if (bc) {
+      const n = parseInt(bc.textContent) - 1;
+      n > 0 ? (bc.textContent = n) : bc.remove();
+    }
+    /* Décrémenter le chip en-tête */
+    const chip = document.querySelector('.chip-ember');
+    if (chip) {
+      const n = parseInt(chip.textContent) - 1;
+      n > 0 ? (chip.textContent = `${n} nouvelle${n > 1 ? 's' : ''}`) : chip.remove();
+    }
+  });
+});
+
+/* ── Supprimer une notif (AJAX) ── */
+document.querySelectorAll('.btn-supprimer-notif').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const pk   = this.dataset.pk;
+    const card = document.getElementById(`notif-${pk}`);
+    try {
+      const r = await fetch(`/compte/notifications/${pk}/supprimer/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const d = await r.json();
+      if (d.success && card) {
+        card.style.opacity    = '0';
+        card.style.transform  = 'translateX(20px)';
+        setTimeout(() => card.remove(), 300);
+      }
+    } catch {}
+  });
+});
+
+/* ── Marquer toutes lues (AJAX) ── */
+document.getElementById('markAllForm')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  try {
+    const r = await fetch(this.action, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd
+    });
+    const d = await r.json();
+    if (d.success) {
+      /* Mise à jour visuelle de toutes les cartes non lues */
+      document.querySelectorAll('.notif-unread').forEach(card => {
+        card.style.borderLeft = '3px solid var(--border)';
+        card.classList.remove('notif-unread');
+        const dot = card.querySelector('[style*="background:var(--saffron)"]');
+        if (dot) dot.remove();
+        card.querySelectorAll('.btn-marquer-lue').forEach(b => b.remove());
+      });
+      document.querySelector('.nav-icon .bc')?.remove();
+      document.querySelector('.chip-ember')?.remove();
+      this.closest('form') && this.remove();
+    }
+  } catch {}
+});
+
+/* ── Dropdown hover ── */
+document.querySelectorAll('.dropdown-item').forEach(item => {
+  item.addEventListener('mouseenter', function(){ this.style.background='var(--saffron-d)'; this.style.color='var(--saffron)'; });
+  item.addEventListener('mouseleave', function(){ this.style.background=''; this.style.color=''; });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

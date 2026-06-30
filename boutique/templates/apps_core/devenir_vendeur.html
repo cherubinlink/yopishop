@@ -1,0 +1,927 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Devenir vendeur — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════════
+   DEVENIR VENDEUR  — hérite des vars de base.html
+══════════════════════════════════════════════════ */
+.dv-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+
+/* ── Hero banner ── */
+.dv-hero {
+  background: linear-gradient(135deg, #0e1038 0%, #1a1050 45%, #0e2444 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 2.5rem 2rem;
+  position: relative; overflow: hidden;
+  margin-bottom: 2rem;
+}
+.dv-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 55% 70% at 85% 30%, rgba(124,111,255,.22) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 5%  80%, rgba(246,169,43,.12)  0%, transparent 55%),
+    radial-gradient(ellipse 30% 40% at 50% 10%, rgba(255,90,71,.07)   0%, transparent 50%);
+  pointer-events: none;
+}
+.dv-hero-eyebrow {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: var(--saffron-d); border: 1px solid rgba(247,183,49,.25);
+  border-radius: 99px; padding: .28rem .9rem;
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--saffron);
+  margin-bottom: 1rem;
+}
+.dv-hero-title {
+  font-family: var(--fg);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800; line-height: 1.15;
+  color: var(--text); margin-bottom: .75rem;
+}
+.dv-hero-title .hl {
+  background: linear-gradient(90deg, var(--saffron), var(--ember));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.dv-hero-sub {
+  font-size: .9rem; color: var(--muted);
+  line-height: 1.65; max-width: 520px; margin-bottom: 1.5rem;
+}
+
+/* ── Avantages pills ── */
+.dv-perks {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+}
+.dv-perk {
+  display: inline-flex; align-items: center; gap: .45rem;
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border);
+  border-radius: 99px; padding: .32rem .85rem;
+  font-size: .78rem; color: var(--text-2);
+}
+.dv-perk i { font-size: .85rem; }
+
+/* ── Statut candidature déjà soumise ── */
+.dv-status-card {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 1.2rem 1.4rem;
+  border-radius: var(--r);
+  margin-bottom: 1.5rem;
+}
+.dv-status-icon {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+}
+.dv-status-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+.dv-status-sub   { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+/* Statuts */
+.status-en_attente {
+  background: rgba(247,183,49,.1); border: 1px solid rgba(247,183,49,.25);
+}
+.status-en_attente .dv-status-icon { background: var(--saffron-d); color: var(--saffron); }
+
+.status-en_cours {
+  background: rgba(124,111,255,.1); border: 1px solid rgba(124,111,255,.25);
+}
+.status-en_cours .dv-status-icon { background: var(--indigo-d); color: var(--indigo); }
+
+.status-approuvee {
+  background: var(--jade-d); border: 1px solid rgba(0,200,150,.25);
+}
+.status-approuvee .dv-status-icon { background: rgba(0,200,150,.2); color: var(--jade); }
+
+.status-refusee {
+  background: rgba(255,90,71,.08); border: 1px solid rgba(255,90,71,.2);
+}
+.status-refusee .dv-status-icon { background: var(--ember-d); color: var(--ember); }
+
+/* ── Grille gauche/droite ── */
+.dv-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 900px) { .dv-grid { grid-template-columns: 1fr; } }
+
+/* ── Carte formulaire ── */
+.ycard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+/* ── Progression par étapes ── */
+.dv-steps {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 1.75rem; overflow: hidden;
+}
+.dv-step {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  position: relative; cursor: default;
+}
+.dv-step:not(:last-child)::after {
+  content: ''; position: absolute;
+  top: 17px; left: calc(50% + 18px);
+  width: calc(100% - 36px); height: 1.5px;
+  background: var(--border);
+}
+.dv-step.done::after { background: var(--jade); }
+.dv-step.current::after { background: var(--border); }
+
+.dv-step-dot {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; font-weight: 700; margin-bottom: .4rem;
+  border: 2px solid var(--border);
+  background: var(--surface); color: var(--muted);
+  transition: all .25s; position: relative; z-index: 1;
+}
+.dv-step.done    .dv-step-dot { background: var(--jade);    border-color: var(--jade);    color: #0A0B1A; }
+.dv-step.current .dv-step-dot { background: var(--saffron); border-color: var(--saffron); color: #0A0B1A; }
+.dv-step-label {
+  font-size: .65rem; font-weight: 600; text-align: center;
+  color: var(--muted); white-space: nowrap;
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.dv-step.current .dv-step-label { color: var(--saffron); }
+.dv-step.done    .dv-step-label { color: var(--jade); }
+
+/* ── Champs formulaire ── */
+.dv-form { display: flex; flex-direction: column; gap: 1.1rem; }
+
+.dv-field-group {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  transition: border-color .2s;
+}
+.dv-field-group:focus-within {
+  border-color: var(--saffron);
+  box-shadow: 0 0 0 3px rgba(247,183,49,.1);
+}
+.dv-field-group.optional-field { opacity: .85; }
+.dv-field-group.optional-field:focus-within { opacity: 1; border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(124,111,255,.1); }
+
+.dv-label {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: .55rem;
+}
+.dv-label i { font-size: .85rem; }
+.dv-optional {
+  font-size: .65rem; font-weight: 500; letter-spacing: 0;
+  text-transform: none; color: var(--muted); opacity: .6; margin-left: auto;
+}
+
+.dv-input, .dv-textarea, .dv-select {
+  width: 100%; background: transparent;
+  border: none; outline: none; resize: none;
+  color: var(--text); font-family: var(--fd); font-size: .87rem;
+  line-height: 1.6;
+}
+.dv-input::placeholder, .dv-textarea::placeholder { color: var(--muted); }
+.dv-textarea { min-height: 90px; }
+.dv-select { background: transparent; cursor: pointer; }
+.dv-select option { background: var(--card); color: var(--text); }
+
+/* Compteur de caractères */
+.dv-char-count {
+  font-size: .65rem; color: var(--muted);
+  text-align: right; margin-top: .3rem;
+}
+.dv-char-count.warn { color: var(--ember); }
+.dv-char-count.ok   { color: var(--jade); }
+
+/* Erreurs field */
+.dv-field-error {
+  font-size: .72rem; color: var(--ember);
+  display: flex; align-items: center; gap: .3rem;
+  margin-top: .35rem;
+}
+.dv-field-error i { font-size: .8rem; flex-shrink: 0; }
+
+/* Checkbox entreprise */
+.dv-check-row {
+  display: flex; align-items: center; gap: .85rem;
+  padding: .85rem 1.1rem;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 10px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.dv-check-row:has(input:checked) {
+  border-color: var(--saffron); background: var(--saffron-d);
+}
+.dv-check-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--indigo-d); display: flex; align-items: center;
+  justify-content: center; font-size: 1.05rem; color: var(--indigo); flex-shrink: 0;
+}
+.dv-check-label-title {
+  font-size: .85rem; font-weight: 600; color: var(--text); margin-bottom: .1rem;
+}
+.dv-check-label-sub { font-size: .73rem; color: var(--muted); }
+.dv-check-input {
+  width: 18px; height: 18px; margin-left: auto; flex-shrink: 0;
+  accent-color: var(--saffron); cursor: pointer;
+}
+
+/* Volume estimé — pills radio */
+.dv-volume-pills {
+  display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .1rem;
+}
+.dv-vol-pill {
+  flex: 1; min-width: 80px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: .3rem; padding: .55rem .5rem;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 10px; cursor: pointer;
+  transition: all .2s; position: relative;
+}
+.dv-vol-pill input {
+  position: absolute; opacity: 0; width: 0; height: 0;
+}
+.dv-vol-pill:has(input:checked) {
+  background: var(--saffron-d); border-color: var(--saffron);
+}
+.dv-vol-icon { font-size: 1.2rem; }
+.dv-vol-label {
+  font-size: .72rem; font-weight: 600; color: var(--text-2);
+  text-align: center; line-height: 1.3;
+}
+.dv-vol-pill:has(input:checked) .dv-vol-label { color: var(--saffron); }
+
+/* ── Bouton submit ── */
+.btn-submit-dv {
+  width: 100%; background: linear-gradient(90deg, var(--saffron), #f5b942);
+  color: #0A0B1A; border: none; border-radius: 12px;
+  font-family: var(--fd); font-size: .9rem; font-weight: 700;
+  padding: .82rem; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; gap: .55rem;
+  transition: opacity .2s, transform .2s, box-shadow .2s; letter-spacing: .01em;
+}
+.btn-submit-dv:hover:not(:disabled) {
+  opacity: .9; transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(247,183,49,.35);
+}
+.btn-submit-dv:disabled { opacity: .6; cursor: not-allowed; }
+.spinner-sm {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(10,11,26,.25);
+  border-top-color: #0A0B1A;
+  border-radius: 50%;
+  animation: spin .65s linear infinite; display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Sidebar droite ── */
+.dv-sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+/* Avantages list */
+.dv-avantage-list { display: flex; flex-direction: column; gap: 0; }
+.dv-avantage-item {
+  display: flex; align-items: flex-start; gap: .8rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.dv-avantage-item:last-child { border-bottom: none; }
+.dv-av-icon {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: .9rem;
+}
+.dv-av-title { font-size: .83rem; font-weight: 600; color: var(--text); margin-bottom: .1rem; }
+.dv-av-sub   { font-size: .74rem; color: var(--muted); line-height: 1.4; }
+
+/* Processus de validation */
+.dv-process { display: flex; flex-direction: column; gap: 0; }
+.dv-process-item {
+  display: flex; gap: .75rem; padding: .65rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.dv-process-item:last-child { border-bottom: none; }
+.dv-process-num {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; font-weight: 700;
+  background: var(--saffron-d); color: var(--saffron);
+  border: 1px solid rgba(247,183,49,.25);
+}
+.dv-process-title { font-size: .8rem; font-weight: 600; color: var(--text); margin-bottom: .1rem; }
+.dv-process-sub   { font-size: .72rem; color: var(--muted); }
+
+/* FAQ accordion simplifié */
+.dv-faq-item {
+  border-bottom: 1px solid var(--border);
+}
+.dv-faq-item:last-child { border-bottom: none; }
+.dv-faq-q {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .75rem 0; cursor: pointer;
+  font-size: .82rem; font-weight: 600; color: var(--text);
+  list-style: none; user-select: none;
+}
+.dv-faq-q::-webkit-details-marker { display: none; }
+.dv-faq-q i { font-size: .8rem; color: var(--muted); transition: transform .2s; }
+details[open] .dv-faq-q i { transform: rotate(45deg); }
+.dv-faq-a {
+  font-size: .78rem; color: var(--muted); line-height: 1.6;
+  padding: 0 0 .75rem;
+}
+
+/* ── Messages Django ── */
+.dv-alert {
+  display: flex; align-items: flex-start; gap: .65rem;
+  padding: .8rem 1rem; border-radius: var(--r);
+  font-size: .82rem; margin-bottom: 1rem;
+}
+.dv-alert i { flex-shrink: 0; margin-top: .1rem; }
+.alert-success { background: var(--jade-d);    border: 1px solid rgba(0,200,150,.25); color: var(--jade); }
+.alert-error   { background: var(--ember-d);   border: 1px solid rgba(255,90,71,.25); color: var(--ember); }
+.alert-warning { background: var(--saffron-d); border: 1px solid rgba(247,183,49,.25); color: var(--saffron); }
+.alert-info    { background: var(--indigo-d);  border: 1px solid rgba(124,111,255,.25); color: var(--indigo); }
+
+@media (max-width: 600px) {
+  .dv-hero { padding: 1.5rem 1.1rem; }
+  .dv-steps { display: none; }
+  .dv-vol-pill { min-width: 60px; }
+}
+</style>
+
+
+<div class="dv-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="fil d'ariane" class="mb-3 fi">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'apps_core:profil' %}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          Mon profil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Devenir vendeur</span>
+      </div>
+    </nav>
+
+    <!-- Messages Django -->
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="dv-alert fi
+      {% if msg.tags == 'success' %}alert-success
+      {% elif msg.tags == 'error' or msg.tags == 'danger' %}alert-error
+      {% elif msg.tags == 'warning' %}alert-warning
+      {% else %}alert-info{% endif %}">
+      <i class="bi
+        {% if msg.tags == 'success' %}bi-check-circle-fill
+        {% elif msg.tags == 'error' or msg.tags == 'danger' %}bi-exclamation-circle-fill
+        {% elif msg.tags == 'warning' %}bi-exclamation-triangle-fill
+        {% else %}bi-info-circle-fill{% endif %}"></i>
+      <span>{{ msg }}</span>
+      <button onclick="this.parentElement.remove()"
+              style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem;line-height:1">✕</button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- ══════════ HERO ══════════ -->
+    <div class="dv-hero fi">
+      <div class="dv-hero-eyebrow">
+        <i class="bi bi-shop"></i> Programme Vendeur
+      </div>
+      <h1 class="dv-hero-title">
+        Vendez sur <span class="hl">YopiShop</span><br>et boostez vos revenus
+      </h1>
+      <p class="dv-hero-sub">
+        Rejoignez des centaines de vendeurs en Afrique. Créez votre boutique, publiez vos produits et touchez des milliers de clients — le tout depuis une seule plateforme.
+      </p>
+      <div class="dv-perks">
+        <span class="dv-perk"><i class="bi bi-check-circle-fill" style="color:var(--jade)"></i> Inscription 100% gratuite</span>
+        <span class="dv-perk"><i class="bi bi-globe2" style="color:var(--indigo)"></i> Sous-domaine personnalisé</span>
+        <span class="dv-perk"><i class="bi bi-hammer" style="color:var(--ember)"></i> Accès aux enchères</span>
+        <span class="dv-perk"><i class="bi bi-broadcast" style="color:var(--coral,#FF4F5E)"></i> Lives shopping</span>
+        <span class="dv-perk"><i class="bi bi-graph-up" style="color:var(--saffron)"></i> Tableau de bord analytique</span>
+        <span class="dv-perk"><i class="bi bi-shield-check" style="color:var(--jade)"></i> Paiements sécurisés</span>
+      </div>
+    </div>
+
+    <!-- ══════════ STATUT CANDIDATURE EXISTANTE ══════════ -->
+    {% if demande_existante %}
+    <div class="dv-status-card fi status-{{ demande_existante.statut }}">
+      <div class="dv-status-icon">
+        {% if demande_existante.statut == 'en_attente' %}<i class="bi bi-hourglass-split"></i>
+        {% elif demande_existante.statut == 'en_cours' %}<i class="bi bi-search"></i>
+        {% elif demande_existante.statut == 'approuvee' %}<i class="bi bi-patch-check-fill"></i>
+        {% elif demande_existante.statut == 'refusee' %}<i class="bi bi-x-circle-fill"></i>
+        {% else %}<i class="bi bi-info-circle"></i>{% endif %}
+      </div>
+      <div>
+        <div class="dv-status-title">
+          {% if demande_existante.statut == 'en_attente' %}Candidature en attente de traitement
+          {% elif demande_existante.statut == 'en_cours' %}Candidature en cours d'examen
+          {% elif demande_existante.statut == 'approuvee' %}🎉 Candidature approuvée ! Vous êtes maintenant vendeur.
+          {% elif demande_existante.statut == 'refusee' %}Candidature refusée
+          {% else %}Candidature soumise{% endif %}
+        </div>
+        <div class="dv-status-sub">
+          Soumise le {{ demande_existante.date_demande|date:"d M Y à H:i" }}
+          {% if demande_existante.statut == 'en_attente' %}
+          &nbsp;— Nous traitons votre demande sous 48h ouvrées.
+          {% elif demande_existante.statut == 'en_cours' %}
+          &nbsp;— Un administrateur examine actuellement votre dossier.
+          {% elif demande_existante.statut == 'approuvee' %}
+          &nbsp;— <a href="{% url 'apps_core:tableau_de_bord' %}" style="color:var(--jade);font-weight:600">Accéder à mon espace vendeur →</a>
+          {% elif demande_existante.statut == 'refusee' %}
+          {% if demande_existante.commentaire_admin %}
+          &nbsp;— Motif : {{ demande_existante.commentaire_admin }}
+          {% endif %}
+          Vous pouvez soumettre une nouvelle candidature après 30 jours.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ══════════ GRILLE PRINCIPALE ══════════ -->
+    <div class="dv-grid">
+
+      <!-- ══ COLONNE GAUCHE : FORMULAIRE ══ -->
+      <div>
+
+        <!-- Indicateur d'étapes -->
+        <div class="dv-steps fi mb-3">
+          <div class="dv-step done">
+            <div class="dv-step-dot"><i class="bi bi-person-check-fill"></i></div>
+            <span class="dv-step-label">Compte créé</span>
+          </div>
+          <div class="dv-step current">
+            <div class="dv-step-dot">2</div>
+            <span class="dv-step-label">Candidature</span>
+          </div>
+          <div class="dv-step">
+            <div class="dv-step-dot">3</div>
+            <span class="dv-step-label">Examen (48h)</span>
+          </div>
+          <div class="dv-step">
+            <div class="dv-step-dot">4</div>
+            <span class="dv-step-label">Boutique active</span>
+          </div>
+        </div>
+
+        <!-- Carte formulaire -->
+        <div class="ycard fi">
+          <div style="padding:1.4rem 1.5rem 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem">
+              Formulaire de candidature
+            </div>
+            <h2 style="font-family:var(--fg);font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:1.1rem">
+              Parlez-nous de votre projet de vente
+            </h2>
+          </div>
+
+          <div style="padding:1.4rem 1.5rem">
+            {% if demande_existante and demande_existante.statut in 'en_attente,en_cours,approuvee' %}
+            <!-- Formulaire désactivé si candidature déjà active -->
+            <div style="text-align:center;padding:2rem 1rem;border:1.5px dashed var(--border);border-radius:var(--r)">
+              <i class="bi bi-lock" style="font-size:2rem;color:var(--muted);opacity:.4;display:block;margin-bottom:.7rem"></i>
+              <div style="font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:.3rem">
+                Candidature déjà en cours
+              </div>
+              <div style="font-size:.8rem;color:var(--muted)">
+                Vous ne pouvez pas soumettre une nouvelle candidature tant que la précédente est en cours de traitement.
+              </div>
+            </div>
+
+            {% else %}
+            <!-- Formulaire actif -->
+            <form method="POST" id="formVendeur" novalidate class="dv-form">
+              {% csrf_token %}
+
+              <!-- ── 1. Motivation ── -->
+              <div>
+                <div class="dv-field-group {% if form.motivation.errors %}border-error{% endif %}">
+                  <label class="dv-label" for="{{ form.motivation.id_for_label }}">
+                    <i class="bi bi-lightbulb" style="color:var(--saffron)"></i>
+                    Vos motivations
+                    <span style="font-size:.7rem;color:var(--ember);margin-left:.2rem">*</span>
+                  </label>
+                  <textarea
+                    id="{{ form.motivation.id_for_label }}"
+                    name="{{ form.motivation.html_name }}"
+                    class="dv-textarea"
+                    rows="4"
+                    placeholder="Pourquoi souhaitez-vous vendre sur YopiShop ? Qu'est-ce qui vous a motivé ? Quels sont vos objectifs ?
+Ex : Je vends des produits artisanaux camerounais et je cherche à atteindre plus de clients..."
+                    minlength="50"
+                    maxlength="2000"
+                    data-counter="true"
+                    data-min="50"
+                    required>{{ form.motivation.value|default:'' }}</textarea>
+                  <div class="dv-char-count" id="count-motivation">0 / 50 min</div>
+                </div>
+                {% for err in form.motivation.errors %}
+                <div class="dv-field-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+              </div>
+
+              <!-- ── 2. Types de produits ── -->
+              <div>
+                <div class="dv-field-group {% if form.types_produits.errors %}border-error{% endif %}">
+                  <label class="dv-label" for="{{ form.types_produits.id_for_label }}">
+                    <i class="bi bi-tag" style="color:var(--indigo)"></i>
+                    Types de produits à vendre
+                    <span style="font-size:.7rem;color:var(--ember);margin-left:.2rem">*</span>
+                  </label>
+                  <textarea
+                    id="{{ form.types_produits.id_for_label }}"
+                    name="{{ form.types_produits.html_name }}"
+                    class="dv-textarea"
+                    rows="3"
+                    placeholder="Ex : Vêtements et accessoires de mode, produits de beauté naturels, artisanat camerounais..."
+                    minlength="20"
+                    maxlength="1000"
+                    data-counter="true"
+                    data-min="20"
+                    required>{{ form.types_produits.value|default:'' }}</textarea>
+                  <div class="dv-char-count" id="count-types">0 / 20 min</div>
+                </div>
+                {% for err in form.types_produits.errors %}
+                <div class="dv-field-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+              </div>
+
+              <!-- ── 3. Volume estimé (pills radio) ── -->
+              <div>
+                <div class="dv-field-group {% if form.volume_estime.errors %}border-error{% endif %}">
+                  <label class="dv-label">
+                    <i class="bi bi-boxes" style="color:var(--jade)"></i>
+                    Volume de produits estimé
+                    <span style="font-size:.7rem;color:var(--ember);margin-left:.2rem">*</span>
+                  </label>
+                  <div class="dv-volume-pills">
+                    {% for val, lbl in form.volume_estime.field.choices %}
+                    {% if val %}
+                    <label class="dv-vol-pill">
+                      <input type="radio"
+                             name="{{ form.volume_estime.html_name }}"
+                             value="{{ val }}"
+                             {% if form.volume_estime.value == val %}checked{% endif %}
+                             required>
+                      <span class="dv-vol-icon">
+                        {% if val == '1-10' %}🌱
+                        {% elif val == '11-50' %}📦
+                        {% elif val == '51-100' %}🏗️
+                        {% else %}🏢{% endif %}
+                      </span>
+                      <span class="dv-vol-label">{{ lbl }}</span>
+                    </label>
+                    {% endif %}
+                    {% endfor %}
+                  </div>
+                </div>
+                {% for err in form.volume_estime.errors %}
+                <div class="dv-field-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+              </div>
+
+              <!-- ── 4. Expérience commerce (optionnel) ── -->
+              <div>
+                <div class="dv-field-group optional-field">
+                  <label class="dv-label" for="{{ form.experience_commerce.id_for_label }}">
+                    <i class="bi bi-briefcase" style="color:var(--muted)"></i>
+                    Expérience dans le commerce en ligne
+                    <span class="dv-optional">optionnel</span>
+                  </label>
+                  <textarea
+                    id="{{ form.experience_commerce.id_for_label }}"
+                    name="{{ form.experience_commerce.html_name }}"
+                    class="dv-textarea"
+                    rows="3"
+                    placeholder="Avez-vous déjà vendu en ligne ? Sur quelles plateformes ? Quel a été votre chiffre d'affaires moyen ?
+(Laissez vide si c'est votre première expérience — nous accueillons tous les profils !)">{{ form.experience_commerce.value|default:'' }}</textarea>
+                </div>
+              </div>
+
+              <!-- ── 5. Entreprise (toggle) ── -->
+              <div>
+                <label class="dv-check-row" for="{{ form.a_entreprise.id_for_label }}">
+                  <div class="dv-check-icon">
+                    <i class="bi bi-building"></i>
+                  </div>
+                  <div style="flex:1">
+                    <div class="dv-check-label-title">J'ai une entreprise enregistrée</div>
+                    <div class="dv-check-label-sub">Société, SARL, auto-entrepreneur ou association</div>
+                  </div>
+                  <input type="checkbox"
+                         id="{{ form.a_entreprise.id_for_label }}"
+                         name="{{ form.a_entreprise.html_name }}"
+                         class="dv-check-input"
+                         {% if form.a_entreprise.value %}checked{% endif %}
+                         onchange="toggleEntreprise(this.checked)">
+                </label>
+
+                <!-- Champ nom entreprise (conditionnel) -->
+                <div id="entreprise-field" style="margin-top:.65rem;{% if not form.a_entreprise.value %}display:none{% endif %}">
+                  <div class="dv-field-group optional-field">
+                    <label class="dv-label" for="{{ form.nom_entreprise.id_for_label }}">
+                      <i class="bi bi-building-fill" style="color:var(--indigo)"></i>
+                      Nom de l'entreprise
+                      <span class="dv-optional">optionnel</span>
+                    </label>
+                    <input type="text"
+                           id="{{ form.nom_entreprise.id_for_label }}"
+                           name="{{ form.nom_entreprise.html_name }}"
+                           class="dv-input"
+                           placeholder="Ex : Cameroun Tech Solutions SARL"
+                           value="{{ form.nom_entreprise.value|default:'' }}">
+                  </div>
+                </div>
+                {% for err in form.a_entreprise.errors %}
+                <div class="dv-field-error"><i class="bi bi-exclamation-circle"></i>{{ err }}</div>
+                {% endfor %}
+              </div>
+
+              <!-- ── Erreurs globales ── -->
+              {% if form.non_field_errors %}
+              <div class="dv-alert alert-error">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <div>{% for err in form.non_field_errors %}{{ err }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
+              </div>
+              {% endif %}
+
+              <!-- ── Note engagement ── -->
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;display:flex;align-items:flex-start;gap:.6rem">
+                <i class="bi bi-info-circle-fill" style="color:var(--indigo);flex-shrink:0;margin-top:.1rem"></i>
+                <div style="font-size:.77rem;color:var(--muted);line-height:1.6">
+                  En soumettant ce formulaire, vous acceptez nos <a href="/cgu-vendeurs/" style="color:var(--saffron);font-weight:600">conditions générales vendeurs</a> et vous engagez à respecter la politique de qualité de YopiShop.
+                </div>
+              </div>
+
+              <!-- ── Bouton submit ── -->
+              <button type="submit" class="btn-submit-dv" id="btnSubmit">
+                <span class="spinner-sm" id="dvSpinner"></span>
+                <i class="bi bi-send-fill" id="dvIcon"></i>
+                <span id="dvTxt">Soumettre ma candidature</span>
+              </button>
+
+              <p style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:.5rem">
+                <i class="bi bi-clock" style="font-size:.7rem"></i>
+                Réponse sous 48h ouvrées par email
+              </p>
+
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ COLONNE DROITE : SIDEBAR ══ -->
+      <aside class="dv-sidebar fi">
+
+        <!-- Avantages -->
+        <div class="ycard">
+          <div style="padding:.9rem 1.1rem;border-bottom:1px solid var(--border)">
+            <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+              Pourquoi vendre sur YopiShop ?
+            </div>
+          </div>
+          <div style="padding:.5rem 1.1rem .75rem">
+            <div class="dv-avantage-list">
+              <div class="dv-avantage-item">
+                <div class="dv-av-icon" style="background:var(--saffron-d)"><i class="bi bi-globe2" style="color:var(--saffron)"></i></div>
+                <div>
+                  <div class="dv-av-title">Sous-domaine personnalisé</div>
+                  <div class="dv-av-sub">Votre boutique sur <strong>votre-nom.yopishop.com</strong></div>
+                </div>
+              </div>
+              <div class="dv-avantage-item">
+                <div class="dv-av-icon" style="background:var(--indigo-d)"><i class="bi bi-broadcast" style="color:var(--indigo)"></i></div>
+                <div>
+                  <div class="dv-av-title">Lives shopping intégrés</div>
+                  <div class="dv-av-sub">Vendez en direct avec chat et paiement instantané</div>
+                </div>
+              </div>
+              <div class="dv-avantage-item">
+                <div class="dv-av-icon" style="background:var(--ember-d)"><i class="bi bi-hammer" style="color:var(--ember)"></i></div>
+                <div>
+                  <div class="dv-av-title">Système d'enchères</div>
+                  <div class="dv-av-sub">Enchères classiques, flash et Battle Auction</div>
+                </div>
+              </div>
+              <div class="dv-avantage-item">
+                <div class="dv-av-icon" style="background:var(--jade-d)"><i class="bi bi-graph-up-arrow" style="color:var(--jade)"></i></div>
+                <div>
+                  <div class="dv-av-title">Analytique complète</div>
+                  <div class="dv-av-sub">Ventes, trafic, conversions en temps réel</div>
+                </div>
+              </div>
+              <div class="dv-avantage-item">
+                <div class="dv-av-icon" style="background:rgba(124,111,255,.12)"><i class="bi bi-box-seam" style="color:var(--indigo)"></i></div>
+                <div>
+                  <div class="dv-av-title">YopiFulfillment (optionnel)</div>
+                  <div class="dv-av-sub">Stockage et livraison gérés par YopiShop</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Processus de validation -->
+        <div class="ycard">
+          <div style="padding:.9rem 1.1rem;border-bottom:1px solid var(--border)">
+            <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+              Comment ça se passe ?
+            </div>
+          </div>
+          <div style="padding:.5rem 1.1rem .75rem">
+            <div class="dv-process">
+              <div class="dv-process-item">
+                <div class="dv-process-num">1</div>
+                <div>
+                  <div class="dv-process-title">Soumission de la candidature</div>
+                  <div class="dv-process-sub">Remplissez le formulaire ci-contre</div>
+                </div>
+              </div>
+              <div class="dv-process-item">
+                <div class="dv-process-num">2</div>
+                <div>
+                  <div class="dv-process-title">Examen par notre équipe</div>
+                  <div class="dv-process-sub">Délai de 24 à 48h ouvrées</div>
+                </div>
+              </div>
+              <div class="dv-process-item">
+                <div class="dv-process-num">3</div>
+                <div>
+                  <div class="dv-process-title">Email de confirmation</div>
+                  <div class="dv-process-sub">Approbation ou retour motivé</div>
+                </div>
+              </div>
+              <div class="dv-process-item">
+                <div class="dv-process-num" style="background:var(--jade-d);color:var(--jade);border-color:rgba(0,200,150,.25)">✓</div>
+                <div>
+                  <div class="dv-process-title">Boutique active !</div>
+                  <div class="dv-process-sub">Publiez vos premiers produits</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Commission -->
+        <div style="background:var(--saffron-d);border:1px solid rgba(247,183,49,.25);border-radius:var(--r);padding:1rem 1.1rem">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+            <i class="bi bi-percent" style="color:var(--saffron)"></i>
+            <span style="font-size:.78rem;font-weight:700;color:var(--saffron)">Commission YopiShop</span>
+          </div>
+          <div style="font-size:.82rem;color:var(--text-2);line-height:1.55">
+            <strong style="color:var(--text)">10%</strong> sur chaque vente pour les vendeurs pro.<br>
+            <strong style="color:var(--text)">15%</strong> pour les vendeurs individuels.<br>
+            <span style="font-size:.72rem;color:var(--muted)">Aucun frais fixe mensuel — vous ne payez que quand vous vendez.</span>
+          </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="ycard">
+          <div style="padding:.9rem 1.1rem;border-bottom:1px solid var(--border)">
+            <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+              Questions fréquentes
+            </div>
+          </div>
+          <div style="padding:.25rem 1.1rem .5rem">
+
+            <details class="dv-faq-item">
+              <summary class="dv-faq-q">
+                Faut-il avoir une entreprise ?
+                <i class="bi bi-plus-circle"></i>
+              </summary>
+              <p class="dv-faq-a">Non. Les particuliers sont les bienvenus. Cochez simplement "J'ai une entreprise" si c'est le cas — cela n'est pas obligatoire.</p>
+            </details>
+
+            <details class="dv-faq-item">
+              <summary class="dv-faq-q">
+                Quel type de produits puis-je vendre ?
+                <i class="bi bi-plus-circle"></i>
+              </summary>
+              <p class="dv-faq-a">Presque tout : mode, électronique, artisanat, alimentation (emballée), services numériques... Les produits illicites et contrefaits sont strictement interdits.</p>
+            </details>
+
+            <details class="dv-faq-item">
+              <summary class="dv-faq-q">
+                Quand suis-je payé ?
+                <i class="bi bi-plus-circle"></i>
+              </summary>
+              <p class="dv-faq-a">Les paiements sont versés sur votre wallet YopiPay après confirmation de livraison. Vous pouvez retirer vers Orange Money, MTN MoMo ou votre compte bancaire.</p>
+            </details>
+
+            <details class="dv-faq-item">
+              <summary class="dv-faq-q">
+                Puis-je vendre sans boutique ?
+                <i class="bi bi-plus-circle"></i>
+              </summary>
+              <p class="dv-faq-a">Oui. En tant que vendeur individuel, une boutique minimale est créée automatiquement lors de votre première publication. Vous pouvez la personnaliser à tout moment.</p>
+            </details>
+
+          </div>
+        </div>
+
+        <!-- Contact support -->
+        <div style="text-align:center;font-size:.78rem;color:var(--muted)">
+          Des questions ? <a href="/contact/" style="color:var(--saffron);font-weight:600">Contactez notre équipe</a>
+          <br><span style="font-size:.7rem">Support disponible 7j/7 de 8h à 22h</span>
+        </div>
+
+      </aside>
+    </div>
+
+  </div>
+</div>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+
+/* ── Toggle champ entreprise ── */
+function toggleEntreprise(checked){
+  const f = document.getElementById('entreprise-field');
+  if(f){
+    f.style.display = checked ? 'block' : 'none';
+    const inp = f.querySelector('input');
+    if(inp && !checked) inp.value = '';
+  }
+}
+
+/* ── Compteurs de caractères ── */
+document.querySelectorAll('textarea[data-counter]').forEach(ta=>{
+  const counterId = 'count-' + ta.id.replace('id_','');
+  const counter   = document.getElementById(counterId);
+  const min       = parseInt(ta.dataset.min || 0);
+
+  function update(){
+    const len = ta.value.length;
+    if(!counter) return;
+    if(len >= min){
+      counter.textContent = len + ' ✓';
+      counter.className   = 'dv-char-count ok';
+    } else {
+      counter.textContent = len + ' / ' + min + ' min';
+      counter.className   = len > 0 ? 'dv-char-count warn' : 'dv-char-count';
+    }
+  }
+  ta.addEventListener('input', update);
+  update();
+});
+
+/* ── Spinner sur submit ── */
+const formV = document.getElementById('formVendeur');
+if(formV){
+  formV.addEventListener('submit', function(){
+    const btn = document.getElementById('btnSubmit');
+    const sp  = document.getElementById('dvSpinner');
+    const txt = document.getElementById('dvTxt');
+    const ico = document.getElementById('dvIcon');
+    if(btn) btn.disabled = true;
+    if(sp)  sp.style.display = 'block';
+    if(txt) txt.textContent  = 'Envoi en cours…';
+    if(ico) ico.style.display= 'none';
+  });
+}
+
+/* ── Highlight pills volume ── */
+document.querySelectorAll('.dv-vol-pill input').forEach(radio=>{
+  radio.addEventListener('change', function(){
+    document.querySelectorAll('.dv-vol-pill').forEach(p=>{
+      p.style.borderColor = '';
+      p.style.background  = '';
+    });
+    if(this.checked){
+      const pill = this.closest('.dv-vol-pill');
+      if(pill){
+        pill.style.borderColor = 'var(--saffron)';
+        pill.style.background  = 'var(--saffron-d)';
+      }
+    }
+  });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

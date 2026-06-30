@@ -1,0 +1,161 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Email envoyé — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.auth-page{padding:2.5rem 0 4rem;min-height:80vh;background:var(--bg);position:relative;overflow:hidden}
+.auth-glow{position:absolute;inset:0;pointer-events:none;z-index:0}
+.auth-glow span{position:absolute;border-radius:50%;filter:blur(110px);opacity:.18}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:2.5rem;position:relative;z-index:1;box-shadow:0 24px 60px rgba(0,0,0,.5);text-align:center}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--jade),var(--indigo));border-radius:var(--rl) var(--rl) 0 0}
+
+/* Icône animée */
+.success-ring{
+  width:88px;height:88px;border-radius:50%;
+  background:var(--jade-d);border:2px solid rgba(16,212,160,.25);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1.4rem;
+  animation:scaleIn .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes scaleIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.success-ring i{font-size:2.4rem;color:var(--jade)}
+
+/* Steps */
+.steps{display:flex;flex-direction:column;gap:.6rem;text-align:left;margin:1.4rem 0}
+.step-row{
+  display:flex;align-items:flex-start;gap:.85rem;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:.75rem 1rem;
+}
+.step-num{
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  background:var(--indigo-d);border:1.5px solid rgba(99,102,241,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:700;color:var(--indigo);
+  margin-top:.05rem;
+}
+.step-title{font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:.1rem}
+.step-sub{font-size:.76rem;color:var(--muted)}
+
+/* Countdown */
+.resend-cd{
+  font-family:var(--fm);font-size:1.1rem;font-weight:700;
+  color:var(--saffron);display:inline-block;
+}
+</style>
+
+<div class="auth-page">
+  <div class="auth-glow">
+    <span style="width:450px;height:450px;background:var(--jade);top:-10%;right:-8%"></span>
+    <span style="width:380px;height:380px;background:var(--indigo);bottom:5%;left:-10%"></span>
+  </div>
+
+  <div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height:calc(100vh - 120px)">
+      <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+
+        <div class="auth-card fi">
+
+          <!-- Icône succès -->
+          <div class="success-ring">
+            <i class="bi bi-envelope-check-fill"></i>
+          </div>
+
+          <h1 style="font-family:var(--fg);font-size:1.45rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+            Email envoyé !
+          </h1>
+          <p style="font-size:.86rem;color:var(--muted);line-height:1.65;margin-bottom:1.5rem">
+            Un lien de réinitialisation a été envoyé à votre adresse e-mail. Vérifiez votre boîte de réception.
+          </p>
+
+          <!-- Étapes -->
+          <div class="steps">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div>
+                <div class="step-title">Ouvrez votre boîte mail</div>
+                <div class="step-sub">Cherchez un e-mail de <strong style="color:var(--saffron)">noreply@yopishop.com</strong></div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div>
+                <div class="step-title">Cliquez sur le lien</div>
+                <div class="step-sub">Le lien est valable pendant <strong style="color:var(--text)">24 heures</strong></div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div>
+                <div class="step-title">Créez votre nouveau mot de passe</div>
+                <div class="step-sub">Choisissez un mot de passe fort d'au moins 8 caractères</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pas reçu ? -->
+          <div style="background:var(--saffron-d);border:1px solid rgba(247,183,49,.2);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:1.5rem;display:flex;align-items:flex-start;gap:.75rem;text-align:left">
+            <i class="bi bi-exclamation-triangle" style="color:var(--saffron);flex-shrink:0;margin-top:.1rem"></i>
+            <div style="font-size:.79rem;color:var(--text-2);line-height:1.55">
+              Vous n'avez pas reçu l'e-mail ? Vérifiez vos <strong style="color:var(--text)">spams</strong> ou attendez quelques minutes.
+              Vous pouvez renvoyer dans <span class="resend-cd" id="cdResend">60</span>s.
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex flex-column gap-2">
+            <a href="/compte/mot-de-passe-oublie/" class="btn-ghost" style="justify-content:center" id="btnResend">
+              <i class="bi bi-arrow-clockwise"></i> Renvoyer l'e-mail
+            </a>
+            <a href="/compte/connexion/" class="btn-gold" style="justify-content:center">
+              <i class="bi bi-box-arrow-in-right"></i> Retour à la connexion
+            </a>
+          </div>
+
+          <!-- Aide -->
+          <p style="font-size:.76rem;color:var(--muted);margin-top:1.25rem;padding-top:1.1rem;border-top:1px solid var(--border)">
+            Toujours bloqué ? <a href="/contact/" style="color:var(--saffron)">Contacter le support</a>
+          </p>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* Countdown renvoyer */
+let secs = 60;
+const cdEl  = document.getElementById('cdResend');
+const btnRe = document.getElementById('btnResend');
+if(btnRe){
+  btnRe.style.opacity       = '.45';
+  btnRe.style.pointerEvents = 'none';
+}
+const timer = setInterval(() => {
+  secs--;
+  if(cdEl) cdEl.textContent = secs;
+  if(secs <= 0){
+    clearInterval(timer);
+    if(cdEl) cdEl.textContent = '';
+    if(btnRe){
+      btnRe.style.opacity       = '1';
+      btnRe.style.pointerEvents = 'auto';
+    }
+  }
+}, 1000);
+
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

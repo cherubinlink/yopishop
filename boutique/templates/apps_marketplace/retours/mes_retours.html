@@ -1,0 +1,192 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes retours — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1 flex-wrap">
+      <a href="{% url 'apps_marketplace:mes_commandes' %}" class="cpill">
+        <i class="bi bi-arrow-left me-1"></i>Mes commandes
+      </a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-arrow-return-left me-1" style="color:var(--saffron)"></i>Mes retours
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ FILTRES STATUT ═══════ -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_marketplace:mes_retours' %}"
+         class="cpill {% if not statut %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Tous
+      </a>
+      {% for val, label in statuts %}
+      <a href="?statut={{ val }}"
+         class="cpill {% if statut == val %}on{% endif %}"
+         style="{% if statut == val %}{% if val == 'complete' %}color:var(--jade){% elif val == 'refuse' %}color:var(--ember){% elif val == 'demande' %}color:var(--saffron){% endif %}{% endif %}">
+        {% if val == 'demande' %}<i class="bi bi-hourglass-split"></i>
+        {% elif val == 'approuve' %}<i class="bi bi-check-circle"></i>
+        {% elif val == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
+        {% elif val == 'complete' %}<i class="bi bi-check2-all"></i>
+        {% elif val == 'refuse' %}<i class="bi bi-x-circle"></i>
+        {% endif %}{{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ LISTE RETOURS ═══════ -->
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">📦 Historique</div>
+        <h2 class="sec-title">Mes <span class="ac">retours</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ retours.paginator.count }} retour{{ retours.paginator.count|pluralize }}</span>
+    </div>
+
+    {% if retours %}
+    <div class="d-flex flex-column gap-3">
+      {% for retour in retours %}
+      <a href="{% url 'apps_marketplace:retour_detail' retour.pk %}"
+         class="ycard fi d-block text-decoration-none"
+         style="transition-delay:{{ forloop.counter0 }}0ms;border:1px solid var(--border);transition:border-color .2s"
+         onmouseover="this.style.borderColor='var(--saffron)'"
+         onmouseout="this.style.borderColor='var(--border)'">
+        <div class="row align-items-center gy-3">
+
+          <!-- Image + Produit -->
+          <div class="col-12 col-md-5">
+            <div class="d-flex align-items-center gap-3">
+              <div style="width:56px;height:56px;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--border);flex-shrink:0">
+                {% if retour.article_commande.produit.image_principale %}
+                <img src="{{ retour.article_commande.produit.image_principale }}"
+                     alt="{{ retour.article_commande.produit.titre }}"
+                     style="width:100%;height:100%;object-fit:cover">
+                {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                  <i class="bi bi-image" style="color:var(--muted)"></i>
+                </div>
+                {% endif %}
+              </div>
+              <div style="min-width:0">
+                <div style="font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">
+                  {{ retour.article_commande.produit.titre }}
+                </div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">
+                  <i class="bi bi-receipt me-1"></i>{{ retour.commande.numero_commande }}
+                </div>
+                <div style="font-size:.7rem;color:var(--muted)">
+                  <i class="bi bi-calendar3 me-1"></i>{{ retour.date_demande|date:"d M Y" }}
+                  &nbsp;·&nbsp; Qté {{ retour.quantite }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raison -->
+          <div class="col-6 col-md-3">
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Raison</div>
+            <span class="chip" style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);font-size:.72rem">
+              {{ retour.get_raison_display }}
+            </span>
+          </div>
+
+          <!-- Statut -->
+          <div class="col-6 col-md-2">
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Statut</div>
+            {% if retour.statut == 'demande' %}
+            <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.7rem;padding:.15rem .55rem">
+              <i class="bi bi-hourglass-split me-1"></i>En attente
+            </span>
+            {% elif retour.statut == 'approuve' %}
+            <span class="chip" style="background:rgba(16,185,129,.12);color:var(--jade);font-size:.7rem;padding:.15rem .55rem">
+              <i class="bi bi-check-circle me-1"></i>Approuvé
+            </span>
+            {% elif retour.statut == 'en_cours' %}
+            <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.7rem;padding:.15rem .55rem">
+              <i class="bi bi-arrow-repeat me-1"></i>En cours
+            </span>
+            {% elif retour.statut == 'complete' %}
+            <span class="chip chip-jade" style="font-size:.7rem;padding:.15rem .55rem">
+              <i class="bi bi-check2-all me-1"></i>Complété
+            </span>
+            {% elif retour.statut == 'refuse' %}
+            <span class="chip chip-ember" style="font-size:.7rem;padding:.15rem .55rem">
+              <i class="bi bi-x-circle me-1"></i>Refusé
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Remboursement + Flèche -->
+          <div class="col-12 col-md-2 d-flex align-items-center justify-content-between justify-content-md-end gap-3">
+            {% if retour.montant_remboursement %}
+            <div style="text-align:right">
+              <div style="font-size:.68rem;color:var(--muted)">Remb.</div>
+              <div style="font-size:.88rem;font-weight:800;color:var(--jade)">{{ retour.montant_remboursement|floatformat:0 }} F</div>
+            </div>
+            {% endif %}
+            <i class="bi bi-chevron-right" style="color:var(--muted)"></i>
+          </div>
+
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    {% if retours.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if retours.has_previous %}
+        <li><a class="cpill" href="?page={{ retours.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for num in retours.paginator.page_range %}
+          {% if retours.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= retours.number and num|add:"2" >= retours.number %}
+          <li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if retours.has_next %}
+        <li><a class="cpill" href="?page={{ retours.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-arrow-return-left" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+        {% if statut %}Aucun retour avec ce statut{% else %}Aucune demande de retour{% endif %}
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+        Vos demandes de retour apparaîtront ici.
+      </div>
+      <a href="{% url 'apps_marketplace:mes_commandes' %}" class="btn-gold">
+        <i class="bi bi-box me-1"></i>Mes commandes
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

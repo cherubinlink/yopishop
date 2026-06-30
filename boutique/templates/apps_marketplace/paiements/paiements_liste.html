@@ -1,0 +1,605 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% load yopi_filters %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Gestion des paiements</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Gestion des paiements
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        <i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Vue admin
+      </p>
+    </div>
+    <a href="{% url 'apps_marketplace:admin_numeros_versement' %}" class="btn-ghost" style="font-size:.82rem">
+      <i class="bi bi-phone"></i> Numéros de versement
+    </a>
+  </div>
+
+  <!-- ── KPIs ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.5rem;font-weight:900;font-family:var(--fm);color:var(--saffron)">{{ stats.en_verification }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En vérification</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.5rem;font-weight:900;font-family:var(--fm);color:var(--ember)">{{ stats.suspects }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Suspects</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.5rem;font-weight:900;font-family:var(--fm);color:var(--jade)">{{ stats.completes_jour }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Validés aujourd'hui</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.3rem;font-weight:900;font-family:var(--fm);color:var(--indigo)">{{ stats.ca_valide|floatformat:0 }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">CA validé (FCFA)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtres ── -->
+  <div class="ycard p-3 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-5">
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.8rem"></i>
+          <input type="text" name="q" value="{{ q }}" placeholder="N° commande, username, référence, numéro…"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding-left:2.2rem">
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <select name="statut" class="form-select"
+          style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+          <option value="">— Tous les statuts —</option>
+          {% for val, label in statuts %}
+          <option value="{{ val }}" {% if statut == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <div class="d-flex align-items-center gap-2 px-1">
+          <input type="checkbox" name="suspect" value="1" id="chk-suspect" {% if est_suspect == '1' %}checked{% endif %} style="accent-color:var(--ember)">
+          <label for="chk-suspect" style="font-size:.8rem;color:var(--text-2);cursor:pointer;white-space:nowrap">
+            <i class="bi bi-exclamation-triangle me-1" style="color:var(--ember)"></i>Suspects
+          </label>
+        </div>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.82rem">
+          <i class="bi bi-funnel"></i> Filtrer
+        </button>
+        {% if statut or q or est_suspect %}
+        <a href="{% url 'apps_marketplace:admin_paiements_liste' %}" class="btn-ghost" style="font-size:.82rem;width:auto">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Filtres statut rapides ── -->
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    <a href="?{% if q %}q={{ q }}&{% endif %}"
+      class="cpill {% if not statut %}on{% endif %}"
+      style="{% if not statut %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      Tous
+    </a>
+    {% for val, label in statuts %}
+    <a href="?statut={{ val }}{% if q %}&q={{ q }}{% endif %}"
+      class="cpill {% if statut == val %}on{% endif %}"
+      style="{% if statut == val %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- ═══════ COMMANDES BNPL SANS PLAN ═══════ -->
+{% if commandes_bnpl_sans_plan %}
+<div class="ycard mb-4" style="border:2px solid var(--indigo);background:var(--indigo-d)">
+  <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid rgba(99,102,241,.2)">
+    <i class="bi bi-calendar-range" style="color:var(--indigo);font-size:1.1rem"></i>
+    <span style="font-size:.9rem;font-weight:700;color:var(--text)">
+      Paiements fractionnés sans plan
+    </span>
+    <span class="chip ms-auto" style="background:rgba(99,102,241,.2);color:var(--indigo);font-size:.7rem">
+      {{ stats.bnpl_sans_plan }} en attente
+    </span>
+  </div>
+
+  <div class="d-flex flex-column gap-2">
+    {% for cmd in commandes_bnpl_sans_plan %}
+    <div class="d-flex align-items-center gap-3 p-3"
+         style="background:var(--surface);border-radius:10px;border:1px solid rgba(99,102,241,.2)"
+         id="bnpl-cmd-{{ cmd.pk }}">
+
+      <!-- Infos client + commande -->
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.85rem;font-weight:700;color:var(--text)">
+          {{ cmd.utilisateur.get_full_name|default:cmd.utilisateur.username }}
+        </div>
+        <div style="font-size:.72rem;color:var(--muted)">
+          <i class="bi bi-receipt me-1"></i>{{ cmd.numero_commande }}
+          &nbsp;·&nbsp;
+          <i class="bi bi-calendar3 me-1"></i>{{ cmd.date_creation|date:"d M Y" }}
+        </div>
+      </div>
+
+      <!-- Montant -->
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-family:var(--fm);font-size:1rem;font-weight:800;color:var(--indigo)">
+          {{ cmd.montant_total|floatformat:0 }} FCFA
+        </div>
+        <div style="font-size:.68rem;color:var(--muted)">Total commande</div>
+      </div>
+
+      <!-- Bouton créer plan -->
+      <button class="btn-creer-plan"
+              data-pk="{{ cmd.pk }}"
+              data-url="{% url 'apps_marketplace:admin_creer_plan_paiement' cmd.pk %}"
+              style="background:var(--indigo);color:#fff;border:none;border-radius:8px;
+                     padding:.5rem .9rem;font-size:.78rem;font-weight:700;cursor:pointer;
+                     white-space:nowrap;transition:opacity .2s;flex-shrink:0">
+        <i class="bi bi-plus-lg me-1"></i>Créer le plan
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════ MODAL CRÉER PLAN ═══════ -->
+<div id="modalPlan" style="display:none;position:fixed;inset:0;z-index:2000;
+                           background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+                           align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+              padding:1.5rem;max-width:420px;width:90%;margin:auto">
+    <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:1.2rem">
+      <i class="bi bi-calendar-range me-2" style="color:var(--indigo)"></i>Créer le plan de paiement
+    </div>
+
+    <!-- Nombre de tranches -->
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+        Nombre de mensualités <span style="color:var(--ember)">*</span>
+      </label>
+      <div class="d-flex gap-2 flex-wrap" id="tranchesButtons">
+        {% for nb in "2,3,4,6,12"|split:"," %}
+        <button type="button" class="btn-nb-tranches cpill"
+                data-nb="{{ nb }}"
+                style="font-size:.8rem;padding:.4rem .9rem">
+          {{ nb }}×
+        </button>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="modalNbTranches" value="3">
+    </div>
+
+    <!-- Taux intérêt -->
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+        Taux d'intérêt (%) — laisser 0 pour sans intérêt
+      </label>
+      <input type="number" id="modalTauxInteret" value="0" min="0" max="50" step="0.5"
+             style="width:100%;background:var(--surface);border:1px solid var(--border);
+                    border-radius:8px;color:var(--text);padding:.55rem .9rem;font-size:.85rem;outline:none">
+    </div>
+
+    <!-- Aperçu montant par tranche -->
+    <div id="apercuPlan" style="background:var(--indigo-d);border-radius:8px;padding:.75rem;
+                                margin-bottom:1rem;font-size:.82rem;color:var(--text-2);display:none">
+      <i class="bi bi-info-circle me-1" style="color:var(--indigo)"></i>
+      <span id="apercuTexte"></span>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+      <button onclick="fermerModalPlan()" class="btn-ghost" style="font-size:.82rem;width:auto">
+        Annuler
+      </button>
+      <button id="btnConfirmerPlan" onclick="confirmerPlan()"
+              class="btn-gold" style="font-size:.82rem;width:auto;min-width:130px">
+        <i class="bi bi-check-lg me-1"></i>Créer le plan
+      </button>
+    </div>
+  </div>
+</div>
+
+  <!-- ── Liste paiements ── -->
+  {% if paiements %}
+  <div style="display:grid;gap:.75rem">
+    {% for p in paiements %}
+    <div class="ycard p-3" style="background:var(--card);border:1px solid {% if p.est_suspect %}rgba(239,68,68,.35){% else %}var(--border){% endif %};border-radius:var(--r)" id="paie-{{ p.pk }}">
+      <div class="row align-items-center g-3">
+
+        <!-- Info commande + client -->
+        <div class="col-12 col-md-4">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+              {% if p.commande.utilisateur.avatar %}
+                <img src="{{ p.commande.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+              {% else %}
+                {{ p.commande.utilisateur.username|first|upper }}
+              {% endif %}
+            </div>
+            <div class="min-width-0">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ p.commande.utilisateur.get_full_name|default:p.commande.utilisateur.username|truncatechars:20 }}</div>
+              <a href="{% url 'apps_marketplace:commande_detail' p.commande.pk %}"
+                style="font-size:.72rem;color:var(--saffron);text-decoration:none;font-family:var(--fm)">
+                {{ p.commande.numero_commande }}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Méthode + montant -->
+        <div class="col-6 col-md-3">
+          <div style="font-size:.88rem;font-weight:800;color:var(--saffron);font-family:var(--fm)">{{ p.montant|floatformat:0 }} FCFA</div>
+          <div style="font-size:.74rem;color:var(--text-2)">
+            <i class="bi bi-phone me-1"></i>{{ p.get_methode_display }}
+          </div>
+          {% if p.numero_expediteur %}
+          <div style="font-size:.72rem;color:var(--muted)">{{ p.numero_expediteur }}</div>
+          {% endif %}
+          {% if p.reference_paiement %}
+          <div style="font-size:.7rem;color:var(--muted)">Réf: {{ p.reference_paiement|truncatechars:20 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Date + statut -->
+        <div class="col-6 col-md-2">
+          <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;display:inline-block;margin-bottom:.3rem;
+            background:{% if p.statut == 'complete' %}rgba(16,185,129,.15){% elif p.statut == 'rejete' or p.statut == 'echec' %}rgba(239,68,68,.15){% elif p.statut == 'en_verification' %}rgba(246,169,43,.15){% else %}rgba(99,102,241,.15){% endif %};
+            color:{% if p.statut == 'complete' %}var(--jade){% elif p.statut == 'rejete' or p.statut == 'echec' %}var(--ember){% elif p.statut == 'en_verification' %}var(--saffron){% else %}var(--indigo){% endif %}">
+            {{ p.get_statut_display }}
+          </span>
+          {% if p.est_suspect %}
+          <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(239,68,68,.15);color:var(--ember);display:inline-block">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>Suspect
+          </span>
+          {% endif %}
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">
+            {{ p.date_creation|date:"d M Y H:i" }}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-12 col-md-3 d-flex gap-2 justify-content-md-end flex-wrap">
+
+          <!-- Preuve -->
+          {% if p.preuve_paiement %}
+          <a href="{{ p.preuve_paiement.url }}" target="_blank" class="btn-ghost"
+            style="font-size:.74rem;padding:.3rem .65rem;width:auto" title="Voir la preuve">
+            <i class="bi bi-file-image"></i>
+          </a>
+          {% endif %}
+
+          <!-- Marquer suspect -->
+          <button class="btn-ghost btn-suspect" data-pk="{{ p.pk }}"
+            style="font-size:.74rem;padding:.3rem .65rem;width:auto;{% if p.est_suspect %}color:var(--ember);border-color:rgba(239,68,68,.3){% endif %}"
+            title="{% if p.est_suspect %}Retirer le flag suspect{% else %}Marquer comme suspect{% endif %}">
+            <i class="bi bi-{% if p.est_suspect %}flag-fill{% else %}flag{% endif %}"></i>
+          </button>
+
+          {% if p.statut == 'en_verification' or p.statut == 'en_attente' %}
+          <!-- Valider -->
+          <button class="btn-ghost btn-valider-paie" data-pk="{{ p.pk }}"
+            style="font-size:.74rem;padding:.3rem .75rem;width:auto;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--jade)">
+            <i class="bi bi-check-lg"></i> Valider
+          </button>
+          <!-- Rejeter -->
+          <button class="btn-ghost btn-rejeter-paie" data-pk="{{ p.pk }}"
+            style="font-size:.74rem;padding:.3rem .75rem;width:auto;color:var(--ember);border-color:rgba(239,68,68,.3)">
+            <i class="bi bi-x-lg"></i> Rejeter
+          </button>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <!-- Message client -->
+      {% if p.message_client %}
+      <div style="margin-top:.75rem;padding:.5rem .75rem;background:var(--surface);border-radius:8px;font-size:.76rem;color:var(--text-2);border-left:3px solid var(--border)">
+        <i class="bi bi-chat-left-text me-1" style="color:var(--muted)"></i>{{ p.message_client }}
+      </div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if paiements.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+    {% if paiements.has_previous %}<a href="?statut={{ statut }}&q={{ q }}&page={{ paiements.previous_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-left"></i></a>{% endif %}
+    {% for pg in paiements.paginator.page_range %}
+      {% if pg == paiements.number %}<span class="btn-gold" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center">{{ pg }}</span>
+      {% elif pg >= paiements.number|add:"-2" and pg <= paiements.number|add:"2" %}<a href="?statut={{ statut }}&q={{ q }}&page={{ pg }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center;width:auto">{{ pg }}</a>{% endif %}
+    {% endfor %}
+    {% if paiements.has_next %}<a href="?statut={{ statut }}&q={{ q }}&page={{ paiements.next_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-right"></i></a>{% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-credit-card" style="font-size:1.8rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun paiement trouvé</div>
+    <div style="font-size:.82rem;color:var(--muted)">Modifiez vos filtres pour voir d'autres résultats.</div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ── Modal action paiement ── -->
+<div id="modal-paie" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;max-width:420px;width:90%;margin:auto">
+    <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:1rem" id="modal-paie-titre">Action</div>
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem" id="modal-paie-label">Commentaire</label>
+      <textarea id="modal-paie-texte" rows="3"
+        style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding:.6rem .8rem;resize:vertical"
+        placeholder="Commentaire ou motif…"></textarea>
+    </div>
+    <div class="d-flex gap-2 justify-content-end">
+      <button class="btn-ghost" onclick="fermerModalPaie()" style="font-size:.82rem;width:auto">Annuler</button>
+      <button id="modal-paie-confirm" class="btn-gold" style="font-size:.82rem;width:auto">Confirmer</button>
+    </div>
+  </div>
+</div>
+<script>
+const URL_VALIDER = "{% url 'apps_marketplace:admin_valider_paiement' 0 %}";
+const URL_REJETER = "{% url 'apps_marketplace:admin_rejeter_paiement' 0 %}";
+const URL_SUSPECT = "{% url 'apps_marketplace:admin_marquer_paiement_suspect' 0 %}";
+</script>
+<script>
+"use strict";
+const csrf = () => document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+let currentPk = null, currentAction = null;
+
+function fermerModalPaie() { document.getElementById('modal-paie').style.display = 'none'; }
+
+function ouvrirModalPaie(pk, action) {
+  currentPk = pk; currentAction = action;
+  const m = document.getElementById('modal-paie');
+  document.getElementById('modal-paie-titre').textContent = action === 'valider' ? '✓ Valider ce paiement' : '✗ Rejeter ce paiement';
+  document.getElementById('modal-paie-label').textContent = action === 'valider' ? 'Commentaire (optionnel)' : 'Motif de rejet (requis)';
+  document.getElementById('modal-paie-confirm').style.background = action === 'valider' ? 'linear-gradient(90deg,var(--jade),#059669)' : 'linear-gradient(90deg,var(--ember),#dc2626)';
+  document.getElementById('modal-paie-texte').value = '';
+  m.style.display = 'flex';
+}
+
+document.getElementById('modal-paie').addEventListener('click', function(e) {
+  if (e.target === this) fermerModalPaie();
+});
+
+document.getElementById('modal-paie-confirm').addEventListener('click', async function () {
+  const texte = document.getElementById('modal-paie-texte').value.trim();
+  if (currentAction === 'rejeter' && !texte) { alert('Un motif est requis.'); return; }
+
+  const fd = new FormData();
+  if (currentAction === 'valider') fd.append('commentaire', texte);
+  else fd.append('motif', texte);
+
+  // ✅ URLs corrigées avec le préfixe /admin/
+  const url = currentAction === 'valider'
+    ? URL_VALIDER.replace('/0/', `/${currentPk}/`)
+    : URL_REJETER.replace('/0/', `/${currentPk}/`);
+
+  this.disabled = true;
+  this.textContent = 'Traitement…';
+
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd
+    });
+
+    if (!r.ok) {
+      console.error(`HTTP ${r.status} sur ${url}`);
+      alert(`Erreur ${r.status} : impossible de traiter ce paiement.`);
+      this.disabled = false;
+      this.textContent = 'Confirmer';
+      return;
+    }
+
+    const d = await r.json();
+    fermerModalPaie();
+    if (d.success) {
+      location.reload();
+    } else {
+      alert(d.message || 'Erreur');
+      this.disabled = false;
+      this.textContent = 'Confirmer';
+    }
+  } catch (err) {
+    console.error('Erreur réseau:', err);
+    alert('Erreur réseau, veuillez réessayer.');
+    this.disabled = false;
+    this.textContent = 'Confirmer';
+  }
+});
+
+// Boutons valider/rejeter
+document.querySelectorAll('.btn-valider-paie').forEach(btn => {
+  btn.addEventListener('click', () => ouvrirModalPaie(btn.dataset.pk, 'valider'));
+});
+document.querySelectorAll('.btn-rejeter-paie').forEach(btn => {
+  btn.addEventListener('click', () => ouvrirModalPaie(btn.dataset.pk, 'rejeter'));
+});
+
+// Marquer suspect AJAX
+document.querySelectorAll('.btn-suspect').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    // ✅ URL corrigée avec le préfixe /admin/
+   const url = URL_SUSPECT.replace('/0/', `/${this.dataset.pk}/`);
+
+    const r = await fetch(url, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": csrf(),
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    });
+
+    if (!r.ok) {
+      console.error(`HTTP ${r.status}`);
+      alert('Erreur lors du marquage suspect.');
+      return;
+    }
+
+    const d = await r.json();
+    if (d.success) location.reload();
+  });
+});
+
+/* ═══════ BNPL — Créer plan modal ═══════ */
+// ✅ Retiré la redéclaration de csrf ici
+let planUrl = null;
+let planMontant = 0;
+
+document.querySelectorAll('.btn-creer-plan').forEach(btn => {
+  btn.addEventListener('click', function () {
+    planUrl     = this.dataset.url;
+    planMontant = parseFloat(
+      this.closest('[id^="bnpl-cmd-"]')
+          .querySelector('[style*="font-family:var(--fm)"]').textContent
+          .replace(/\s+/g,'').replace('FCFA','').replace(/\./g,'')
+    );
+    ouvrirModalPlan();
+  });
+});
+
+function ouvrirModalPlan() {
+  document.getElementById('modalPlan').style.display = 'flex';
+  selectionnerNbTranches(3);
+}
+
+function fermerModalPlan() {
+  document.getElementById('modalPlan').style.display = 'none';
+  planUrl = null;
+}
+
+document.getElementById('modalPlan').addEventListener('click', function(e) {
+  if (e.target === this) fermerModalPlan();
+});
+
+document.querySelectorAll('.btn-nb-tranches').forEach(btn => {
+  btn.addEventListener('click', () => selectionnerNbTranches(parseInt(btn.dataset.nb)));
+});
+
+function selectionnerNbTranches(nb) {
+  document.getElementById('modalNbTranches').value = nb;
+  document.querySelectorAll('.btn-nb-tranches').forEach(b => {
+    const sel = parseInt(b.dataset.nb) === nb;
+    b.style.background  = sel ? 'var(--indigo)'   : 'var(--surface)';
+    b.style.color       = sel ? '#fff'             : 'var(--muted)';
+    b.style.borderColor = sel ? 'var(--indigo)'    : 'var(--border)';
+  });
+  mettreAJourApercu();
+}
+
+document.getElementById('modalTauxInteret').addEventListener('input', mettreAJourApercu);
+
+function mettreAJourApercu() {
+  const nb    = parseInt(document.getElementById('modalNbTranches').value);
+  const taux  = parseFloat(document.getElementById('modalTauxInteret').value) || 0;
+  if (!planMontant || !nb) return;
+
+  const total   = planMontant * (1 + taux / 100);
+  const tranche = Math.ceil(total / nb);
+  const apercu  = document.getElementById('apercuPlan');
+  const texte   = document.getElementById('apercuTexte');
+
+  texte.textContent = `${nb} mensualités de ${tranche.toLocaleString('fr')} FCFA`
+    + (taux > 0 ? ` (total : ${Math.round(total).toLocaleString('fr')} FCFA avec ${taux}% d'intérêt)` : ' sans intérêt');
+  apercu.style.display = 'block';
+}
+
+async function confirmerPlan() {
+  if (!planUrl) return;
+  const nb   = document.getElementById('modalNbTranches').value;
+  const taux = document.getElementById('modalTauxInteret').value;
+
+  const btn = document.getElementById('btnConfirmerPlan');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px"></span> Création…';
+
+  const fd = new FormData();
+  fd.append('nombre_tranches', nb);
+  fd.append('taux_interet', taux);
+
+  try {
+    const r = await fetch(planUrl, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    });
+
+    if (!r.ok) {
+      console.error(`HTTP ${r.status} sur ${planUrl}`);
+      afficherToast(`Erreur ${r.status}`, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Créer le plan';
+      return;
+    }
+
+    const d = await r.json();
+
+    if (d.success) {
+      fermerModalPlan();
+      const urlParts = planUrl.split('/');
+      const pk = urlParts[urlParts.findIndex(p => p === 'creer-plan') - 1];
+      document.getElementById(`bnpl-cmd-${pk}`)?.remove();
+      afficherToast(d.message, 'success');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      afficherToast(d.message || 'Erreur', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Créer le plan';
+    }
+  } catch(e) {
+    console.error('Erreur réseau:', e);
+    afficherToast('Erreur réseau', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Créer le plan';
+  }
+}
+
+function afficherToast(msg, type = 'info') {
+  const colors = { success: 'var(--jade)', error: 'var(--ember)', info: 'var(--indigo)' };
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;
+    background:var(--card);border:1px solid ${colors[type]};
+    border-left:4px solid ${colors[type]};border-radius:var(--r);
+    padding:.75rem 1.1rem;font-size:.82rem;color:var(--text);
+    box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:300px;
+    opacity:1;transition:opacity .3s`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+</script>
+{% endblock %}

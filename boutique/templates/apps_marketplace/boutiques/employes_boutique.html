@@ -1,0 +1,226 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'apps_marketplace:dashboard_vendeur' %}" style="color:var(--saffron);text-decoration:none">Tableau de bord</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Mon équipe</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Mon équipe
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        <i class="bi bi-shop me-1" style="color:var(--saffron)"></i>{{ boutique.nom }}
+        &bull; {{ employes|length }} employé{{ employes|length|pluralize }}
+      </p>
+    </div>
+    <a href="{% url 'apps_marketplace:dashboard_vendeur' %}" class="btn-ghost" style="font-size:.82rem">
+      <i class="bi bi-arrow-left"></i> Tableau de bord
+    </a>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ══ Colonne gauche : formulaire ajout ══ -->
+    <div class="col-12 col-lg-4">
+      <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-person-plus-fill" style="color:var(--saffron)"></i>
+          </div>
+          <div>
+            <div style="font-size:.92rem;font-weight:700;color:var(--text)">Ajouter un employé</div>
+            <div style="font-size:.72rem;color:var(--muted)">Par adresse email</div>
+          </div>
+        </div>
+
+        {% if messages %}
+          {% for msg in messages %}
+          <div class="alert alert-{{ msg.tags|default:'info' }} py-2 px-3 mb-3" style="font-size:.8rem;border-radius:var(--r);background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};color:var(--text)">
+            {{ msg }}
+          </div>
+          {% endfor %}
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- Email employé -->
+          <div class="mb-3">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+              Email de l'employé <span style="color:var(--ember)">*</span>
+            </label>
+            {{ form.email_employe }}
+            {% if form.email_employe.errors %}
+              <div style="font-size:.72rem;color:var(--ember);margin-top:.3rem">{{ form.email_employe.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Rôle -->
+          <div class="mb-3">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+              Rôle <span style="color:var(--ember)">*</span>
+            </label>
+            {{ form.role }}
+            {% if form.role.errors %}
+              <div style="font-size:.72rem;color:var(--ember);margin-top:.3rem">{{ form.role.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Actif -->
+          <div class="d-flex align-items-center gap-2 mb-4">
+            {{ form.est_actif }}
+            <label style="font-size:.82rem;color:var(--text-2);cursor:pointer">Actif dès maintenant</label>
+          </div>
+
+          <button type="submit" class="btn-gold w-100 justify-content-center">
+            <i class="bi bi-plus-lg"></i> Ajouter à l'équipe
+          </button>
+        </form>
+      </div>
+
+      <!-- Info roles -->
+      <div class="ycard p-3 mt-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+          <i class="bi bi-info-circle me-1" style="color:var(--indigo)"></i>Rôles disponibles
+        </div>
+        <div class="d-grid gap-2">
+          <div style="font-size:.75rem;color:var(--text-2);padding:.5rem .75rem;background:var(--surface);border-radius:8px">
+            <span style="font-weight:600;color:var(--saffron)">Gestionnaire</span><br>
+            Gère les produits, commandes et stocks
+          </div>
+          <div style="font-size:.75rem;color:var(--text-2);padding:.5rem .75rem;background:var(--surface);border-radius:8px">
+            <span style="font-weight:600;color:var(--jade)">Livreur</span><br>
+            Accès aux commandes à livrer uniquement
+          </div>
+          <div style="font-size:.75rem;color:var(--text-2);padding:.5rem .75rem;background:var(--surface);border-radius:8px">
+            <span style="font-weight:600;color:var(--indigo)">Support</span><br>
+            Gère les messages et réclamations clients
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Colonne droite : liste employés ══ -->
+    <div class="col-12 col-lg-8">
+
+      {% if employes %}
+      <div style="display:grid;gap:.75rem">
+        {% for emp in employes %}
+        <div class="ycard p-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);transition:border-color .2s" id="emp-{{ emp.pk }}">
+          <div class="d-flex align-items-center gap-3">
+
+            <!-- Avatar -->
+            <div style="width:46px;height:46px;border-radius:50%;background:var(--indigo-d);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;font-weight:700;color:var(--indigo)">
+              {% if emp.utilisateur.avatar %}
+                <img src="{{ emp.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+              {% else %}
+                {{ emp.utilisateur.username|first|upper }}
+              {% endif %}
+            </div>
+
+            <!-- Infos -->
+            <div class="flex-grow-1 min-width-0">
+              <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+                {{ emp.utilisateur.get_full_name|default:emp.utilisateur.username }}
+              </div>
+              <div style="font-size:.74rem;color:var(--muted)">{{ emp.utilisateur.email }}</div>
+              <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                <span class="chip" style="font-size:.68rem;padding:.18rem .6rem;background:var(--indigo-d);color:var(--indigo)">
+                  {{ emp.get_role_display }}
+                </span>
+                <span class="chip" style="font-size:.68rem;padding:.18rem .6rem;background:{% if emp.est_actif %}var(--jade-d,rgba(16,185,129,.15)){% else %}var(--surface){% endif %};color:{% if emp.est_actif %}var(--jade){% else %}var(--muted){% endif %}">
+                  {% if emp.est_actif %}<i class="bi bi-check-circle-fill me-1"></i>Actif{% else %}<i class="bi bi-pause-circle me-1"></i>Inactif{% endif %}
+                </span>
+                <span style="font-size:.7rem;color:var(--muted)">
+                  <i class="bi bi-calendar3 me-1"></i>Depuis {{ emp.date_embauche|date:"d M Y" }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+              <!-- Toggle actif/inactif -->
+              <button
+                class="btn-ghost btn-toggle-employe"
+                data-pk="{{ emp.pk }}"
+                title="{% if emp.est_actif %}Désactiver{% else %}Activer{% endif %}"
+                style="font-size:.75rem;padding:.35rem .7rem;width:auto">
+                <i class="bi {% if emp.est_actif %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i>
+              </button>
+              <!-- Supprimer -->
+              <form method="post" action="{% url 'apps_marketplace:supprimer_employe' emp.pk %}" onsubmit="return confirm('Retirer {{ emp.utilisateur.username }} de votre équipe ?')">
+                {% csrf_token %}
+                <button type="submit" class="btn-ghost" style="font-size:.75rem;padding:.35rem .7rem;color:var(--ember);border-color:rgba(239,68,68,.3);width:auto">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% else %}
+      <!-- État vide -->
+      <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+          <i class="bi bi-people" style="font-size:1.8rem;color:var(--saffron)"></i>
+        </div>
+        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun employé pour l'instant</div>
+        <div style="font-size:.82rem;color:var(--muted)">Ajoutez votre premier collaborateur via le formulaire ci-contre.</div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+document.querySelectorAll('.btn-toggle-employe').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const pk = this.dataset.pk;
+    const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    try {
+      const r = await fetch(`{% url 'apps_marketplace:toggle_employe' 0 %}`.replace('0', pk), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const d = await r.json();
+      if (d.success) {
+        const card = document.getElementById('emp-' + pk);
+        const icon = this.querySelector('i');
+        const chip = card.querySelectorAll('.chip')[1];
+
+        if (d.est_actif) {
+          icon.className = 'bi bi-pause-fill';
+          this.title = 'Désactiver';
+          chip.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Actif';
+          chip.style.background = 'rgba(16,185,129,.15)';
+          chip.style.color = 'var(--jade)';
+        } else {
+          icon.className = 'bi bi-play-fill';
+          this.title = 'Activer';
+          chip.innerHTML = '<i class="bi bi-pause-circle me-1"></i>Inactif';
+          chip.style.background = 'var(--surface)';
+          chip.style.color = 'var(--muted)';
+        }
+      }
+    } catch (e) { console.error(e); }
+  });
+});
+</script>
+{% endblock %}

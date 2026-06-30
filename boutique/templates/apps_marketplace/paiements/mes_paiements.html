@@ -1,0 +1,320 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes paiements — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1 flex-wrap">
+      <a href="{% url 'apps_core:accueil' %}" class="cpill"><i class="bi bi-house me-1"></i>Accueil</a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-credit-card me-1" style="color:var(--saffron)"></i>Mes paiements
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ FILTRES STATUT ═══════ -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_marketplace:mes_paiements' %}"
+         class="cpill {% if not statut %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Tous
+      </a>
+      {% for val, label in statuts %}
+      <a href="?statut={{ val }}"
+         class="cpill {% if statut == val %}on{% endif %}"
+         style="{% if statut == val %}{% if val == 'complete' %}color:var(--jade){% elif val == 'rejete' %}color:var(--ember){% elif val == 'en_verification' %}color:var(--saffron){% endif %}{% endif %}">
+        {% if val == 'complete' %}<i class="bi bi-check-circle"></i>
+        {% elif val == 'rejete' %}<i class="bi bi-x-circle"></i>
+        {% elif val == 'en_verification' %}<i class="bi bi-hourglass-split"></i>
+        {% elif val == 'en_attente' %}<i class="bi bi-clock"></i>
+        {% else %}<i class="bi bi-circle"></i>{% endif %}
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ LISTE PAIEMENTS ═══════ -->
+<section class="ys bg-surface">
+  <div class="container">
+
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">💳 Historique</div>
+        <h2 class="sec-title">Mes <span class="ac">paiements</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ paiements.paginator.count }} paiement{{ paiements.paginator.count|pluralize }}</span>
+    </div>
+
+    {% if paiements %}
+    <div class="d-flex flex-column gap-3">
+      {% for p in paiements %}
+      <a href="{% url 'apps_marketplace:paiement_detail' p.pk %}"
+         class="ycard fi d-block text-decoration-none"
+         style="transition-delay:{{ forloop.counter0 }}0ms;border:1px solid var(--border);transition:border-color .2s"
+         onmouseover="this.style.borderColor='var(--saffron)'"
+         onmouseout="this.style.borderColor='var(--border)'">
+        <div class="row align-items-center gy-3">
+
+          <!-- Icône méthode -->
+          <div class="col-auto">
+            <div style="width:48px;height:48px;border-radius:12px;
+                        background:{% if p.statut == 'complete' %}rgba(16,185,129,.12){% elif p.statut == 'rejete' %}var(--ember-d){% elif p.statut == 'en_verification' %}var(--saffron-d){% else %}var(--surface){% endif %};
+                        display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              {% if p.methode == 'orange_money' %}<span style="font-size:1.2rem">🟠</span>
+              {% elif p.methode == 'mtn_momo' %}<span style="font-size:1.2rem">🟡</span>
+              {% elif p.methode == 'wave' %}<span style="font-size:1.2rem">🌊</span>
+              {% elif p.methode == 'yopipay' %}
+              <i class="bi bi-wallet2" style="color:var(--saffron);font-size:1.1rem"></i>
+              {% else %}
+              <i class="bi bi-credit-card" style="color:var(--muted);font-size:1.1rem"></i>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Infos paiement -->
+          <div class="col">
+            <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+              Commande {{ p.commande.numero_commande }}
+            </div>
+            <div style="font-size:.74rem;color:var(--muted);margin:.2rem 0">
+              <i class="bi bi-calendar3 me-1"></i>{{ p.date_creation|date:"d M Y à H:i" }}
+              {% if p.numero_expediteur %}
+              &nbsp;·&nbsp;<i class="bi bi-telephone me-1"></i>{{ p.numero_expediteur }}
+              {% endif %}
+            </div>
+            {% if p.methode %}
+            <span class="chip" style="font-size:.65rem;background:var(--surface);color:var(--text-2);border:1px solid var(--border)">
+              {{ p.get_methode_display|default:p.methode }}
+            </span>
+            {% endif %}
+            {% if p.tranche_paiement %}
+            <span class="chip ms-1" style="font-size:.65rem;background:var(--indigo-d);color:var(--indigo)">
+              <i class="bi bi-calendar-range me-1"></i>Tranche {{ p.tranche_paiement.numero_tranche }}
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Montant + Statut -->
+          <div class="col-auto text-end">
+            <div style="font-family:var(--fm);font-size:1.1rem;font-weight:800;
+                        color:{% if p.statut == 'complete' %}var(--jade){% elif p.statut == 'rejete' %}var(--ember){% else %}var(--saffron){% endif %}">
+              {{ p.montant|floatformat:0 }} FCFA
+            </div>
+            <div class="mt-1">
+              {% if p.statut == 'complete' %}
+              <span class="chip chip-jade" style="font-size:.65rem;padding:.15rem .55rem">
+                <i class="bi bi-check-circle-fill me-1"></i>Validé
+              </span>
+              {% elif p.statut == 'rejete' %}
+              <span class="chip chip-ember" style="font-size:.65rem;padding:.15rem .55rem">
+                <i class="bi bi-x-circle-fill me-1"></i>Rejeté
+              </span>
+              {% elif p.statut == 'en_verification' %}
+              <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.65rem;padding:.15rem .55rem">
+                <i class="bi bi-hourglass-split me-1"></i>En vérification
+              </span>
+              {% else %}
+              <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.65rem;padding:.15rem .55rem">
+                {{ p.get_statut_display }}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="col-auto d-none d-md-block">
+            <i class="bi bi-chevron-right" style="color:var(--muted)"></i>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- ═══════ MES PLANS BNPL ═══════ -->
+{% if plans_bnpl %}
+<section class="ys" style="padding-bottom:0">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">📅 Paiement fractionné</div>
+        <h2 class="sec-title">Mes plans <span class="ac">BNPL</span></h2>
+      </div>
+    </div>
+
+    <div class="d-flex flex-column gap-3 mb-4">
+      {% for plan in plans_bnpl %}
+      <div class="ycard fi" style="border:1px solid {% if plan.est_complet %}var(--jade){% else %}var(--indigo){% endif %}">
+        <!-- En-tête plan -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-3"
+             style="border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:.9rem;font-weight:700;color:var(--text)">
+              <i class="bi bi-calendar-range me-1" style="color:var(--indigo)"></i>
+              Plan {{ plan.nombre_tranches }}× — {{ plan.commande.numero_commande }}
+            </div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">
+              {{ plan.montant_par_tranche|floatformat:0 }} FCFA / mois
+              &nbsp;·&nbsp;
+              {% if plan.taux_interet > 0 %}{{ plan.taux_interet }}% d'intérêt{% else %}Sans intérêt{% endif %}
+            </div>
+          </div>
+          <div class="text-end">
+            {% if plan.est_complet %}
+            <span class="chip chip-jade"><i class="bi bi-check2-all me-1"></i>Complété</span>
+            {% else %}
+            <div style="font-size:.72rem;color:var(--muted)">Restant</div>
+            <div style="font-family:var(--fm);font-size:1.1rem;font-weight:800;color:var(--indigo)">
+              {{ plan.montant_restant|floatformat:0 }} FCFA
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Barre de progression globale -->
+        {% if not plan.est_complet %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1" style="font-size:.72rem;color:var(--muted)">
+            <span>Progression</span>
+            <span>{{ plan.montant_paye|floatformat:0 }} / {{ plan.montant_total|floatformat:0 }} FCFA</span>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;
+                        width:{% widthratio plan.montant_paye plan.montant_total 100 %}%;
+                        background:linear-gradient(90deg,var(--indigo),var(--jade));
+                        border-radius:3px;transition:width 1s ease"></div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Tranches -->
+        <div class="d-flex flex-column gap-2">
+          {% for tranche in plan.tranches.all %}
+          <div class="d-flex align-items-center gap-3 p-2"
+               style="background:var(--surface);border-radius:8px;
+                      border:1px solid {% if tranche.statut == 'payee' %}rgba(16,185,129,.2){% elif tranche.est_en_retard %}rgba(255,90,71,.2){% else %}var(--border){% endif %}">
+
+            <!-- Numéro tranche -->
+            <div style="width:32px;height:32px;border-radius:50%;flex-shrink:0;
+                        background:{% if tranche.statut == 'payee' %}var(--jade){% elif tranche.est_en_retard %}var(--ember){% else %}var(--indigo-d){% endif %};
+                        display:flex;align-items:center;justify-content:center">
+              {% if tranche.statut == 'payee' %}
+              <i class="bi bi-check" style="color:#fff;font-size:.85rem"></i>
+              {% else %}
+              <span style="font-size:.72rem;font-weight:700;color:{% if tranche.est_en_retard %}var(--ember){% else %}var(--indigo){% endif %}">
+                {{ tranche.numero_tranche }}
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- Infos tranche -->
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.8rem;font-weight:600;color:var(--text)">
+                Tranche {{ tranche.numero_tranche }} — {{ tranche.montant|floatformat:0 }} FCFA
+              </div>
+              <div style="font-size:.7rem;color:{% if tranche.est_en_retard %}var(--ember){% else %}var(--muted){% endif %}">
+                <i class="bi bi-calendar3 me-1"></i>
+                Échéance : {{ tranche.date_echeance|date:"d M Y" }}
+                {% if tranche.est_en_retard %}
+                <span style="color:var(--ember);font-weight:600"> — En retard !</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Statut + Action -->
+            <div class="d-flex align-items-center gap-2">
+              {% if tranche.statut == 'payee' %}
+              <span class="chip chip-jade" style="font-size:.65rem;padding:.12rem .5rem">
+                <i class="bi bi-check-circle-fill me-1"></i>Payée
+              </span>
+              {% elif tranche.statut == 'en_retard' %}
+              <span class="chip chip-ember" style="font-size:.65rem;padding:.12rem .5rem">
+                <i class="bi bi-exclamation-triangle me-1"></i>En retard
+              </span>
+              <a href="{% url 'apps_marketplace:initier_paiement' plan.commande.pk %}?tranche={{ tranche.pk }}"
+                 class="btn-gold" style="font-size:.72rem;padding:.3rem .7rem;white-space:nowrap">
+                Payer maintenant
+              </a>
+              {% elif tranche.statut == 'en_attente' %}
+              <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.65rem;padding:.12rem .5rem">
+                <i class="bi bi-clock me-1"></i>En attente
+              </span>
+              {% for tranche in plan.tranches.all %}
+              {% if tranche == plan.prochaine_tranche %}
+              <a href="{% url 'apps_marketplace:initier_paiement' plan.commande.pk %}?tranche={{ tranche.pk }}"
+                 class="btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;white-space:nowrap;color:var(--indigo);border-color:var(--indigo)">
+                Payer cette tranche
+              </a>
+              {% endif %}
+              {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+    <!-- Pagination -->
+    {% if paiements.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if paiements.has_previous %}
+        <li><a class="cpill" href="?page={{ paiements.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for num in paiements.paginator.page_range %}
+          {% if paiements.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= paiements.number and num|add:"2" >= paiements.number %}
+          <li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if paiements.has_next %}
+        <li><a class="cpill" href="?page={{ paiements.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-credit-card" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Aucun paiement</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+        {% if statut %}Aucun paiement avec ce statut.{% else %}Vous n'avez pas encore effectué de paiement.{% endif %}
+      </div>
+      {% if statut %}
+      <a href="{% url 'apps_marketplace:mes_paiements' %}" class="btn-ghost me-2">Voir tous</a>
+      {% endif %}
+      <a href="{% url 'apps_marketplace:mes_commandes' %}" class="btn-gold">
+        <i class="bi bi-box me-1"></i>Mes commandes
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

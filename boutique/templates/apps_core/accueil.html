@@ -1,0 +1,1370 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"YopiShop — Commerce en ligne au Cameroun" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ TICKER ═══════ -->
+<div class="ticker">
+  <div class="ticker-track">
+    {% for item in slider_pub_enchere %}
+      <div class="ticker-item">
+        {% if item.type == 'pub' %}<i class="bi bi-megaphone-fill"></i>{{ item.objet.titre_pub|default:"Offre spéciale" }}
+        {% elif item.type == 'enchere' %}<i class="bi bi-hammer"></i>Enchère : {{ item.objet.titre|truncatechars:28 }} — {{ item.objet.prix_actuel|floatformat:0 }} FCFA
+        {% endif %}
+      </div>
+    {% empty %}
+      <div class="ticker-item"><i class="bi bi-stars"></i>Bienvenue sur YopiShop — Le commerce de confiance</div>
+      <div class="ticker-item"><i class="bi bi-truck"></i>Livraison partout</div>
+      <div class="ticker-item"><i class="bi bi-shield-check"></i>Paiements 100 % sécurisés</div>
+      <div class="ticker-item"><i class="bi bi-headset"></i>Support client 7j/7</div>
+      <div class="ticker-item"><i class="bi bi-hammer"></i>Enchères en temps réel</div>
+      <div class="ticker-item"><i class="bi bi-broadcast"></i>Lives shopping disponibles</div>
+    {% endfor %}
+    {# Dupliqué pour boucle infinie #}
+    {% for item in slider_pub_enchere %}
+      <div class="ticker-item">
+        {% if item.type == 'pub' %}<i class="bi bi-megaphone-fill"></i>{{ item.objet.titre_pub|default:"Offre" }}
+        {% elif item.type == 'enchere' %}<i class="bi bi-hammer"></i>{{ item.objet.titre|truncatechars:28 }}
+        {% endif %}
+      </div>
+    {% empty %}
+      <div class="ticker-item"><i class="bi bi-stars"></i>YopiShop Afrique</div>
+      <div class="ticker-item"><i class="bi bi-truck"></i>Livraison rapide</div>
+      <div class="ticker-item"><i class="bi bi-shield-check"></i>Paiement sécurisé</div>
+      <div class="ticker-item"><i class="bi bi-headset"></i>Support 7j/7</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ═══════ NAVBAR ═══════ -->
+<nav class="ynav">
+  <div class="container">
+    <div class="ynav-inner">
+
+      <!-- Logo + catégories -->
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_core:accueil' %}" class="yopi-logo">Yopi<span style="-webkit-text-fill-color:unset;color:var(--saffron)">Shop</span></a>
+        <div class="dropdown d-none d-xl-block">
+          <button class="btn-ghost btn-sm dropdown-toggle" data-bs-toggle="dropdown" style="font-size:.8rem;padding:.4rem 1rem">
+            <i class="bi bi-grid-3x3-gap-fill"></i> Catégories
+          </button>
+          <ul class="dropdown-menu py-2" style="background:var(--card);border:1px solid var(--border);min-width:220px;border-radius:var(--r);margin-top:.5rem">
+            {% for cat in categories_menu %}
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                 href="{% url 'apps_core:categorie_detail' cat.slug %}?categorie={{ cat.slug }}"
+                 style="color:var(--text-2);font-size:.82rem;transition:background .2s,color .2s">
+                <i class="bi bi-tag" style="color:var(--saffron);font-size:.78rem"></i>
+                {{ cat.nom }}
+              </a>
+            </li>
+            {% empty %}
+            <li><span class="dropdown-item text-muted" style="font-size:.8rem">Aucune catégorie</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Recherche desktop -->
+      <div class="search-wrap">
+        <i class="bi bi-search si"></i>
+        <form method="get" action="{% url 'apps_core:accueil' %}" style="display:contents">
+          <input 
+            type="text"name="q"id="search-input"class="search-input"
+            placeholder="Produits, boutiques, enchères…"value="{{ request.GET.q|default:'' }}">
+          <button type="submit" class="search-submit">
+            <i class="bi bi-arrow-right"></i>
+          </button>
+
+        </form>
+      </div>
+
+      <!-- Actions -->
+      <div class="nav-acts">
+        {% if lives_en_cours %}
+        <a href="#lives" class="nav-icon d-none d-sm-flex" title="Lives en cours" style="border-color:var(--ember);color:var(--ember)">
+          <i class="bi bi-broadcast"></i>
+          <span class="bc">{{ lives_en_cours|length }}</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'apps_core:favoris' %}" class="nav-icon" title="Favoris"><i class="bi bi-heart"></i></a>
+        <a href="{% url 'app_marketplace:voir_panier' %}" class="nav-icon" title="Panier">
+          <i class="bi bi-bag"></i>
+          {% if request.session.nb_panier %}<span class="bc">{{ request.session.nb_panier }}</span>{% endif %}
+        </a>
+        <!-- Notifications -->
+        <div class="dropdown">
+          <a class="nav-icon dropdown-toggle" data-bs-toggle="dropdown" title="Notifications">
+            <i class="bi bi-bell"></i>
+            {% if nb_notifs_non_lues %}<span class="bc">{{ nb_notifs_non_lues }}</span>{% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end py-0" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:300px;max-height:360px;overflow-y:auto">
+            <li class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between" style="border-color:var(--border)!important">
+              <span style="font-size:.82rem;font-weight:700;color:var(--text)">Notifications</span>
+              {% if nb_notifs_non_lues %}<span class="chip chip-ember" style="font-size:.6rem;padding:.2rem .6rem">{{ nb_notifs_non_lues }} nouvelles</span>{% endif %}
+            </li>
+            {% for notif in notifications %}
+            <li>
+              <a href="{{ notif.lien|default:'#' }}" class="dropdown-item d-flex align-items-start gap-2 py-2 px-3" style="color:var(--text-2);font-size:.8rem;white-space:normal">
+                <div class="notif-dot {% if not notif.est_lu %}notif-dot-active{% endif %}"></div>
+                <div>
+                  <div style="font-weight:{% if not notif.est_lu %}600{% else %}400{% endif %}">{{ notif.message|truncatechars:60 }}</div>
+                  <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">{{ notif.date_creation|timesince }} ago</div>
+                </div>
+              </a>
+            </li>
+            {% empty %}
+            <li class="px-3 py-3 text-center" style="font-size:.82rem;color:var(--muted)">
+              <i class="bi bi-bell-slash d-block mb-1" style="font-size:1.4rem"></i>Aucune notification
+            </li>
+            {% endfor %}
+            <li class="border-top" style="border-color:var(--border)!important">
+              <a href="{% url 'apps_core:notifications' %}" class="dropdown-item py-2 text-center" style="color:var(--saffron);font-size:.8rem;font-weight:600">Voir tout</a>
+            </li>
+          </ul>
+        </div>
+        {% if request.user.is_authenticated %}
+        <div class="dropdown">
+          <a class="nav-icon dropdown-toggle" data-bs-toggle="dropdown" style="cursor:pointer" title="Mon compte">
+            {% if request.user.avatar %}
+            <img src="{{ request.user.avatar.url }}" alt="avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+            {% else %}
+            <i class="bi bi-person-circle"></i>
+            {% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end py-2" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:190px">
+            <li class="px-3 py-2 border-bottom mb-1" style="border-color:var(--border)!important">
+              <div style="font-size:.82rem;font-weight:600;color:var(--text)">{{ request.user.get_full_name|default:request.user.username }}</div>
+              <div style="font-size:.7rem;color:var(--muted)">{{ request.user.email }}</div>
+            </li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:profil' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-person" style="color:var(--saffron)"></i>Mon profil</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_commandes' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-box" style="color:var(--indigo)"></i>Mes commandes</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_paiements' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-credit-card me-1" style="color:var(--indigo)"></i>Mes paiements</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_retours' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes retours</a></li>
+     
+            
+            {% if request.user.peut_vendre %}
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:mes_produits' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-box" style="color:var(--indigo)"></i>Mes produits</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:mes_promotions' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-percent" style="color:var(--indigo)"></i>Mes promotions</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_marketplace:mes_codes_promo' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-percent" style="color:var(--indigo)"></i>Mes code promotions</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_marketplace:mes_groupes_achat' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-people-fill" style="color:var(--indigo)"></i>Mes groupes</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:tableau_de_bord' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-shop" style="color:var(--jade)"></i>Tableau de bord</a></li>
+            {% endif %}
+            <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger" href="{% url 'apps_core:deconnexion' %}" style="font-size:.82rem"><i class="bi bi-box-arrow-right"></i>Déconnexion</a></li>
+          </ul>
+        </div>
+        {% else %}
+        <a href="{% url 'apps_core:connexion' %}" class="btn-gold d-none d-sm-flex" style="font-size:.8rem;padding:.48rem 1.1rem">Connexion</a>
+        {% endif %}
+        <button class="nav-icon d-xl-none" data-bs-toggle="offcanvas" data-bs-target="#mobileNav"><i class="bi bi-list"></i></button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Recherche mobile -->
+<div class="nav-search-mobile">
+  <div class="search-wrap">
+    <i class="bi bi-search si"></i>
+    <form method="get" action="/recherche/" style="display:contents">
+      <input type="text" name="q" class="search-input" placeholder="Rechercher…" value="{{ request.GET.q|default:'' }}">
+      <button type="submit" class="search-submit"><i class="bi bi-arrow-right"></i></button>
+    </form>
+  </div>
+</div>
+
+<!-- Cat strip -->
+<div class="cat-strip d-none d-md-block">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_core:accueil' %}" class="cpill on"><i class="bi bi-house-fill"></i>Accueil</a>
+      
+      <div class="dropdown d-inline-block">
+        <a href="#" class="cpill dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+          style="color:var(--saffron);border:1px solid rgba(246,169,43,.2);background:var(--saffron-d)">
+          <i class="bi bi-shop-fill"></i>YopiShop
+        </a>
+        <ul class="dropdown-menu py-2"
+          style="background:var(--card);border:1px solid var(--border);
+                border-radius:var(--r);min-width:220px;margin-top:.4rem;
+                box-shadow:0 16px 40px rgba(0,0,0,.45);
+                z-index:1060">  
+
+          
+          {% if request.user.is_staff %}
+            
+            <li><span class="px-3 pb-1 pt-2 d-block"
+              style="font-size:.65rem;font-weight:700;letter-spacing:.12em;
+                text-transform:uppercase;color:var(--muted)">Administration</span>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_demandes_vendeur' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-person-check-fill" style="color:var(--jade);font-size:.9rem"></i>
+                Demandes vendeur
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_commandes_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-box" style="color:var(--jade);font-size:.9rem"></i>
+                commandes listes
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_kyc_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-shield-check" style="color:var(--jade);font-size:.9rem"></i>
+                Gestion KYC
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_operateurs' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-broadcast-pin" style="color:var(--jade);font-size:.9rem"></i>
+                Operateurs
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_numeros_versement' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-phone-vibrate" style="color:var(--jade);font-size:.9rem"></i>
+                Numeros versements
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_paiements_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-credit-card-2-front" style="color:var(--jade);font-size:.9rem"></i>
+                Listes payements
+              </a>
+            </li>
+             <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_retours_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-arrow-return-left" style="color:var(--jade);font-size:.9rem"></i>
+                Admin retours liste
+              </a>
+            </li>
+             <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_marketplace:admin_groupes_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-people-fill" style="color:var(--jade);font-size:.9rem"></i>
+                Admin achat groupe
+              </a>
+            </li>
+            
+            {% endif %}
+            <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
+          {% if user.peut_vendre %}
+          <li><span class="px-3 pb-1 pt-2 d-block"
+                    style="font-size:.65rem;font-weight:700;letter-spacing:.12em;
+                          text-transform:uppercase;color:var(--muted)">Vendre</span></li>
+         
+          <li>
+            {% if user.boutique %}
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'app_marketplace:dashboard_vendeur' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-shop" style="color:var(--saffron);font-size:.9rem"></i>
+              Dashboard vendeur
+            </a>
+            {% else %}
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'app_marketplace:creer_boutique' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-shop" style="color:var(--saffron);font-size:.9rem"></i>
+              Créer ma boutique
+            </a>
+            {% endif %}
+          </li>
+          {% else %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_core:devenir_vendeur' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-person-check" style="color:var(--saffron);font-size:.9rem"></i>
+              Devenir vendeur
+            </a>
+          </li>
+          {% endif %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="/fulfillment/"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-box-seam" style="color:var(--saffron);font-size:.9rem"></i>
+              YopiFulfillment
+            </a>
+          </li>
+          {% if request.user.peut_vendre %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_core:tableau_de_bord' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-speedometer2" style="color:var(--jade);font-size:.9rem"></i>
+              Mon tableau de bord
+            </a>
+          </li>
+          {% endif %}
+          <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
+          <li><span class="px-3 pb-1 pt-2 d-block"
+                    style="font-size:.65rem;font-weight:700;letter-spacing:.12em;
+                          text-transform:uppercase;color:var(--muted)">Découvrir</span></li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="/encheres/"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-hammer" style="color:var(--ember);font-size:.9rem"></i>
+              Enchères en direct
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="/lives/"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-broadcast" style="color:var(--ember);font-size:.9rem"></i>
+              Lives shopping
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="/videos/"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-play-circle" style="color:var(--indigo);font-size:.9rem"></i>
+              ShopTok — Vidéos
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_marketplace:groupes_actifs' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-people-fill" style="color:var(--indigo);font-size:.9rem"></i>
+              Achat Groupe
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_marketplace:boutiques_liste' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-grid" style="color:var(--indigo);font-size:.9rem"></i>
+              Toutes les boutiques
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="/blog/"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-newspaper" style="color:var(--muted);font-size:.9rem"></i>
+              Blog & Conseils
+            </a>
+          </li>
+
+          <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="/a-propos/"
+              style="color:var(--muted);font-size:.8rem">
+              <i class="bi bi-info-circle" style="font-size:.85rem"></i>
+              À propos de YopiShop
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      {% for cat in categories_menu %}
+        <a href="{% url 'apps_core:categorie_detail' cat.slug %}?categorie={{ cat.slug }}" class="cpill">
+          <i class="bi bi-tag"></i>{{ cat.nom }}
+        </a>
+      {% endfor %}
+
+
+      <a href="/encheres/" class="cpill special"><i class="bi bi-hammer"></i>Enchères</a>
+      <a href="/lives/" class="cpill special"><i class="bi bi-broadcast"></i>Lives</a>
+      <a href="{% url 'apps_core:promotions_liste' %}" class="cpill" style="color:var(--saffron)"><i class="bi bi-percent"></i>Promos</a>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Offcanvas -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileNav" style="background:var(--surface);border-right:1px solid var(--border);max-width:280px">
+  <div class="offcanvas-header border-bottom" style="border-color:var(--border)!important">
+    <span class="yopi-logo" style="-webkit-text-fill-color:unset;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">YopiShop</span>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body">
+    {% if not request.user.is_authenticated %}
+    <a href="/login/" class="btn-gold w-100 mb-3 justify-content-center">Connexion / Inscription</a>
+    {% endif %}
+    <div class="d-grid gap-1">
+      <a href="/" class="cpill"><i class="bi bi-house-fill me-2"></i>Accueil</a>
+
+      <hr style="border-color:var(--border);margin:.4rem 0">
+      <div class="px-1 pb-1" style="font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">
+        YopiShop
+      </div>
+       {% if user.peut_vendre %}
+        {% if user.boutique %}
+          <a href="{% url 'app_marketplace:creer_boutique' %}" class="cpill" style="color:var(--saffron)">
+            <i class="bi bi-shop-fill me-2" style="color:var(--saffron)"></i>dashboard_vendeur
+          </a>
+        {% else %}
+          <a href="{% url 'app_marketplace:creer_boutique' %}" class="cpill" style="color:var(--saffron)">
+            <i class="bi bi-shop-fill me-2" style="color:var(--saffron)"></i>Créer ma boutique
+          </a>
+        {% endif %}
+      {% else %}
+      <a href="{% url 'apps_core:devenir_vendeur' %}" class="cpill">
+        <i class="bi bi-person-check me-2" style="color:var(--saffron)"></i>Devenir vendeur
+      </a>
+      {% endif %}
+      <a href="/fulfillment/" class="cpill">
+        <i class="bi bi-box-seam me-2" style="color:var(--saffron)"></i>YopiFulfillment
+      </a>
+      {% if request.user.peut_vendre %}
+      <a href="{% url 'apps_core:tableau_de_bord' %}" class="cpill">
+        <i class="bi bi-speedometer2 me-2" style="color:var(--jade)"></i>Tableau de bord
+      </a>
+      {% endif %}
+
+      <hr style="border-color:var(--border);margin:.4rem 0">
+      <div class="px-1 pb-1" style="font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">
+        Découvrir
+      </div>
+      <a href="/videos/" class="cpill">
+        <i class="bi bi-play-circle me-2" style="color:var(--indigo)"></i>ShopTok
+      </a>
+      <a href="{% url 'apps_marketplace:boutiques_liste' %}" class="cpill">
+        <i class="bi bi-grid me-2" style="color:var(--indigo)"></i>Boutiques
+      </a>
+      <a href="/blog/" class="cpill">
+        <i class="bi bi-newspaper me-2" style="color:var(--muted)"></i>Blog
+      </a>
+      <a href="{% url 'apps_marketplace:groupes_actifs' %}" class="cpill">
+        <i class="bi bi-people-fill" style="color:var(--muted)"></i>Achat groupe
+      </a>
+      <hr style="border-color:var(--border)">
+       
+      
+      {% for cat in categories_menu %}<a href="{% url 'apps_core:categorie_detail' cat.slug %}?categorie={{ cat.slug }}" class="cpill"><i class="bi bi-tag me-2"></i>{{ cat.nom }}</a>{% endfor %}
+      <hr style="border-color:var(--border)">
+      <a href="/encheres/" class="cpill special"><i class="bi bi-hammer me-2"></i>Enchères</a>
+      <a href="/lives/" class="cpill special"><i class="bi bi-broadcast me-2"></i>Lives</a>
+      <a href="{% url 'apps_core:promotions_liste' %}" class="cpill"><i class="bi bi-percent me-2" style="color:var(--saffron)"></i>Promotions</a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════════ -->
+<section class="hero" id="heroSection">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+
+  <!-- Float cards -->
+  <div class="fcard fcard-1">
+    <div class="fi-icon" style="background:var(--saffron-d)"><i class="bi bi-box-seam" style="color:var(--saffron)"></i></div>
+    <div><div class="fi-val" style="color:var(--saffron)">{{ stats.nb_produits|default:"500" }}+</div><div class="fi-lbl">Produits</div></div>
+  </div>
+  <div class="fcard fcard-2">
+    <div class="fi-icon" style="background:var(--ember-d)"><i class="bi bi-hammer" style="color:var(--ember)"></i></div>
+    <div><div class="fi-val" style="color:var(--ember)">{{ stats.nb_encheres|default:"12" }}</div><div class="fi-lbl">Enchères actives</div></div>
+  </div>
+  <div class="fcard fcard-3">
+    <div class="fi-icon" style="background:var(--indigo-d)"><i class="bi bi-shop" style="color:var(--indigo)"></i></div>
+    <div><div class="fi-val" style="color:var(--indigo)">{{ stats.nb_vendeurs|default:"80" }}+</div><div class="fi-lbl">Boutiques</div></div>
+  </div>
+
+  <!-- Bootstrap Carousel -->
+  <div id="heroCarousel" class="carousel slide carousel-fade flex-grow-1"
+       data-bs-ride="carousel"
+       data-bs-interval="{{ config_carousel.vitesse_transition|default:5500 }}">
+    <div class="carousel-inner h-100">
+
+      {% for slide in slides_carousel %}
+      <div class="carousel-item {% if forloop.first %}active{% endif %} h-100">
+        <div class="carousel-item-hero position-relative">
+          <div class="container h-100">
+            <div class="row align-items-center gy-4 h-100">
+              <div class="col-lg-6 order-2 order-lg-1">
+                <div class="hero-slide-eyebrow">
+                  <i class="bi bi-stars"></i>{{ slide.titre_petit|default:"Nouveauté" }}
+                </div>
+                <h1 class="hero-title">{{ slide.titre_principal|default:"Découvrez <span class='hl'>YopiShop</span>"|safe }}</h1>
+                <p class="hero-desc">{{ slide.description|default:"Le meilleur du commerce en ligne au Cameroun." }}</p>
+                <div class="hero-actions">
+                  <a href="{{ slide.lien_bouton|default:'/catalogue/' }}" class="btn-gold">
+                    {{ slide.texte_bouton|default:"Explorer" }} <i class="bi bi-arrow-right"></i>
+                  </a>
+                  <a href="#encheres" class="btn-ghost"><i class="bi bi-hammer"></i> Enchères</a>
+                </div>
+              </div>
+              <div class="col-lg-6 order-1 order-lg-2">
+                <div class="hero-img-wrap">
+                  <div class="hero-img-ring"></div>
+                  {% if slide.image %}
+                  <img src="{{ slide.image.url }}" alt="{{ slide.titre_principal }}" class="hero-img" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+                  {% else %}
+                  <div class="hero-img-placeholder">
+                    <i class="bi bi-bag-heart"></i>
+                    <span>YopiShop</span>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="carousel-item active h-100">
+        <div class="carousel-item-hero">
+          <div class="container">
+            <div class="row align-items-center gy-4">
+              <div class="col-lg-6 order-2 order-lg-1">
+                <div class="hero-slide-eyebrow"><i class="bi bi-stars"></i>AF Made in Africa</div>
+                <h1 class="hero-title">Le commerce<br><span class="hl">réinventé</span> pour vous</h1>
+                <p class="hero-desc">Produits de qualité, enchères en temps réel, lives shopping et livraison rapide partout.</p>
+                <div class="hero-actions">
+                  <a href="{% url 'apps_core:catalogue' %}" class="btn-gold">Explorer <i class="bi bi-arrow-right"></i></a>
+                  <a href="#encheres" class="btn-ghost"><i class="bi bi-hammer"></i> Enchères</a>
+                </div>
+              </div>
+              <div class="col-lg-6 order-1 order-lg-2">
+                <div class="hero-img-wrap">
+                  <div class="hero-img-ring"></div>
+                  <div class="hero-img-placeholder">
+                    <i class="bi bi-bag-heart"></i>
+                    <span style="font-family:var(--fg);font-size:1.1rem;font-weight:700;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">YopiShop</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    </div><!-- /carousel-inner -->
+
+    {% if slides_carousel|length > 1 %}
+    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" style="width:44px;height:44px;background:rgba(18,22,56,.85);border:1px solid var(--border);border-radius:50%;top:50%;transform:translateY(-50%);opacity:1;left:1.5rem">
+      <span class="carousel-control-prev-icon" style="width:16px;height:16px"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" style="width:44px;height:44px;background:rgba(18,22,56,.85);border:1px solid var(--border);border-radius:50%;top:50%;transform:translateY(-50%);opacity:1;right:1.5rem">
+      <span class="carousel-control-next-icon" style="width:16px;height:16px"></span>
+    </button>
+    {% endif %}
+  </div><!-- /carousel -->
+</section>
+
+
+<!-- ═══════ STATS BAR ═══════ -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="row g-0 text-center">
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--saffron)">{{ stats.nb_produits|default:"500" }}+</div>
+        <div class="stat-l">Produits</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--jade)">{{ stats.nb_vendeurs|default:"80" }}+</div>
+        <div class="stat-l">Boutiques</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--ember)">{{ stats.nb_encheres|default:"0" }}</div>
+        <div class="stat-l">Enchères actives</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--indigo)">{{ stats.nb_lives|default:"0" }}</div>
+        <div class="stat-l">Lives en cours</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ STORIES ═══════ -->
+{% if stories %}
+<div class="stories-wrap">
+  <div class="container">
+    <div class="stories-row">
+      {% if request.user.is_authenticated %}
+      <a href="/stories/creer/" class="story-item text-decoration-none">
+        <div class="story-ring" style="background:var(--surface);border:2.5px dashed var(--saffron)">
+          <div class="story-av" style="border:0;font-size:1.5rem"><i class="bi bi-plus" style="color:var(--saffron)"></i></div>
+        </div>
+        <span class="story-name" style="color:var(--saffron)">Ajouter</span>
+      </a>
+      {% endif %}
+      {% for story in stories %}
+      <a href="/stories/{{ story.id }}/" class="story-item text-decoration-none">
+        <div class="story-ring {% if story.id in stories_vues_ids %}seen{% endif %}">
+          {% if story.auteur.avatar %}
+          <img src="{{ story.auteur.avatar.url }}" alt="{{ story.auteur.username }}" class="story-inner">
+          {% else %}
+          <div class="story-av">{{ story.auteur.username|first|upper }}</div>
+          {% endif %}
+        </div>
+        <span class="story-name">{{ story.auteur.username|truncatechars:9 }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ═══════ FLASH PROMO BAND ═══════ -->
+{% if promotions_flash %}
+<div class="flash-band">
+  <div class="container">
+    <div class="flash-inner">
+      <span class="flash-icon">⚡</span>
+      <div>
+        <div class="flash-txt">Ventes Flash — Offres limitées !</div>
+        <div class="flash-sub">{% for p in promotions_flash %}{{ p.nom }}{% if not forloop.last %} &bull; {% endif %}{% endfor %}</div>
+      </div>
+      <a href="{% url 'apps_core:promotions_liste' %}" style="background:rgba(10,11,26,.2);color:#0A0B1A;border:1.5px solid rgba(10,11,26,.3);border-radius:99px;padding:.4rem 1rem;font-size:.78rem;font-weight:700;text-decoration:none;white-space:nowrap;margin-left:auto">Voir tout</a>
+      <div class="cd-row">
+        <div class="cd-box"><span class="cd-n" id="cdh">00</span><span class="cd-l">h</span></div>
+        <span class="cd-sep">:</span>
+        <div class="cd-box"><span class="cd-n" id="cdm">00</span><span class="cd-l">min</span></div>
+        <span class="cd-sep">:</span>
+        <div class="cd-box"><span class="cd-n" id="cds">00</span><span class="cd-l">sec</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ═══════ BANNIÈRES PROMO ═══════ -->
+{% if bannieres %}
+<section class="ys">
+  <div class="container">
+    <div class="row g-3">
+      {% for ban in bannieres %}
+      <div class="col-12 col-md-6 {% if forloop.first %}col-lg-7{% else %}col-lg-5{% endif %} fi fi-d{{ forloop.counter }}">
+        <a href="{{ ban.lien_bouton|default:'#' }}" class="ban-card d-block" style="aspect-ratio:{% if forloop.first %}2.2/1{% else %}1.7/1{% endif %}">
+          {% if ban.image_fond %}<img src="{{ ban.image_fond.url }}" alt="{{ ban.nom_produit }}" loading="lazy">
+          {% else %}<div class="ban-fallback"><i class="bi bi-image"></i></div>{% endif %}
+          <div class="ban-overlay">
+            <div class="ban-ey">{{ ban.titre_offre }}</div>
+            <div class="ban-title">{{ ban.nom_produit }}</div>
+            <div class="ban-prices">
+              <span class="ban-promo">{{ ban.prix_promo|floatformat:0 }} FCFA</span>
+              <span class="ban-orig">{{ ban.prix_original|floatformat:0 }}</span>
+              <span class="ban-disc">-{{ ban.pourcentage_reduction|floatformat:0 }}%</span>
+            </div>
+            <span class="btn-gold" style="width:fit-content;font-size:.78rem">{{ ban.texte_bouton }} <i class="bi bi-arrow-right"></i></span>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ SLIDER PUB + ENCHÈRES ═══════ -->
+{% if slider_pub_enchere %}
+<section class="mix-slider" id="encheres-pub">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">📡 En temps réel</div>
+        <h2 class="sec-title">Publicités &amp; <span class="ac">Enchères</span></h2>
+      </div>
+      <a href="/encheres/" class="btn-ghost">Toutes les enchères <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="hscroll fi">
+      {% for item in slider_pub_enchere %}
+
+      {% if item.type == 'pub' %}
+      <a href="{{ item.objet.lien_url }}" class="mix-card text-decoration-none" target="_blank" rel="noopener">
+        {% if item.objet.image %}<img src="{{ item.objet.image.url }}" alt="{{ item.objet.titre }}" loading="lazy">
+        {% else %}<div class="mix-no-img">📢</div>{% endif %}
+        <div class="mix-chip"><span class="chip chip-ember" style="background:var(--ember);color:#fff">📢 Sponsorisé</span></div>
+        <div class="mix-overlay">
+          <div class="mix-title">{{ item.objet.titre_pub|default:item.objet.titre }}</div>
+          <div style="font-size:.74rem;color:#aaa">{{ item.objet.description_pub|truncatechars:55 }}</div>
+          <span class="chip chip-gold" style="margin-top:.5rem;width:fit-content">{{ item.objet.texte_bouton|default:"Voir l'offre" }}</span>
+        </div>
+      </a>
+
+      {% elif item.type == 'enchere' %}
+      <a href="/encheres/{{ item.objet.id }}/" class="mix-card text-decoration-none">
+        {% if item.objet.produit and item.objet.produit.image_principale %}
+        <img src="{{ item.objet.produit.image_principale }}" alt="{{ item.objet.titre }}" loading="lazy">
+        {% else %}<div class="mix-no-img">🔨</div>{% endif %}
+        <div class="mix-chip">
+          <span class="chip {% if item.objet.type_enchere == 'flash' %}chip-indigo{% else %}chip-ember" style="background:var(--ember){% endif %}">
+            {% if item.objet.type_enchere == 'flash' %}⚡ Flash{% elif item.objet.type_enchere == 'battle' %}⚔️ Battle{% else %}🔨 Enchère{% endif %}
+          </span>
+        </div>
+        <div class="mix-overlay">
+          <div class="mix-title">{{ item.objet.titre }}</div>
+          <div class="mix-price">{{ item.objet.prix_actuel|floatformat:0 }} FCFA</div>
+          <div class="mix-meta">
+            <span>{{ item.objet.nb_offres }} offre{{ item.objet.nb_offres|pluralize }}</span>
+            <span>{{ item.objet.nb_vues }} vue{{ item.objet.nb_vues|pluralize }}</span>
+          </div>
+          <div class="mix-tmr" data-fin="{{ item.objet.date_fin|date:'c' }}">⏱ <span class="tmr-v">--:--:--</span></div>
+        </div>
+      </a>
+      {% endif %}
+
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ PRODUITS YOPISHOP OFFICIEL ═══════ -->
+{% if produits_yopishop %}
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">✦ Sélection officielle</div>
+        <h2 class="sec-title">YopiShop <span class="ai">Officiel</span></h2>
+      </div>
+      <a href="{% url 'apps_core:catalogue' %}?vendeur=yopishop" class="btn-ghost">Voir tout <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="prow fi">
+      {% for p in produits_yopishop %}
+      <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard text-decoration-none">
+        <div class="pcard-img">
+          {% if p.image_principale %}<img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+          {% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:2rem"></i></div>{% endif %}
+          <div class="pcard-badge pb-vip"><i class="bi bi-patch-check-fill me-1"></i>Officiel</div>
+          {% if p.prix_promotionnel < p.prix %}<div class="pcard-badge pb-off" style="top:2.2rem">Promo</div>{% endif %}
+          <button class="pcard-fav"  data-id="{{ p.id }}"type="button"><i class="bi bi-heart"></i></button>
+        </div>
+        <div class="pcard-body">
+          <div class="pcard-name">{{ p.titre }}</div>
+          <div class="pcard-vendor"><i class="bi bi-shop"></i> YopiShop</div>
+          <div class="pcard-price">
+            <span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>
+            {% if p.prix_promotionnel < p.prix %}<span class="po">{{ p.prix|floatformat:0 }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="pcard-foot">
+          <button class="pcard-cart"  data-id="{{ p.id }}" onclick="return false"><i class="bi bi-bag-plus"></i> Ajouter</button>
+          <div class="pcard-stars"><i class="bi bi-star-fill"></i> {{ p.note_moyenne|default:"4.8"|floatformat:1 }}</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ ENCHÈRES ACTIVES ═══════ -->
+{% if encheres_actives %}
+<section class="ys" id="encheres">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">⏱ En temps réel</div>
+        <h2 class="sec-title">Enchères <span class="ac">en cours</span></h2>
+      </div>
+      <a href="/encheres/" class="btn-ghost">Toutes <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row g-3">
+      {% for enc in encheres_actives %}
+      <div class="col-12 col-sm-6 col-lg-3 fi fi-d{{ forloop.counter|add:"0" }}">
+        <div class="ecard">
+          {% if enc.produit and enc.produit.image_principale %}
+          <img src="{{ enc.produit.image_principale }}" alt="{{ enc.titre }}" class="ecard-img" loading="lazy">
+          {% else %}
+          <div class="ecard-img" style="background:var(--surface);display:flex;align-items:center;justify-content:center;aspect-ratio:4/3">
+            <i class="bi bi-hammer" style="font-size:2.5rem;color:var(--muted)"></i>
+          </div>
+          {% endif %}
+          <div class="ecard-body">
+            <div class="ecard-title">{{ enc.titre }}</div>
+            <div class="ecard-meta">
+              <div>
+                <div class="ecard-lbl">Mise actuelle</div>
+                <div class="ecard-bid">{{ enc.prix_actuel|floatformat:0 }} F</div>
+              </div>
+              <div class="ecard-tmr">
+                <div class="ecard-lbl">Fin dans</div>
+                <div class="ecard-tmr-val enc-cd" data-fin="{{ enc.date_fin|date:'c' }}">--:--:--</div>
+              </div>
+            </div>
+            <div class="ecard-info"><i class="bi bi-people-fill" style="color:var(--ember)"></i>{{ enc.nb_offres|default:0 }} offre{{ enc.nb_offres|pluralize }} &bull; {{ enc.nb_vues|default:0 }} vues</div>
+            <a href="/encheres/{{ enc.id }}/" class="btn-ember"><i class="bi bi-hammer"></i> Enchérir maintenant</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if encheres_a_venir %}
+    <div class="mt-4 fi">
+      <div class="eyebrow mb-3">📅 Prochainement</div>
+      <div class="hscroll">
+        {% for enc in encheres_a_venir %}
+        <div class="ycard d-flex align-items-center gap-3 px-3 py-2" style="flex:0 0 auto;min-width:240px">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-clock" style="color:var(--saffron)"></i>
+          </div>
+          <div>
+            <div style="font-size:.82rem;font-weight:600;color:var(--text)">{{ enc.titre|truncatechars:30 }}</div>
+            <div style="font-size:.7rem;color:var(--muted)">Début le {{ enc.date_debut|date:"d M Y à H:i" }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ PRODUITS VEDETTES ═══════ -->
+{% if produits_vedettes %}
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">★ Coup de cœur</div>
+        <h2 class="sec-title">Produits <span class="ac">Vedettes</span></h2>
+      </div>
+      <a href="{% url 'apps_core:catalogue' %}?vedette=1" class="btn-ghost">Voir tout <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="prow fi">
+      {% for p in produits_vedettes %}
+      <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard text-decoration-none">
+        <div class="pcard-img">
+          {% if p.image_principale %}<img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+          {% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:2rem"></i></div>{% endif %}
+          <div class="pcard-badge pb-top"><i class="bi bi-star-fill me-1"></i>Vedette</div>
+          <button class="pcard-fav" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-heart"></i></button>
+        </div>
+        <div class="pcard-body">
+          <div class="pcard-name">{{ p.titre }}</div>
+          <div class="pcard-vendor"><i class="bi bi-shop"></i> {{ p.vendeur.boutique.nom|default:p.vendeur.username }}</div>
+          <div class="pcard-price"><span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span></div>
+        </div>
+        <div class="pcard-foot">
+          <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-bag-plus"></i> Ajouter</button>
+          <div class="pcard-stars"><i class="bi bi-star-fill"></i> {{ p.note_moyenne|default:"4.9"|floatformat:1 }}</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ LIVES ═══════ -->
+{% if lives_en_cours %}
+<section class="ys" id="lives">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">📡 En direct</div>
+        <h2 class="sec-title"><span class="chip chip-live me-2" style="font-size:.6rem;vertical-align:middle">LIVE</span>Shopping <span class="ac">en direct</span></h2>
+      </div>
+      <a href="/lives/" class="btn-ghost">Tous les lives <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row g-3">
+      {% for live in lives_en_cours %}
+      <div class="col-12 col-sm-6 col-lg-3 fi">
+        <div class="lcard">
+          <div class="lcard-img">
+            {% if live.image_couverture %}<img src="{{ live.image_couverture.url }}" alt="{{ live.titre }}" loading="lazy">
+            {% else %}<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--card2),#1a0c36);display:flex;align-items:center;justify-content:center"><i class="bi bi-broadcast" style="font-size:3rem;color:var(--ember);opacity:.6"></i></div>{% endif %}
+            <div class="lcard-ovl"></div>
+            <div class="lcard-top">
+              <span class="chip chip-live">LIVE</span>
+              <div class="lcard-viewers"><i class="bi bi-eye-fill"></i>{{ live.nb_participants_actuels|default:0 }}</div>
+            </div>
+            <div class="lcard-host">
+              {% if live.vendeur.avatar %}<img src="{{ live.vendeur.avatar.url }}" alt="" class="lcard-av">
+              {% else %}<div class="lcard-av">{{ live.vendeur.username|first|upper }}</div>{% endif %}
+              <div class="lcard-hname">{{ live.vendeur.boutique.nom|default:live.vendeur.username }}</div>
+            </div>
+          </div>
+          <div class="lcard-body">
+            <div style="font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:.4rem">{{ live.titre|truncatechars:45 }}</div>
+            <div class="lcard-previews">
+              {% for pl in live.produits_preview %}{% if pl.produit.image_principale %}
+              <img src="{{ pl.produit.image_principale }}" alt="" class="lcard-thumb">
+              {% endif %}{% endfor %}
+            </div>
+            <a href="/lives/{{ live.id }}/" class="btn-ember" style="background:linear-gradient(90deg,var(--ember),var(--indigo))">
+              <i class="bi bi-broadcast"></i> Rejoindre
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ NOUVEAUTÉS ═══════ -->
+{% if produits_recents %}
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🆕 Fraîchement ajoutés</div>
+        <h2 class="sec-title">Nouveautés</h2>
+      </div>
+      <a href="{% url 'apps_core:catalogue' %}?tri=recent" class="btn-ghost">Voir tout <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-xl-5 g-3">
+      {% for p in produits_recents|slice:":10" %}
+      <div class="col fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard h-100 text-decoration-none">
+          <div class="pcard-img">
+            {% if p.image_principale %}<img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+            {% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:2rem"></i></div>{% endif %}
+            <div class="pcard-badge pb-new">Nouveau</div>
+            <button class="pcard-fav" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-heart"></i></button>
+          </div>
+          <div class="pcard-body">
+            <div class="pcard-name">{{ p.titre }}</div>
+            <div class="pcard-price">
+              <span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>
+              {% if p.prix_promotionnel < p.prix %}<span class="po">{{ p.prix|floatformat:0 }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="pcard-foot">
+            <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-bag-plus"></i> Ajouter</button>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ SHOPTOK VIDÉOS ═══════ -->
+{% if videos_commerce %}
+<section class="shoptok">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🎬 ShopTok</div>
+        <h2 class="sec-title">Vidéos <span class="ai">shopping</span></h2>
+      </div>
+      <a href="/videos/" class="btn-ghost">Voir tout <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="hscroll fi">
+      {% for v in videos_commerce %}
+      <a href="/videos/{{ v.id }}/" class="vcard text-decoration-none">
+        {% if v.miniature %}<img src="{{ v.miniature.url }}" alt="{{ v.titre }}" loading="lazy">
+        {% else %}<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--card2),#0d1628);display:flex;align-items:center;justify-content:center"><i class="bi bi-play-circle" style="font-size:2.5rem;color:var(--indigo);opacity:.5"></i></div>{% endif %}
+        <div class="vcard-ovl"></div>
+        <div class="vcard-play"><i class="bi bi-play-fill"></i></div>
+        <div class="vcard-info">
+          <div class="vcard-author">@{{ v.auteur.username }}</div>
+          <div class="vcard-stats"><i class="bi bi-eye"></i>{{ v.nb_vues|default:0 }} <i class="bi bi-heart"></i>{{ v.nb_likes|default:0 }}</div>
+        </div>
+        {% if v.produits.exists %}<span class="vcard-buy">🛒</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ PAR CATÉGORIE ═══════ -->
+{% if produits_par_categorie %}
+{% for cat, produits in produits_par_categorie.items %}{% if produits %}
+<section class="ys {% cycle '' 'bg-surface' %}">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">Catégorie</div>
+        <h2 class="sec-title">{{ cat.nom }}</h2>
+      </div>
+      <a href="{% url 'apps_core:categorie_detail' cat.slug %}" class="btn-ghost">Voir tout <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="prow fi">
+      {% for p in produits %}
+      <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard text-decoration-none">
+        <div class="pcard-img">
+          {% if p.image_principale %}<img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+          {% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:2rem"></i></div>{% endif %}
+          <button class="pcard-fav" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-heart"></i></button>
+        </div>
+        <div class="pcard-body">
+          <div class="pcard-name">{{ p.titre }}</div>
+          <div class="pcard-vendor"><i class="bi bi-shop"></i> {{ p.vendeur.boutique.nom|default:p.vendeur.username }}</div>
+          <div class="pcard-price"><span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span></div>
+        </div>
+        <div class="pcard-foot">
+          <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false" {% if not p.est_en_stock %}disabled{% endif %}><i class="bi bi-bag-plus"></i> Ajouter</button>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}{% endfor %}
+{% endif %}
+
+
+<!-- ═══════ BOUTIQUES VEDETTES ═══════ -->
+{% if boutiques_vedettes %}
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🏆 Top vendeurs</div>
+        <h2 class="sec-title">Boutiques <span class="ac">vedettes</span></h2>
+      </div>
+      <a href="/boutiques/" class="btn-ghost">Toutes <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row g-3">
+      {% for b in boutiques_vedettes %}
+      <div class="col-6 col-sm-4 col-md-3 col-lg-2 fi">
+        <a href="{% url 'apps_marketplace:boutique_detail' b.slug %}" class="bocard d-block text-decoration-none">
+          <div class="bocard-av">{% if b.logo %}<img src="{{ b.logo.url }}" alt="{{ b.nom }}">{% else %}<i class="bi bi-shop"></i>{% endif %}</div>
+          <div class="bocard-name">{{ b.nom|truncatechars:16 }}</div>
+          <div class="bocard-stars"><i class="bi bi-star-fill"></i>{{ b.note_moyenne|default:"4.9"|floatformat:1 }} <span>({{ b.nombre_avis }})</span></div>
+          {% if b.est_verifiee %}<div class="bocard-check"><i class="bi bi-patch-check-fill"></i> Vérifiée</div>{% endif %}
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ BLOG ═══════ -->
+{% if articles_recents %}
+<section class="ys">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">📰 Actualités</div>
+        <h2 class="sec-title">Blog &amp; <span class="ai">Conseils</span></h2>
+      </div>
+      <a href="/blog/" class="btn-ghost">Voir le blog <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row g-3">
+      {% for art in articles_recents %}
+      <div class="col-12 col-md-4 fi fi-d{{ forloop.counter }}">
+        <a href="{{ art.get_absolute_url }}" class="artcard text-decoration-none d-flex flex-column h-100">
+          {% if art.image_principale %}<img src="{{ art.image_principale.url }}" alt="{{ art.titre }}" class="artcard-img" loading="lazy">
+          {% else %}<div class="artcard-img" style="background:linear-gradient(135deg,var(--card2),var(--surface));display:flex;align-items:center;justify-content:center"><i class="bi bi-newspaper" style="font-size:2.5rem;color:var(--muted)"></i></div>{% endif %}
+          <div class="artcard-body">
+            <div class="artcard-cat">{{ art.categorie.nom|default:"Blog" }}</div>
+            <div class="artcard-title">{{ art.titre }}</div>
+            <div class="artcard-meta">
+              <i class="bi bi-calendar3"></i>{{ art.date_publication|date:"d M Y" }}
+              <span>&bull;</span>{{ art.auteur.username }}
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ NEWSLETTER ═══════ -->
+<section class="nl-section">
+  <div class="container">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-6 fi">
+        <div class="eyebrow mb-3">📬 Newsletter</div>
+        <div class="nl-title">Restez dans la boucle</div>
+        <div class="nl-sub">Offres exclusives, enchères et lives — directement dans votre boîte mail.</div>
+        <form class="nl-form" method="post" action="/newsletter/">
+          {% csrf_token %}
+          <input type="email" name="email" class="nl-input" placeholder="votre@email.com" required>
+          <button type="submit" class="btn-gold" style="white-space:nowrap">S'abonner 🚀</button>
+        </form>
+      </div>
+      <div class="col-lg-6 d-none d-lg-flex justify-content-end gap-5 fi fi-d2">
+        <div class="text-center">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:700;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">{{ stats.nb_produits|default:"500" }}+</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Produits</div>
+        </div>
+        <div class="text-center">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:700;color:var(--ember)">{{ stats.nb_encheres|default:"0" }}</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Enchères</div>
+        </div>
+        <div class="text-center">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:700;color:var(--indigo)">{{ stats.nb_vendeurs|default:"80" }}+</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Vendeurs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer class="yfooter">
+  <div class="container">
+    <div class="row gy-4">
+      <div class="col-12 col-md-4">
+        <div class="ft-logo">YopiShop</div>
+        <div class="ft-desc">Le commerce en ligne de confiance en Afrique. Produits vérifiés, enchères, lives et livraison garantie.</div>
+        <div class="ft-socials">
+          <a href="#" class="ft-social"><i class="bi bi-facebook"></i></a>
+          <a href="#" class="ft-social"><i class="bi bi-instagram"></i></a>
+          <a href="#" class="ft-social"><i class="bi bi-twitter-x"></i></a>
+          <a href="#" class="ft-social"><i class="bi bi-whatsapp"></i></a>
+          <a href="#" class="ft-social"><i class="bi bi-tiktok"></i></a>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="ft-head">Acheter</div>
+        <a href="{% url 'apps_core:catalogue' %}" class="ft-link">Tous les produits</a>
+        <a href="/encheres/" class="ft-link">Enchères</a>
+        <a href="/lives/" class="ft-link">Lives shopping</a>
+        <a href="{% url 'apps_core:promotions_liste' %}" class="ft-link">Promotions</a>
+        <a href="/catalogue/?tri=recent" class="ft-link">Nouveautés</a>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="ft-head">Vendre</div>
+       
+        {% if user.peut_vendre %}
+          {% if user.boutique %}
+            <a href="{% url 'apps_core:tableau_de_bord' %}" class="ft-link">Espace vendeur</a>
+          {% else %}
+            a href="/boutiques/creer/" class="ft-link">Créer ma boutique</a>
+          {% endif %}
+          
+        {% else %}
+          <a href="/vendeur/candidature/" class="ft-link">Devenir vendeur</a>
+        {% endif %}
+        <a href="/fulfillment/" class="ft-link">YopiFulfillment</a>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="ft-head">Aide</div>
+        <a href="/faq/" class="ft-link">FAQ</a>
+        <a href="/livraison/" class="ft-link">Livraisons</a>
+        <a href="/retours/" class="ft-link">Retours</a>
+        <a href="/contact/" class="ft-link">Nous contacter</a>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="ft-head">Légal</div>
+        <a href="/cgu/" class="ft-link">CGU</a>
+        <a href="/confidentialite/" class="ft-link">Confidentialité</a>
+        <a href="/cookies/" class="ft-link">Cookies</a>
+        <a href="/mentions/" class="ft-link">Mentions légales</a>
+      </div>
+    </div>
+    <div class="ft-bottom">
+      <div class="ft-btxt">© {{ now|date:"Y" }} YopiShop. Tous droits réservés.</div>
+      <div class="ft-btxt d-flex align-items-center gap-2">
+        <i class="bi bi-shield-check" style="color:var(--jade)"></i>Paiement sécurisé &bull; Livraison garantie
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- ═══════════════════
+     SCRIPTS
+═══════════════════ -->
+<script>
+window.YOPI_URLS = {
+  ajouterPanier: "{% url 'apps_marketplace:ajouter_au_panier' '00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', '{id}'),
+};
+</script>
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Scroll-to-top ── */
+const goTop = document.getElementById('goTop');
+if (goTop) {
+  window.addEventListener('scroll', () => goTop.classList.toggle('vis', scrollY > 400));
+}
+
+/* ── Fade-in observer ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+}, {threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* ── Countdown enchères ── */
+function fmt(ms){
+  if(ms<=0) return 'Terminé';
+  const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), s=Math.floor(ms%60000/1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function runTimers(){
+  document.querySelectorAll('.enc-cd').forEach(el=>{
+    const fin=new Date(el.dataset.fin); if(isNaN(fin)) return;
+    el.textContent = fmt(fin-new Date());
+  });
+  document.querySelectorAll('.mix-tmr').forEach(el=>{
+    const fin=new Date(el.dataset.fin), tv=el.querySelector('.tmr-v');
+    if(!tv||isNaN(fin)) return;
+    tv.textContent = fmt(fin-new Date());
+  });
+}
+setInterval(runTimers, 1000); runTimers();
+
+/* ── Promo flash countdown ── */
+{% if promotions_flash %}
+(function(){
+  const fin = new Date("{{ promotions_flash.0.date_fin|date:'c' }}");
+  const pad = n => String(n).padStart(2,'0');
+  const tick = ()=>{
+    const d=fin-new Date(); if(d<=0) return;
+    document.getElementById('cdh').textContent = pad(Math.floor(d/3600000));
+    document.getElementById('cdm').textContent = pad(Math.floor(d%3600000/60000));
+    document.getElementById('cds').textContent = pad(Math.floor(d%60000/1000));
+  };
+  setInterval(tick,1000); tick();
+})();
+{% endif %}
+
+/* ── Drag-to-scroll ── */
+document.querySelectorAll('.hscroll,.prow').forEach(el=>{
+  let down=false, sx, sl;
+  el.addEventListener('mousedown', e=>{down=true; sx=e.pageX-el.offsetLeft; sl=el.scrollLeft; el.style.userSelect='none'});
+  el.addEventListener('mouseleave', ()=>{down=false});
+  el.addEventListener('mouseup', ()=>{down=false; el.style.userSelect=''});
+  el.addEventListener('mousemove', e=>{
+    if(!down) return; e.preventDefault();
+    el.scrollLeft = sl-(e.pageX-el.offsetLeft-sx)*1.6;
+  });
+});
+
+/* ── Ajouter au panier ── */
+document.addEventListener('click', async function(e) {
+
+  const btn = e.target.closest('.pcard-cart');
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  const produitId = btn.dataset.id;
+  if (!produitId) {
+    console.error('Produit ID manquant sur le bouton', btn);
+    return;
+  }
+
+  // ✅ Construction de l'URL correcte
+  const url = window.YOPI_URLS.ajouterPanier.replace('{id}', produitId);
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></span>';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken':      document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type':     'application/x-www-form-urlencoded',
+      },
+      body: 'quantite=1',
+    });
+
+    // ✅ Vérifier HTTP avant de parser JSON
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error(`HTTP ${response.status}`, errData.message || '');
+      btn.innerHTML     = `<i class="bi bi-x-lg"></i> ${errData.message || 'Stock épuisé'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      btn.innerHTML         = '<i class="bi bi-check-lg"></i> Ajouté !';
+      btn.style.background  = 'var(--jade)';
+      btn.style.color       = '#0A0B1A';
+      btn.style.borderColor = 'var(--jade)';
+
+      // ✅ Mise à jour du badge panier dans la navbar
+      // Cible le lien panier spécifiquement via l'icône .bi-bag
+      const panierNavIcon = document.querySelector('.nav-acts .nav-icon .bi-bag')?.closest('.nav-icon');
+      if (panierNavIcon) {
+        let bc = panierNavIcon.querySelector('.bc');
+        if (bc) {
+          bc.textContent = data.nb_articles;
+        } else if (data.nb_articles > 0) {
+          bc             = document.createElement('span');
+          bc.className   = 'bc';
+          bc.textContent = data.nb_articles;
+          panierNavIcon.appendChild(bc);
+        }
+      }
+
+      // Événement custom pour d'autres composants éventuels
+      document.dispatchEvent(new CustomEvent('panier:maj', { detail: data }));
+
+    } else {
+      btn.innerHTML         = `<i class="bi bi-x-lg"></i> ${data.message || 'Erreur'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+    }
+
+  } catch (error) {
+    console.error('Panier fetch error:', error);
+    btn.innerHTML         = '<i class="bi bi-x-lg"></i> Erreur réseau';
+    btn.style.background  = 'var(--ember)';
+    btn.style.color       = '#fff';
+    btn.style.borderColor = 'var(--ember)';
+
+  } finally {
+    setTimeout(() => {
+      btn.innerHTML         = originalHtml;
+      btn.disabled          = false;
+      btn.style.background  = '';
+      btn.style.color       = '';
+      btn.style.borderColor = '';
+    }, 2200);
+  }
+});
+
+/* ── Dropdown hover ── */
+document.querySelectorAll('.dropdown-item').forEach(item=>{
+  item.addEventListener('mouseenter', function(){this.style.background='var(--saffron-d)';this.style.color='var(--saffron)'});
+  item.addEventListener('mouseleave', function(){this.style.background='';this.style.color=''});
+});
+</script>
+{% endblock %}
+
+{% endblock %}

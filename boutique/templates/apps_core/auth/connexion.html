@@ -1,0 +1,369 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Connexion — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ TICKER ═══════ -->
+<div class="ticker">
+  <div class="ticker-track">
+    <div class="ticker-item"><i class="bi bi-stars"></i>Bienvenue sur YopiShop — Le commerce de confiance</div>
+    <div class="ticker-item"><i class="bi bi-shield-check"></i>Paiements 100 % sécurisés</div>
+    <div class="ticker-item"><i class="bi bi-truck"></i>Livraison partout au Cameroun</div>
+    <div class="ticker-item"><i class="bi bi-headset"></i>Support client 7j/7</div>
+    <div class="ticker-item"><i class="bi bi-stars"></i>Bienvenue sur YopiShop — Le commerce de confiance</div>
+    <div class="ticker-item"><i class="bi bi-shield-check"></i>Paiements 100 % sécurisés</div>
+    <div class="ticker-item"><i class="bi bi-truck"></i>Livraison partout au Cameroun</div>
+    <div class="ticker-item"><i class="bi bi-headset"></i>Support client 7j/7</div>
+  </div>
+</div>
+
+<!-- ═══════ NAVBAR SIMPLE ═══════ -->
+<nav class="ynav">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <a href="{% url 'apps_core:accueil' %}" class="yopi-logo">
+        Yopi<span style="-webkit-text-fill-color:unset;color:var(--saffron)">Shop</span>
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <span style="font-size:.82rem;color:var(--muted)">Pas encore de compte ?</span>
+        <a href="{% url 'apps_core:inscription' %}" class="btn-gold" style="font-size:.8rem;padding:.45rem 1.1rem">
+          S'inscrire <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════ PAGE CONNEXION ═══════ -->
+<div class="auth-page">
+
+  <!-- Glow bg -->
+  <div class="auth-glow">
+    <span style="width:500px;height:500px;background:var(--indigo);top:-15%;left:-10%"></span>
+    <span style="width:400px;height:400px;background:var(--saffron);bottom:10%;right:-10%"></span>
+    <span style="width:300px;height:300px;background:var(--ember);top:50%;left:40%"></span>
+  </div>
+
+  <div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height:calc(100vh - 120px)">
+      <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
+
+        <!-- Messages Django -->
+        {% if messages %}
+        <div class="mb-3">
+          {% for msg in messages %}
+          <div class="auth-alert auth-alert-{{ msg.tags }}">
+            <i class="bi {% if 'error' in msg.tags %}bi-exclamation-circle{% else %}bi-check-circle{% endif %}"></i>
+            {{ msg }}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Card connexion -->
+        <div class="auth-card fi">
+
+          <!-- Header -->
+          <div class="auth-card-head">
+            <div class="auth-logo">
+              <i class="bi bi-person-circle"></i>
+            </div>
+            <h1 class="auth-title">Connexion</h1>
+            <p class="auth-sub">Accédez à votre compte YopiShop</p>
+          </div>
+
+          <!-- Formulaire -->
+          <form method="post" action="" novalidate>
+            {% csrf_token %}
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+            <!-- Email / Username -->
+            <div class="auth-field">
+              <label class="auth-label">
+                <i class="bi bi-envelope"></i> Adresse email
+              </label>
+              <div class="auth-input-wrap">
+                <input
+                  type="text"
+                  name="{{ form.username.html_name }}"
+                  id="{{ form.username.id_for_label }}"
+                  class="auth-input {% if form.username.errors %}auth-input-err{% endif %}"
+                  placeholder="votre@email.com"
+                  value="{{ form.username.value|default:'' }}"
+                  autocomplete="username"
+                  autofocus
+                >
+              </div>
+              {% if form.username.errors %}
+              <div class="auth-err-msg"><i class="bi bi-exclamation-circle"></i> {{ form.username.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Mot de passe -->
+            <div class="auth-field">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="auth-label mb-0">
+                  <i class="bi bi-lock"></i> Mot de passe
+                </label>
+                <a href="/mot-de-passe-oublie/" class="auth-forgot">Oublié ?</a>
+              </div>
+              <div class="auth-input-wrap">
+                <input
+                  type="password"
+                  name="{{ form.password.html_name }}"
+                  id="{{ form.password.id_for_label }}"
+                  class="auth-input {% if form.password.errors %}auth-input-err{% endif %}"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                >
+                <button type="button" class="auth-eye" onclick="togglePwd(this)">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              {% if form.password.errors %}
+              <div class="auth-err-msg"><i class="bi bi-exclamation-circle"></i> {{ form.password.errors.0 }}</div>
+              {% endif %}
+              {% if form.non_field_errors %}
+              <div class="auth-err-msg mt-1"><i class="bi bi-exclamation-circle"></i> {{ form.non_field_errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Se souvenir de moi -->
+            <div class="auth-remember">
+              <label class="auth-check-wrap">
+                <input
+                  type="checkbox"
+                  name="{{ form.se_souvenir.html_name }}"
+                  id="{{ form.se_souvenir.id_for_label }}"
+                  class="auth-check"
+                  {% if form.se_souvenir.value %}checked{% endif %}
+                >
+                <span class="auth-check-box"></span>
+                <span class="auth-check-lbl">Se souvenir de moi (30 jours)</span>
+              </label>
+            </div>
+
+            <!-- Bouton -->
+            <button type="submit" class="auth-submit">
+              <i class="bi bi-box-arrow-in-right"></i>
+              Se connecter
+            </button>
+
+          </form>
+
+          <!-- Séparateur -->
+          <div class="auth-sep">
+            <span>ou continuer avec</span>
+          </div>
+
+          <!-- Socials (optionnels) -->
+          <div class="auth-socials">
+            <a href="/auth/google/" class="auth-social-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.26 9.77A7.08 7.08 0 0 1 12 4.9c1.69 0 3.21.62 4.4 1.63l3.27-3.27A11.93 11.93 0 0 0 12 .9C7.57.9 3.73 3.37 1.74 7.03l3.52 2.74Z"/><path fill="#34A853" d="M16.04 18.01A7.08 7.08 0 0 1 12 19.1c-2.96 0-5.5-1.82-6.6-4.42L1.9 17.4A11.96 11.96 0 0 0 12 23.1c3.17 0 6.05-1.15 8.24-3.03l-4.2-2.06Z"/><path fill="#FBBC05" d="M19.1 12c0-.7-.07-1.38-.19-2.04H12v3.86h4.01a3.47 3.47 0 0 1-1.5 2.28l4.2 2.06A11.96 11.96 0 0 0 19.1 12Z"/><path fill="#4285F4" d="M5.4 14.68A7.08 7.08 0 0 1 4.9 12c0-.93.17-1.83.47-2.66L1.85 6.6A11.93 11.93 0 0 0 .9 12c0 1.9.44 3.7 1.22 5.3l3.28-2.62Z"/></svg>
+              Google
+            </a>
+            <a href="/auth/facebook/" class="auth-social-btn">
+              <i class="bi bi-facebook" style="color:#1877F2;font-size:1.05rem"></i>
+              Facebook
+            </a>
+          </div>
+
+          <!-- Footer lien inscription -->
+          <p class="auth-switch">
+            Pas encore de compte ?
+            <a href="{% url 'apps_core:inscription' %}" class="auth-switch-link">Créer un compte <i class="bi bi-arrow-right"></i></a>
+          </p>
+
+        </div>
+        <!-- /auth-card -->
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ STYLES SPÉCIFIQUES AUTH ═══════ -->
+<style>
+.auth-page{
+  position:relative;
+  min-height:calc(100vh - 44px);
+  padding:2rem 0 3rem;
+  background:var(--bg);
+  overflow:hidden;
+}
+.auth-glow{position:absolute;inset:0;pointer-events:none;z-index:0}
+.auth-glow span{position:absolute;border-radius:50%;filter:blur(110px);opacity:.18}
+
+/* Card */
+.auth-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--rl);
+  padding:2.25rem;
+  position:relative;
+  z-index:1;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+.auth-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--grad-a);border-radius:var(--rl) var(--rl) 0 0;
+}
+
+/* Header */
+.auth-card-head{text-align:center;margin-bottom:1.75rem}
+.auth-logo{
+  width:60px;height:60px;border-radius:18px;
+  background:var(--saffron-d);border:1px solid rgba(247,183,49,.3);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto .9rem;font-size:1.6rem;color:var(--saffron);
+}
+.auth-title{
+  font-family:var(--fg);font-size:1.55rem;font-weight:700;
+  color:var(--text);margin-bottom:.3rem;
+}
+.auth-sub{font-size:.84rem;color:var(--muted)}
+
+/* Champs */
+.auth-field{margin-bottom:1.1rem}
+.auth-label{
+  display:flex;align-items:center;gap:.4rem;
+  font-size:.8rem;font-weight:600;color:var(--text-2);
+  margin-bottom:.45rem;
+}
+.auth-label i{color:var(--saffron);font-size:.85rem}
+.auth-input-wrap{position:relative}
+.auth-input{
+  width:100%;background:var(--surface);
+  border:1.5px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-family:var(--fd);font-size:.88rem;
+  padding:.65rem 1rem;outline:none;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+.auth-input:focus{
+  border-color:var(--saffron);
+  box-shadow:0 0 0 3px var(--saffron-d);
+}
+.auth-input::placeholder{color:var(--muted)}
+.auth-input-err{border-color:var(--ember)!important}
+.auth-input-err:focus{box-shadow:0 0 0 3px var(--ember-d)!important}
+
+/* Œil mdp */
+.auth-eye{
+  position:absolute;right:.85rem;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.95rem;padding:.25rem;transition:color var(--tr);
+}
+.auth-eye:hover{color:var(--saffron)}
+
+/* Erreur */
+.auth-err-msg{
+  display:flex;align-items:center;gap:.35rem;
+  font-size:.75rem;color:var(--ember);margin-top:.35rem;
+}
+
+/* Oublié */
+.auth-forgot{
+  font-size:.77rem;color:var(--saffron);font-weight:500;
+  transition:opacity var(--tr);
+}
+.auth-forgot:hover{opacity:.75}
+
+/* Se souvenir */
+.auth-remember{margin-bottom:1.4rem}
+.auth-check-wrap{
+  display:flex;align-items:center;gap:.55rem;cursor:pointer;
+  user-select:none;
+}
+.auth-check{display:none}
+.auth-check-box{
+  width:18px;height:18px;border-radius:5px;flex-shrink:0;
+  border:1.5px solid var(--border-h);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;
+  transition:background var(--tr),border-color var(--tr);
+}
+.auth-check:checked + .auth-check-box{
+  background:var(--saffron);border-color:var(--saffron);
+}
+.auth-check:checked + .auth-check-box::after{
+  content:'✓';font-size:.72rem;font-weight:700;color:#0A0B1A;
+}
+.auth-check-lbl{font-size:.8rem;color:var(--text-2)}
+
+/* Submit */
+.auth-submit{
+  width:100%;background:var(--grad-a);color:#0A0B1A;
+  font-family:var(--fd);font-weight:700;font-size:.9rem;
+  border:none;border-radius:var(--r);padding:.75rem 1rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;
+  transition:transform var(--tr),box-shadow var(--tr),opacity var(--tr);
+  box-shadow:0 4px 20px rgba(247,183,49,.3);
+}
+.auth-submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(247,183,49,.45)}
+.auth-submit:active{transform:none}
+
+/* Séparateur */
+.auth-sep{
+  display:flex;align-items:center;gap:.75rem;
+  margin:1.4rem 0;color:var(--muted);font-size:.77rem;
+}
+.auth-sep::before,.auth-sep::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+/* Socials */
+.auth-socials{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:1.4rem}
+.auth-social-btn{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);
+  padding:.6rem .8rem;display:flex;align-items:center;justify-content:center;gap:.5rem;
+  font-size:.82rem;font-weight:600;color:var(--text-2);text-decoration:none;
+  transition:border-color var(--tr),background var(--tr),color var(--tr);
+}
+.auth-social-btn:hover{border-color:var(--border-h);background:var(--card2);color:var(--text)}
+
+/* Switch */
+.auth-switch{
+  text-align:center;font-size:.81rem;color:var(--muted);
+  margin:0;padding-top:1.25rem;border-top:1px solid var(--border);
+}
+.auth-switch-link{
+  color:var(--saffron);font-weight:600;
+  transition:opacity var(--tr);
+}
+.auth-switch-link:hover{opacity:.75}
+
+/* Alerts */
+.auth-alert{
+  display:flex;align-items:center;gap:.5rem;
+  padding:.7rem 1rem;border-radius:var(--r);
+  font-size:.82rem;font-weight:500;margin-bottom:.5rem;
+}
+.auth-alert-success,.auth-alert-info{background:var(--jade-d);color:var(--jade);border:1px solid rgba(16,212,160,.2)}
+.auth-alert-error,.auth-alert-warning{background:var(--ember-d);color:var(--ember);border:1px solid rgba(255,90,71,.2)}
+</style>
+
+{% block extra_js %}
+<script>
+/* Afficher/masquer mdp */
+function togglePwd(btn) {
+  const input = btn.closest('.auth-input-wrap').querySelector('.auth-input');
+  const ic = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    ic.className = 'bi bi-eye-slash';
+  } else {
+    input.type = 'password';
+    ic.className = 'bi bi-eye';
+  }
+}
+
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+}, {threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

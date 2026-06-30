@@ -1,0 +1,284 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Promotions & Codes promo — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<style>
+.fi{
+    opacity:1!important;
+    transform:none!important;
+}
+</style>
+
+<!-- ═══════ HERO PROMOS ═══════ -->
+<section class="hero" style="min-height:320px;padding:3rem 0">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="container position-relative" style="z-index:2">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-7 fi">
+        <div class="hero-slide-eyebrow"><i class="bi bi-percent"></i>Offres exclusives</div>
+        <h1 class="hero-title" style="font-size:clamp(2rem,5vw,3.2rem)">
+          Promotions &amp; <span class="hl">Codes promo</span>
+        </h1>
+        <p class="hero-desc">Économisez sur vos achats avec nos offres sélectionnées — codes de réduction, ventes flash et livraison offerte.</p>
+        <div class="hero-actions">
+          {% if not request.user.is_authenticated %}
+          <a href="{% url 'apps_core:connexion' %}" class="btn-gold">Connexion pour profiter <i class="bi bi-arrow-right"></i></a>
+          {% endif %}
+          <a href="#actives" class="btn-ghost"><i class="bi bi-tags"></i> Voir les offres</a>
+        </div>
+      </div>
+      <div class="col-lg-5 d-none d-lg-flex justify-content-end gap-3 fi fi-d2">
+        <div class="ycard text-center px-4 py-3">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:700;color:var(--saffron)">{{ promotions.paginator.count }}</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Promos actives</div>
+        </div>
+        <div class="ycard text-center px-4 py-3">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:700;color:var(--jade)">{{ a_venir|length }}</div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">À venir</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════ FILTRES ═══════ -->
+<div class="cat-strip d-block" style="position:sticky;top:0;z-index:100">
+  <div class="container">
+    <form method="get" class="cat-inner" id="filtreForm">
+      <a href="{% url 'apps_core:promotions_liste' %}" class="cpill {% if not type_filtre and not cat_slug %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Tout voir
+      </a>
+      {% for val, label in types %}
+      <a href="?type={{ val }}{% if cat_slug %}&categorie={{ cat_slug }}{% endif %}"
+         class="cpill {% if type_filtre == val %}on{% endif %}">
+        {% if val == 'pourcentage' %}<i class="bi bi-percent"></i>
+        {% elif val == 'montant_fixe' %}<i class="bi bi-currency-exchange"></i>
+        {% elif val == 'livraison_gratuite' %}<i class="bi bi-truck"></i>
+        {% endif %}{{ label }}
+      </a>
+      {% endfor %}
+      <div class="dropdown d-inline-block ms-2">
+        <a class="cpill dropdown-toggle {% if cat_slug %}on{% endif %}" data-bs-toggle="dropdown">
+          <i class="bi bi-tag"></i>{% if cat_slug %}Catégorie filtrée{% else %}Catégorie{% endif %}
+        </a>
+        <ul class="dropdown-menu py-2" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:200px">
+          <li>
+            <a class="dropdown-item py-2 px-3 {% if not cat_slug %}fw-bold{% endif %}"
+               href="?{% if type_filtre %}type={{ type_filtre }}{% endif %}"
+               style="color:var(--text-2);font-size:.82rem">Toutes les catégories</a>
+          </li>
+          {% for cat in categories %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 {% if cat_slug == cat.slug %}fw-bold{% endif %}"
+               href="?{% if type_filtre %}type={{ type_filtre }}&{% endif %}categorie={{ cat.slug }}"
+               style="color:var(--text-2);font-size:.82rem">
+              <i class="bi bi-tag" style="color:var(--saffron);font-size:.78rem"></i>{{ cat.nom }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════ PROMOS À VENIR ═══════ -->
+{% if a_venir %}
+<section class="ys" style="padding:2rem 0">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">📅 Bientôt disponibles</div>
+        <h2 class="sec-title">Prochainement</h2>
+      </div>
+    </div>
+    <div class="hscroll fi">
+      {% for promo in a_venir %}
+      <div class="ycard fi" style="flex:0 0 auto;min-width:260px;max-width:280px">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div style="width:42px;height:42px;border-radius:12px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-clock" style="color:var(--saffron);font-size:1.1rem"></i>
+          </div>
+          <div>
+            <div style="font-size:.84rem;font-weight:700;color:var(--text)">{{ promo.nom|truncatechars:28 }}</div>
+            <div style="font-size:.7rem;color:var(--muted)">Début le {{ promo.date_debut|date:"d M Y à H:i" }}</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          {% if promo.type_promotion == 'pourcentage' %}
+          <span class="chip chip-gold">-{{ promo.valeur_reduction|floatformat:0 }}%</span>
+          {% elif promo.type_promotion == 'montant_fixe' %}
+          <span class="chip chip-jade">-{{ promo.valeur_reduction|floatformat:0 }} FCFA</span>
+          {% elif promo.type_promotion == 'livraison_gratuite' %}
+          <span class="chip chip-indigo"><i class="bi bi-truck me-1"></i>Livraison offerte</span>
+          {% endif %}
+          {% if promo.code %}<span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-family:monospace">{{ promo.code }}</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══════ LISTE PROMOTIONS ACTIVES ═══════ -->
+<section class="ys bg-surface" id="actives">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🏷️ En ce moment</div>
+        <h2 class="sec-title">Promotions <span class="ac">actives</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ promotions.paginator.count }} offre{{ promotions.paginator.count|pluralize }}</span>
+    </div>
+
+    
+
+    {% if promotions %}
+    <div class="row g-3">
+      {% for promo in promotions %}
+      <div class="col-12 col-sm-6 col-lg-4 fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <a href="{% url 'apps_core:promotion_detail' promo.pk %}" class="ycard d-flex flex-column h-100 text-decoration-none"
+           style="border:1px solid var(--border);transition:border-color .25s,transform .25s;cursor:pointer"
+           onmouseover="this.style.borderColor='var(--saffron)';this.style.transform='translateY(-3px)'"
+           onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
+
+          <!-- Badge type -->
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="d-flex align-items-center gap-2">
+              {% if promo.type_promotion == 'pourcentage' %}
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-percent" style="color:var(--saffron);font-size:1rem"></i>
+              </div>
+              {% elif promo.type_promotion == 'montant_fixe' %}
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--jade-d,rgba(16,185,129,.12));display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-currency-exchange" style="color:var(--jade);font-size:1rem"></i>
+              </div>
+              {% elif promo.type_promotion == 'livraison_gratuite' %}
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-truck" style="color:var(--indigo);font-size:1rem"></i>
+              </div>
+              {% else %}
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--ember-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-tags" style="color:var(--ember);font-size:1rem"></i>
+              </div>
+              {% endif %}
+              <div>
+                <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">{{ promo.get_type_promotion_display }}</div>
+                {% if promo.priorite > 5 %}<span class="chip chip-ember" style="font-size:.6rem;padding:.15rem .5rem">⭐ Prioritaire</span>{% endif %}
+              </div>
+            </div>
+            <!-- Valeur principale -->
+            <div style="text-align:right">
+              {% if promo.type_promotion == 'pourcentage' %}
+              <div style="font-family:var(--fm);font-size:1.8rem;font-weight:800;color:var(--saffron);line-height:1">-{{ promo.valeur_reduction|floatformat:0 }}%</div>
+              {% elif promo.type_promotion == 'montant_fixe' %}
+              <div style="font-family:var(--fm);font-size:1.4rem;font-weight:800;color:var(--jade);line-height:1">-{{ promo.valeur_reduction|floatformat:0 }} F</div>
+              {% elif promo.type_promotion == 'livraison_gratuite' %}
+              <div style="font-family:var(--fm);font-size:1rem;font-weight:800;color:var(--indigo);line-height:1">Livraison<br>gratuite</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Nom & description -->
+          <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.4rem">{{ promo.nom }}</div>
+          {% if promo.description %}
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem;flex:1">{{ promo.description|truncatechars:80 }}</div>
+          {% else %}<div style="flex:1"></div>{% endif %}
+
+          <!-- Code promo -->
+          {% if promo.code %}
+          <div class="d-flex align-items-center gap-2 mb-3 p-2"
+               style="background:var(--surface);border:1.5px dashed var(--border);border-radius:8px">
+            <i class="bi bi-ticket-perforated" style="color:var(--saffron)"></i>
+            <code style="font-size:.85rem;font-weight:700;color:var(--saffron);letter-spacing:.1em">{{ promo.code }}</code>
+            <button class="ms-auto btn-ghost" style="padding:.2rem .6rem;font-size:.7rem"
+                    onclick="event.preventDefault();navigator.clipboard.writeText('{{ promo.code }}');this.innerHTML='<i class=\'bi bi-check\'>✓'">
+              <i class="bi bi-copy"></i>
+            </button>
+          </div>
+          {% endif %}
+
+          <!-- Infos -->
+          <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size:.72rem;color:var(--muted)">
+            <span><i class="bi bi-calendar3 me-1"></i>Jusqu'au {{ promo.date_fin|date:"d M Y" }}</span>
+            {% if promo.montant_min_achat %}
+            <span><i class="bi bi-bag me-1"></i>Min. {{ promo.montant_min_achat|floatformat:0 }} FCFA</span>
+            {% endif %}
+            {% if promo.limite_utilisation %}
+            <span><i class="bi bi-people me-1"></i>{{ promo.nb_utilisations|default:0 }}/{{ promo.limite_utilisation }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Catégories / produits -->
+          {% if promo.categories.exists or promo.produits.exists %}
+          <div class="d-flex flex-wrap gap-1 mt-2">
+            {% for cat in promo.categories.all|slice:":3" %}
+            <span class="chip" style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);font-size:.65rem">
+              <i class="bi bi-tag me-1"></i>{{ cat.nom }}
+            </span>
+            {% endfor %}
+            {% if promo.produits.exists %}
+            <span class="chip" style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);font-size:.65rem">
+              <i class="bi bi-box me-1"></i>{{ promo.produits.count }} produit{{ promo.produits.count|pluralize }}
+            </span>
+            {% endif %}
+          </div>
+          {% endif %}
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if promotions.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi" aria-label="Pagination promotions">
+      <ul class="pagination" style="gap:.4rem">
+        {% if promotions.has_previous %}
+        <li>
+          <a class="cpill" href="?page={{ promotions.previous_page_number }}{% if type_filtre %}&type={{ type_filtre }}{% endif %}{% if cat_slug %}&categorie={{ cat_slug }}{% endif %}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+        {% endif %}
+        {% for num in promotions.paginator.page_range %}
+          {% if promotions.number == num %}
+          <li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= promotions.number and num|add:"2" >= promotions.number %}
+          <li>
+            <a class="cpill" href="?page={{ num }}{% if type_filtre %}&type={{ type_filtre }}{% endif %}{% if cat_slug %}&categorie={{ cat_slug }}{% endif %}">{{ num }}</a>
+          </li>
+          {% endif %}
+        {% endfor %}
+        {% if promotions.has_next %}
+        <li>
+          <a class="cpill" href="?page={{ promotions.next_page_number }}{% if type_filtre %}&type={{ type_filtre }}{% endif %}{% if cat_slug %}&categorie={{ cat_slug }}{% endif %}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-tags" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+      <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:.4rem">Aucune promotion disponible</div>
+      <div style="font-size:.82rem;color:var(--muted)">Revenez bientôt ou modifiez vos filtres.</div>
+      {% if type_filtre or cat_slug %}
+      <a href="{% url 'apps_core:promotions_liste' %}" class="btn-ghost mt-3">Voir toutes les promos</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

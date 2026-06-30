@@ -1,0 +1,236 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Modifier mon adresse — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.edit-page{padding:2.5rem 0 4rem;min-height:80vh}
+.edit-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;position:relative;overflow:hidden;
+}
+.edit-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--indigo),var(--jade))}
+.edit-header::after{content:'';position:absolute;right:-5%;top:-40%;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--indigo-d) 0%,transparent 70%);pointer-events:none}
+.edit-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem}
+.edit-card-head{padding:.85rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.6rem}
+.edit-card-head i{color:var(--saffron);font-size:1rem}
+.edit-card-title{font-size:.88rem;font-weight:700;color:var(--text)}
+.edit-card-body{padding:1.25rem}
+.ef-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;display:block}
+.ef-input{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-family:var(--fd);font-size:.87rem;padding:.62rem .95rem;outline:none;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+.ef-input:focus{border-color:var(--saffron);box-shadow:0 0 0 3px var(--saffron-d)}
+.ef-input::placeholder{color:var(--muted)}
+.ef-input.err{border-color:var(--ember)}
+select.ef-input option{background:var(--card)}
+.ef-hint{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+.ef-error{font-size:.72rem;color:var(--ember);margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+
+/* Carte aperçu adresse */
+.addr-preview{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:1rem 1.25rem;display:flex;align-items:flex-start;gap:.85rem;
+}
+.addr-preview-ico{
+  width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  background:var(--indigo-d);display:flex;align-items:center;justify-content:center;
+  font-size:1rem;color:var(--indigo);
+}
+</style>
+
+<div class="edit-page">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8 col-xl-7">
+
+        <!-- Breadcrumb -->
+        <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+          <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <a href="{% url 'apps_core:profil' %}" style="color:var(--muted)">Mon profil</a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <span style="color:var(--saffron)">Modifier l'adresse</span>
+        </nav>
+
+        <!-- Messages -->
+        {% if messages %}{% for msg in messages %}
+        <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+          <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+          {{ msg }}
+          <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+        </div>
+        {% endfor %}{% endif %}
+
+        <!-- Header -->
+        <div class="edit-header fi">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;border-radius:12px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--indigo);flex-shrink:0">
+              <i class="bi bi-geo-alt-fill"></i>
+            </div>
+            <div>
+              <div style="font-family:var(--fg);font-size:1.2rem;font-weight:700;color:var(--text)">Modifier mon adresse</div>
+              <div style="font-size:.8rem;color:var(--muted)">Localisation et informations de livraison</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aperçu adresse actuelle -->
+        {% if request.user.adresse or request.user.ville %}
+        <div class="fi mb-3">
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">Adresse actuelle</div>
+          <div class="addr-preview">
+            <div class="addr-preview-ico"><i class="bi bi-house-fill"></i></div>
+            <div>
+              {% if request.user.adresse %}<div style="font-size:.87rem;font-weight:600;color:var(--text)">{{ request.user.adresse }}</div>{% endif %}
+              <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">
+                {% if request.user.ville %}{{ request.user.ville }}{% endif %}
+                {% if request.user.code_postal %}, {{ request.user.code_postal }}{% endif %}
+                {% if request.user.pays %} — {{ request.user.pays }}{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Formulaire -->
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- Adresse principale -->
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <i class="bi bi-map"></i>
+              <span class="edit-card-title">Adresse de livraison</span>
+            </div>
+            <div class="edit-card-body">
+              <div class="row g-3">
+
+                <!-- Adresse ligne 1 -->
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.adresse.id_for_label }}">
+                    Adresse complète
+                  </label>
+                  <input
+                    type="text"
+                    name="{{ form.adresse.html_name }}"
+                    id="{{ form.adresse.id_for_label }}"
+                    class="ef-input {% if form.adresse.errors %}err{% endif %}"
+                    placeholder="Rue, quartier, numéro…"
+                    value="{{ form.adresse.value|default:'' }}"
+                  >
+                  <div class="ef-hint"><i class="bi bi-info-circle"></i> Exemple : Avenue Kennedy, Quartier Bonanjo</div>
+                  {% if form.adresse.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.adresse.errors.0 }}</div>{% endif %}
+                </div>
+
+                <!-- Ville -->
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.ville.id_for_label }}">
+                    Ville
+                  </label>
+                  {% if form.ville.field.widget.input_type == 'select' %}
+                  <select name="{{ form.ville.html_name }}" id="{{ form.ville.id_for_label }}"
+                          class="ef-input {% if form.ville.errors %}err{% endif %}">
+                    <option value="">— Choisir une ville —</option>
+                    {% for val, label in form.ville.field.choices %}
+                    <option value="{{ val }}" {% if form.ville.value|stringformat:'s' == val|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  {% else %}
+                  <input
+                    type="text"
+                    name="{{ form.ville.html_name }}"
+                    id="{{ form.ville.id_for_label }}"
+                    class="ef-input {% if form.ville.errors %}err{% endif %}"
+                    placeholder="Ex : Douala, Yaoundé…"
+                    value="{{ form.ville.value|default:'' }}"
+                  >
+                  {% endif %}
+                  {% if form.ville.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.ville.errors.0 }}</div>{% endif %}
+                </div>
+
+                <!-- Code postal -->
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.code_postal.id_for_label }}">
+                    Code postal
+                  </label>
+                  <input
+                    type="text"
+                    name="{{ form.code_postal.html_name }}"
+                    id="{{ form.code_postal.id_for_label }}"
+                    class="ef-input {% if form.code_postal.errors %}err{% endif %}"
+                    placeholder="Ex : BP 1234"
+                    value="{{ form.code_postal.value|default:'' }}"
+                  >
+                  {% if form.code_postal.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.code_postal.errors.0 }}</div>{% endif %}
+                </div>
+
+                <!-- Pays -->
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.pays.id_for_label }}">
+                    Pays
+                  </label>
+                  {% if form.pays.field.widget.input_type == 'select' %}
+                  <select name="{{ form.pays.html_name }}" id="{{ form.pays.id_for_label }}"
+                          class="ef-input {% if form.pays.errors %}err{% endif %}">
+                    <option value="">— Choisir un pays —</option>
+                    {% for val, label in form.pays.field.choices %}
+                    <option value="{{ val }}" {% if form.pays.value|stringformat:'s' == val|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  {% else %}
+                  <input
+                    type="text"
+                    name="{{ form.pays.html_name }}"
+                    id="{{ form.pays.id_for_label }}"
+                    class="ef-input {% if form.pays.errors %}err{% endif %}"
+                    placeholder="Ex : Cameroun"
+                    value="{{ form.pays.value|default:'Cameroun' }}"
+                  >
+                  {% endif %}
+                  {% if form.pays.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.pays.errors.0 }}</div>{% endif %}
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Info livraison -->
+          <div class="fi mb-4" style="background:var(--indigo-d);border:1px solid rgba(99,102,241,.2);border-radius:var(--r);padding:.9rem 1.1rem;display:flex;align-items:flex-start;gap:.75rem">
+            <i class="bi bi-truck" style="color:var(--indigo);font-size:1.1rem;flex-shrink:0;margin-top:.1rem"></i>
+            <div>
+              <div style="font-size:.82rem;font-weight:600;color:var(--indigo);margin-bottom:.2rem">Information livraison</div>
+              <div style="font-size:.78rem;color:var(--text-2);line-height:1.55">
+                Cette adresse sera utilisée par défaut pour vos livraisons. Vous pourrez la modifier à chaque commande si besoin.
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-3 justify-content-end fi">
+            <a href="{% url 'apps_core:profil' %}" class="btn-ghost">
+              <i class="bi bi-x-lg"></i> Annuler
+            </a>
+            <button type="submit" class="btn-gold">
+              <i class="bi bi-check-lg"></i> Enregistrer l'adresse
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

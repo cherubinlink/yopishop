@@ -1,0 +1,181 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'apps_marketplace:dashboard_vendeur' %}" style="color:var(--saffron);text-decoration:none">Tableau de bord</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Retours reçus</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Retours reçus
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        {{ retours.paginator.count }} demande{{ retours.paginator.count|pluralize }} au total
+      </p>
+    </div>
+    <a href="{% url 'apps_marketplace:dashboard_vendeur' %}" class="btn-ghost" style="font-size:.82rem">
+      <i class="bi bi-arrow-left"></i> Tableau de bord
+    </a>
+  </div>
+
+  <!-- ── Stats ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.5rem;font-weight:900;font-family:var(--fm);color:var(--text)">{{ stats.total }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Total</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.5rem;font-weight:900;font-family:var(--fm);color:var(--saffron)">{{ stats.demandes }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En attente</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.5rem;font-weight:900;font-family:var(--fm);color:var(--indigo)">{{ stats.en_cours }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En cours</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtres ── -->
+  <div class="d-flex gap-2 flex-wrap mb-4">
+    <a href="{% url 'apps_marketplace:retours_recus' %}"
+      class="cpill {% if not statut %}on{% endif %}"
+      style="{% if not statut %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      Tous
+    </a>
+    {% for val, label in statuts %}
+    <a href="?statut={{ val }}"
+      class="cpill {% if statut == val %}on{% endif %}"
+      style="{% if statut == val %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if retours %}
+  <div style="display:grid;gap:.75rem">
+    {% for ret in retours %}
+    <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+
+      <!-- Header -->
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-3"
+        style="border-bottom:1px solid var(--border);background:var(--surface)">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <!-- Avatar acheteur -->
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+            {% if ret.utilisateur.avatar %}
+              <img src="{{ ret.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+            {% else %}
+              {{ ret.utilisateur.username|first|upper }}
+            {% endif %}
+          </div>
+          <div>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text)">
+              {{ ret.utilisateur.get_full_name|default:ret.utilisateur.username }}
+            </div>
+            <div style="font-size:.7rem;color:var(--muted)">
+              <a href="{% url 'apps_marketplace:commande_detail' ret.commande.pk %}"
+                style="color:var(--saffron);text-decoration:none">{{ ret.commande.numero_commande }}</a>
+              &bull; {{ ret.date_demande|date:"d M Y" }}
+            </div>
+          </div>
+        </div>
+
+        <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;
+          background:{% if ret.statut == 'complete' %}rgba(16,185,129,.15){% elif ret.statut == 'refuse' %}rgba(239,68,68,.15){% elif ret.statut == 'approuve' %}rgba(99,102,241,.15){% elif ret.statut == 'en_cours' %}rgba(99,102,241,.1){% else %}rgba(246,169,43,.15){% endif %};
+          color:{% if ret.statut == 'complete' %}var(--jade){% elif ret.statut == 'refuse' %}var(--ember){% elif ret.statut == 'approuve' or ret.statut == 'en_cours' %}var(--indigo){% else %}var(--saffron){% endif %}">
+          {{ ret.get_statut_display }}
+        </span>
+      </div>
+
+      <!-- Corps -->
+      <div class="d-flex align-items-center gap-3 px-4 py-3 flex-wrap">
+        <!-- Image produit -->
+        <div style="width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0">
+          {% if ret.article_commande.produit.image_principale %}
+            <img src="{{ ret.article_commande.produit.image_principale }}" alt="" style="width:100%;height:100%;object-fit:cover">
+          {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted)"></i></div>
+          {% endif %}
+        </div>
+
+        <div class="flex-grow-1 min-width-0">
+          <div style="font-size:.86rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            {{ ret.article_commande.produit.titre }}
+          </div>
+          <div style="font-size:.74rem;color:var(--muted);margin-top:.2rem">
+            <span class="chip" style="font-size:.66rem;padding:.15rem .5rem;background:var(--surface)">
+              {{ ret.get_raison_display }}
+            </span>
+            &bull; Qté : {{ ret.quantite }}
+          </div>
+          <div style="font-size:.74rem;color:var(--text-2);margin-top:.3rem">
+            {{ ret.description|truncatechars:80 }}
+          </div>
+        </div>
+
+        <div class="flex-shrink-0 text-end">
+          {% if ret.montant_remboursement %}
+          <div style="font-size:.88rem;font-weight:800;color:var(--jade);font-family:var(--fm)">
+            {{ ret.montant_remboursement|floatformat:0 }} F
+          </div>
+          <div style="font-size:.7rem;color:var(--muted)">remboursé</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="px-4 py-2 d-flex justify-content-end"
+        style="border-top:1px solid var(--border);background:var(--surface)">
+        <a href="{% url 'apps_marketplace:retour_detail' ret.pk %}" class="btn-ghost"
+          style="font-size:.76rem;padding:.3rem .8rem;width:auto">
+          <i class="bi bi-eye"></i> Voir le détail
+        </a>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if retours.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+    {% if retours.has_previous %}<a href="?statut={{ statut }}&page={{ retours.previous_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-left"></i></a>{% endif %}
+    {% for p in retours.paginator.page_range %}
+      {% if p == retours.number %}<span class="btn-gold" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center">{{ p }}</span>
+      {% elif p >= retours.number|add:"-2" and p <= retours.number|add:"2" %}<a href="?statut={{ statut }}&page={{ p }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center;width:auto">{{ p }}</a>{% endif %}
+    {% endfor %}
+    {% if retours.has_next %}<a href="?statut={{ statut }}&page={{ retours.next_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-right"></i></a>{% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-arrow-counterclockwise" style="font-size:1.8rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">
+      {% if statut %}Aucun retour avec ce statut{% else %}Aucun retour reçu{% endif %}
+    </div>
+    <div style="font-size:.82rem;color:var(--muted)">Les demandes de retour sur vos produits apparaîtront ici.</div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

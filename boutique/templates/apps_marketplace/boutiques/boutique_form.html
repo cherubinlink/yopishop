@@ -1,0 +1,365 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Boutique — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1">
+      <div class="d-flex align-items-center gap-3">
+        {% if mode == 'edition' %}
+        <a href="{% url 'apps_marketplace:dashboard_vendeur' %}" class="cpill">
+          <i class="bi bi-speedometer2 me-1"></i>Dashboard
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;color:var(--text-2);font-weight:600">
+          <i class="bi bi-pencil me-1" style="color:var(--saffron)"></i>Modifier — {{ boutique.nom|truncatechars:25 }}
+        </span>
+        {% else %}
+        <a href="{% url 'apps_core:accueil' %}" class="cpill">
+          <i class="bi bi-house me-1"></i>Accueil
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;color:var(--text-2);font-weight:600">
+          <i class="bi bi-shop me-1" style="color:var(--saffron)"></i>Créer ma boutique
+        </span>
+        {% endif %}
+      </div>
+      {% if mode == 'edition' and boutique %}
+      <a href="{% url 'apps_marketplace:boutique_detail' boutique.slug %}" class="cpill" target="_blank">
+        <i class="bi bi-eye me-1"></i>Voir la boutique
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ CONTENU ═══════ -->
+<section class="ys">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-9 col-xl-8">
+
+        <!-- Titre -->
+        <div class="mb-4 fi">
+          <div class="eyebrow mb-2">
+            {% if mode == 'creation' %}🚀 Lancement{% else %}✏️ Modification{% endif %}
+          </div>
+          <h1 class="sec-title" style="font-size:clamp(1.6rem,3vw,2.2rem)">
+            {% if mode == 'creation' %}
+            Créer ma <span class="ac">boutique</span>
+            {% else %}
+            Modifier <span class="ac">{{ boutique.nom|truncatechars:25 }}</span>
+            {% endif %}
+          </h1>
+          {% if mode == 'creation' %}
+          <p style="font-size:.85rem;color:var(--muted);margin-top:.5rem">
+            Votre boutique sera examinée par notre équipe sous <strong style="color:var(--saffron)">24–48h</strong> avant activation.
+          </p>
+          {% endif %}
+        </div>
+
+        {% for message in messages %}
+        <div class="ycard mb-3 fi" style="border-left:3px solid {% if message.tags == 'error' %}var(--ember){% else %}var(--jade){% endif %}">
+          <div style="font-size:.85rem;color:{% if message.tags == 'error' %}var(--ember){% else %}var(--jade){% endif %}">
+            <i class="bi bi-{% if message.tags == 'error' %}exclamation-triangle{% else %}check-circle{% endif %} me-2"></i>{{ message }}
+          </div>
+        </div>
+        {% endfor %}
+
+        <form method="post" enctype="multipart/form-data" id="boutiqueForm" novalidate>
+          {% csrf_token %}
+
+          <!-- ─── IDENTITÉ ─── -->
+          <div class="ycard mb-4 fi">
+            <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-shop" style="color:var(--saffron)"></i>
+              </div>
+              <span style="font-size:.9rem;font-weight:700;color:var(--text)">Identité de la boutique</span>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Nom de la boutique <span style="color:var(--ember)">*</span></label>
+                {{ form.nom }}
+                {% if form.nom.errors %}<div class="yopi-err">{{ form.nom.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label yopi-label">
+                  Sous-domaine <span style="color:var(--ember)">*</span>
+                  {% if mode == 'edition' %}<span style="color:var(--muted);font-weight:400"> (non modifiable)</span>{% endif %}
+                </label>
+                {{ form.sous_domaine }}
+                <!-- Preview URL -->
+                <div id="urlPreview" class="mt-1" style="font-size:.72rem;color:var(--muted)">
+                  <i class="bi bi-globe2 me-1"></i><span id="urlText">—.yopishop.com</span>
+                  <span id="sdStatus" class="ms-2"></span>
+                </div>
+                {% if form.sous_domaine.errors %}<div class="yopi-err">{{ form.sous_domaine.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label yopi-label">Description</label>
+                {{ form.description }}
+                <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem">Présentez votre boutique en quelques mots (visible par les acheteurs).</div>
+                {% if form.description.errors %}<div class="yopi-err">{{ form.description.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+
+          <!-- ─── VISUELS ─── -->
+          <div class="ycard mb-4 fi">
+            <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-image" style="color:var(--indigo)"></i>
+              </div>
+              <span style="font-size:.9rem;font-weight:700;color:var(--text)">Visuels & Couleurs</span>
+            </div>
+
+            <div class="row g-3">
+              <!-- Logo -->
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Logo</label>
+                {% if boutique.logo %}
+                <div class="mb-2 d-flex align-items-center gap-3">
+                  <img src="{{ boutique.logo.url }}" alt="Logo actuel"
+                       style="width:56px;height:56px;border-radius:12px;object-fit:cover;border:1px solid var(--border)">
+                  <span style="font-size:.72rem;color:var(--muted)">Logo actuel — remplacez si besoin</span>
+                </div>
+                {% endif %}
+                <div class="yopi-file-wrap">
+                  {{ form.logo }}
+                  <label class="yopi-file-label" for="{{ form.logo.id_for_label }}">
+                    <i class="bi bi-cloud-upload me-2"></i>Choisir un logo (PNG, JPG)
+                  </label>
+                </div>
+                {% if form.logo.errors %}<div class="yopi-err">{{ form.logo.errors.0 }}</div>{% endif %}
+              </div>
+
+              <!-- Bannière -->
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Bannière</label>
+                {% if boutique.banniere %}
+                <div class="mb-2">
+                  <img src="{{ boutique.banniere.url }}" alt="Bannière actuelle"
+                       style="width:100%;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--border)">
+                </div>
+                {% endif %}
+                <div class="yopi-file-wrap">
+                  {{ form.banniere }}
+                  <label class="yopi-file-label" for="{{ form.banniere.id_for_label }}">
+                    <i class="bi bi-panorama me-2"></i>Choisir une bannière (1200×300)
+                  </label>
+                </div>
+                {% if form.banniere.errors %}<div class="yopi-err">{{ form.banniere.errors.0 }}</div>{% endif %}
+              </div>
+
+              <!-- Couleurs -->
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Couleur principale</label>
+                <div class="d-flex align-items-center gap-3">
+                  {{ form.couleur_primaire }}
+                  <span style="font-size:.78rem;color:var(--muted)">Couleur de votre marque</span>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Couleur secondaire</label>
+                <div class="d-flex align-items-center gap-3">
+                  {{ form.couleur_secondaire }}
+                  <span style="font-size:.78rem;color:var(--muted)">Couleur d'accent</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- ─── CONTACT & LOCALISATION ─── -->
+          <div class="ycard mb-4 fi">
+            <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-telephone" style="color:var(--jade)"></i>
+              </div>
+              <span style="font-size:.9rem;font-weight:700;color:var(--text)">Contact & Localisation</span>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Email de contact</label>
+                {{ form.email }}
+                {% if form.email.errors %}<div class="yopi-err">{{ form.email.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Téléphone</label>
+                {{ form.telephone }}
+                {% if form.telephone.errors %}<div class="yopi-err">{{ form.telephone.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Ville</label>
+                {{ form.ville }}
+                {% if form.ville.errors %}<div class="yopi-err">{{ form.ville.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Délai de traitement (jours)</label>
+                {{ form.delai_traitement }}
+                {% if form.delai_traitement.errors %}<div class="yopi-err">{{ form.delai_traitement.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label yopi-label">Adresse</label>
+                {{ form.adresse }}
+                {% if form.adresse.errors %}<div class="yopi-err">{{ form.adresse.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+
+          <!-- ─── RÉSEAUX SOCIAUX ─── -->
+          <div class="ycard mb-4 fi">
+            <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--ember-d);display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-share" style="color:var(--ember)"></i>
+              </div>
+              <span style="font-size:.9rem;font-weight:700;color:var(--text)">Réseaux sociaux <span style="font-weight:400;color:var(--muted)">(optionnel)</span></span>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label yopi-label"><i class="bi bi-globe2 me-1" style="color:var(--muted)"></i>Site web</label>
+                {{ form.site_web }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label"><i class="bi bi-facebook me-1" style="color:var(--indigo)"></i>Facebook</label>
+                {{ form.facebook }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label"><i class="bi bi-instagram me-1" style="color:var(--ember)"></i>Instagram</label>
+                {{ form.instagram }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label"><i class="bi bi-tiktok me-1"></i>TikTok</label>
+                {{ form.tiktok }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label"><i class="bi bi-whatsapp me-1" style="color:var(--jade)"></i>WhatsApp</label>
+                {{ form.whatsapp }}
+              </div>
+            </div>
+          </div>
+
+
+          <!-- ─── POLITIQUES ─── -->
+          <div class="ycard mb-4 fi">
+            <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-file-text" style="color:var(--muted)"></i>
+              </div>
+              <span style="font-size:.9rem;font-weight:700;color:var(--text)">Politiques <span style="font-weight:400;color:var(--muted)">(optionnel)</span></span>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Politique de retour</label>
+                {{ form.politique_retour }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label yopi-label">Conditions de vente</label>
+                {{ form.conditions_vente }}
+              </div>
+            </div>
+          </div>
+
+
+          <!-- ─── ACTIONS ─── -->
+          <div class="d-flex align-items-center justify-content-between gap-3 fi" style="padding:.5rem 0">
+            <a href="{% if mode == 'edition' %}{% url 'apps_marketplace:dashboard_vendeur' %}{% else %}{% url 'apps_core:accueil' %}{% endif %}" class="btn-ghost">
+              <i class="bi bi-x-circle me-1"></i>Annuler
+            </a>
+            <button type="submit" class="btn-gold" style="min-width:200px">
+              {% if mode == 'creation' %}
+              <i class="bi bi-shop me-1"></i>Créer ma boutique
+              {% else %}
+              <i class="bi bi-check2 me-1"></i>Enregistrer les modifications
+              {% endif %}
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+
+{% block extra_js %}
+<style>
+.yopi-label { font-size:.8rem;font-weight:600;color:var(--text-2);margin-bottom:.4rem;display:block }
+.yopi-err { font-size:.75rem;color:var(--ember);margin-top:.3rem }
+.yopi-file-wrap { position:relative }
+.yopi-file-wrap input[type=file] { position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2 }
+.yopi-file-label { display:flex;align-items:center;justify-content:center;border:1.5px dashed var(--border);border-radius:8px;padding:.65rem 1rem;font-size:.82rem;color:var(--muted);cursor:pointer;transition:border-color .2s,color .2s;background:var(--surface) }
+.yopi-file-wrap:hover .yopi-file-label { border-color:var(--saffron);color:var(--saffron) }
+</style>
+<script>
+"use strict";
+
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Styliser les champs Django */
+document.querySelectorAll('#boutiqueForm input:not([type=file]):not([type=color]), #boutiqueForm select, #boutiqueForm textarea').forEach(el => {
+  el.style.cssText='width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.55rem .9rem;font-size:.85rem;outline:none;transition:border-color .2s';
+  el.addEventListener('focus', function(){this.style.borderColor='var(--saffron)';});
+  el.addEventListener('blur', function(){this.style.borderColor='var(--border)';});
+});
+document.querySelectorAll('#boutiqueForm textarea').forEach(el=>{el.style.minHeight='80px';el.style.resize='vertical';});
+
+/* Preview sous-domaine + vérification dispo */
+const sdInput  = document.querySelector('[name="sous_domaine"]');
+const urlText  = document.getElementById('urlText');
+const sdStatus = document.getElementById('sdStatus');
+let sdTimer;
+
+if(sdInput && !sdInput.readOnly) {
+  sdInput.addEventListener('input', function(){
+    const val = this.value.toLowerCase().replace(/[^a-z0-9-]/g,'');
+    this.value = val;
+    if(urlText) urlText.textContent = (val || '—') + '.yopishop.com';
+    if(sdStatus) sdStatus.textContent = '';
+    clearTimeout(sdTimer);
+    if(val.length >= 3) {
+      sdStatus.innerHTML = '<i class="bi bi-hourglass-split" style="color:var(--muted)"></i>';
+      sdTimer = setTimeout(async () => {
+        try {
+          const r = await fetch(`/boutiques/ajax/sous-domaine/?q=${encodeURIComponent(val)}`);
+          const d = await r.json();
+          sdStatus.innerHTML = d.disponible
+            ? `<span style="color:var(--jade)"><i class="bi bi-check-circle-fill"></i> ${d.message}</span>`
+            : `<span style="color:var(--ember)"><i class="bi bi-x-circle-fill"></i> ${d.message}</span>`;
+        } catch { sdStatus.textContent = ''; }
+      }, 600);
+    }
+  });
+  /* Init si déjà une valeur */
+  if(sdInput.value && urlText) urlText.textContent = sdInput.value + '.yopishop.com';
+}
+
+/* Preview fichier sélectionné */
+document.querySelectorAll('.yopi-file-wrap input[type=file]').forEach(input => {
+  input.addEventListener('change', function(){
+    const lbl = this.nextElementSibling;
+    if(this.files[0]) lbl.innerHTML = `<i class="bi bi-check-circle me-2" style="color:var(--jade)"></i>${this.files[0].name}`;
+  });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

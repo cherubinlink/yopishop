@@ -1,0 +1,456 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Mon panier</li>
+    </ol>
+  </nav>
+
+  <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0 0 1.5rem">
+    Mon panier
+    {% if nb_articles %}<span style="font-size:1rem;color:var(--muted);font-weight:400;-webkit-text-fill-color:var(--muted)"> — {{ nb_articles }} article{{ nb_articles|pluralize }}</span>{% endif %}
+  </h1>
+
+  {% if articles %}
+  <div class="row g-4 align-items-start">
+
+    <!-- ══ Articles ══ -->
+    <div class="col-12 col-lg-8">
+
+      <!-- Actions groupées -->
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span style="font-size:.78rem;color:var(--muted)">{{ articles|length }} article{{ articles|length|pluralize }}</span>
+        <form method="post"
+      action="{% url 'apps_marketplace:vider_panier' %}"
+      id="form-vider">
+  {% csrf_token %}
+  <button type="submit" class="btn-ghost"
+          style="font-size:.75rem;padding:.3rem .75rem;color:var(--ember);border-color:rgba(239,68,68,.3);width:auto">
+    <i class="bi bi-trash"></i> Vider le panier
+  </button>
+</form>
+      </div>
+
+      <!-- Liste articles -->
+      <div style="display:grid;gap:.75rem" id="panier-articles">
+        {% for art in articles %}
+        <div class="ycard p-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)" id="article-{{ art.pk }}">
+          <div class="row g-3 align-items-center">
+
+            <!-- Image produit -->
+            <div class="col-auto">
+              <a href="{% url 'apps_core:produit_detail' art.produit.slug %}">
+                <div style="width:80px;height:80px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0">
+                  {% if art.produit.image_principale %}
+                    <img src="{{ art.produit.image_principale }}" alt="{{ art.produit.titre }}"
+                      style="width:100%;height:100%;object-fit:cover">
+                  {% else %}
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                      <i class="bi bi-image" style="color:var(--muted);font-size:1.5rem"></i>
+                    </div>
+                  {% endif %}
+                </div>
+              </a>
+            </div>
+
+            <!-- Infos produit -->
+            <div class="col">
+              <a href="{% url 'apps_core:produit_detail' art.produit.slug %}" style="text-decoration:none">
+                <div style="font-size:.88rem;font-weight:700;color:var(--text)">{{ art.produit.titre }}</div>
+              </a>
+              <div style="font-size:.74rem;color:var(--muted);margin:.2rem 0">
+                <i class="bi bi-shop me-1"></i>{{ art.produit.vendeur.boutique.nom|default:art.produit.vendeur.username }}
+              </div>
+              {% if art.variante %}
+              <div style="font-size:.74rem;color:var(--indigo)">
+                <i class="bi bi-tag me-1"></i>{{ art.variante.nom }}
+              </div>
+              {% endif %}
+              {% if art.prix_type == 'promo' %}
+              <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(239,68,68,.12);color:var(--ember)">Promo</span>
+              {% elif art.prix_type == 'live' %}
+              <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(99,102,241,.12);color:var(--indigo)">Live</span>
+              {% elif art.prix_type == 'groupe' %}
+              <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(16,185,129,.12);color:var(--jade)">Groupé</span>
+              {% endif %}
+
+              <!-- Prix mobile -->
+              <div class="d-flex align-items-center gap-2 mt-1 d-lg-none">
+                <span style="font-size:.9rem;font-weight:800;color:var(--saffron)">{{ art.prix|floatformat:0 }} F</span>
+                {% if art.economie_unitaire %}
+                <span style="font-size:.72rem;color:var(--muted);text-decoration:line-through">{{ art.produit.prix|floatformat:0 }} F</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Prix desktop -->
+            <div class="col-auto d-none d-lg-block text-end" style="min-width:120px">
+              <div style="font-size:.92rem;font-weight:800;color:var(--saffron)">{{ art.prix|floatformat:0 }} F</div>
+              {% with eco=art.economie_unitaire %}
+              {% if eco %}
+              <div style="font-size:.72rem;color:var(--muted);text-decoration:line-through">{{ art.produit.prix|floatformat:0 }} F</div>
+              <div style="font-size:.7rem;color:var(--jade)">-{{ eco|floatformat:0 }} F/unité</div>
+              {% endif %}
+              {% endwith %}
+            </div>
+
+            <!-- Quantité -->
+            <div class="col-auto">
+              <div class="d-flex align-items-center gap-1"
+                  style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--surface)">
+
+                <button class="btn-qte btn-qte-dec"
+                        data-id="{{ art.pk }}"
+                        data-url="{% url 'apps_marketplace:modifier_quantite_panier' art.pk %}"
+                        style="width:32px;height:32px;background:none;border:none;color:var(--text-2);cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center">
+                  <i class="bi bi-dash"></i>
+                </button>
+
+                <span class="qte-val" id="qte-{{ art.pk }}"
+                      style="min-width:28px;text-align:center;font-size:.82rem;font-weight:700;color:var(--text)">
+                  {{ art.quantite }}
+                </span>
+
+                <button class="btn-qte btn-qte-inc"
+                        data-id="{{ art.pk }}"
+                        data-url="{% url 'apps_marketplace:modifier_quantite_panier' art.pk %}"
+                        style="width:32px;height:32px;background:none;border:none;color:var(--text-2);cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center">
+                  <i class="bi bi-plus"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Sous-total -->
+            <div class="col-auto text-end" style="min-width:110px">
+              <div style="font-size:.92rem;font-weight:800;color:var(--text)" id="stotal-{{ art.pk }}">
+                {{ art.sous_total|floatformat:0 }} F
+              </div>
+              {% with eco=art.economie_totale %}
+              {% if eco %}
+              <div style="font-size:.7rem;color:var(--jade)">Éco: {{ eco|floatformat:0 }} F</div>
+              {% endif %}
+              {% endwith %}
+            </div>
+
+            <!-- Supprimer -->
+            <div class="col-auto">
+              <button class="btn-retirer"
+                      data-id="{{ art.pk }}"
+                      data-url="{% url 'apps_marketplace:retirer_du_panier' art.pk %}"
+                      style="width:32px;height:32px;background:none;border:1px solid rgba(239,68,68,.3);border-radius:8px;color:var(--ember);cursor:pointer;display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-x-lg" style="font-size:.8rem"></i>
+              </button>
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Continuer les achats -->
+      <div class="mt-3">
+        <a href="{% url 'apps_core:catalogue' %}" class="btn-ghost" style="font-size:.82rem">
+          <i class="bi bi-arrow-left"></i> Continuer mes achats
+        </a>
+      </div>
+    </div>
+
+    <!-- ══ Récapitulatif ══ -->
+    <div class="col-12 col-lg-4">
+      <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);position:sticky;top:1rem">
+        <div style="font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:1.2rem">
+          <i class="bi bi-receipt me-2" style="color:var(--saffron)"></i>Récapitulatif
+        </div>
+
+        <div class="d-grid gap-2 mb-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <span style="font-size:.82rem;color:var(--text-2)">Sous-total ({{ nb_articles }} art.)</span>
+            <span style="font-size:.85rem;font-weight:700;color:var(--text)" id="recap-sous-total">{{ sous_total|floatformat:0 }} FCFA</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span style="font-size:.82rem;color:var(--text-2)">Livraison</span>
+            <span style="font-size:.82rem;color:var(--jade)">Calculée au checkout</span>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:.8rem;margin-bottom:1rem">
+          <div class="d-flex justify-content-between align-items-center">
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">Total estimé</span>
+            <span style="font-size:1.1rem;font-weight:900;color:var(--saffron);font-family:var(--fm)" id="recap-total">{{ sous_total|floatformat:0 }} FCFA</span>
+          </div>
+        </div>
+
+        {% if request.user.is_authenticated %}
+        <a href="{% url 'apps_marketplace:passer_commande' %}" class="btn-gold w-100 justify-content-center" style="font-size:.9rem">
+          <i class="bi bi-lock-fill"></i> Passer commande
+        </a>
+        {% else %}
+        <a href="{% url 'apps_core:connexion' %}?next={% url 'apps_marketplace:passer_commande' %}" class="btn-gold w-100 justify-content-center" style="font-size:.9rem">
+          <i class="bi bi-person-fill"></i> Connexion pour commander
+        </a>
+        {% endif %}
+
+        <!-- Garanties -->
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div class="d-grid gap-1">
+            <div style="font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-shield-check" style="color:var(--jade)"></i>Paiement 100% sécurisé
+            </div>
+            <div style="font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-shield-check" style="color:var(--jade)"></i>Paiement a la livraison
+            </div>
+            <div style="font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-arrow-counterclockwise" style="color:var(--indigo)"></i>Retour possible sous 7 jours
+            </div>
+            <div style="font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-truck" style="color:var(--saffron)"></i>Livraison rapide partout
+            </div>
+          </div>
+        </div>
+
+        <!-- Opérateurs paiement -->
+        <div style="margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+          <span style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Paiements acceptés</span>
+          <span class="chip" style="font-size:.68rem;padding:.2rem .55rem;background:rgba(246,169,43,.12);color:var(--saffron)">Orange Money</span>
+          <span class="chip" style="font-size:.68rem;padding:.2rem .55rem;background:rgba(246,169,43,.12);color:var(--saffron)">MTN MoMo</span>
+          <span class="chip" style="font-size:.68rem;padding:.2rem .55rem;background:rgba(99,102,241,.12);color:var(--indigo)">Wave</span>
+          <span class="chip" style="font-size:.68rem;padding:.2rem .55rem;background:rgba(16,185,129,.12);color:var(--jade)">YopiPay</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {% else %}
+  <!-- Panier vide -->
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);max-width:480px;margin:2rem auto">
+    <div style="width:80px;height:80px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1.2rem">
+      <i class="bi bi-bag" style="font-size:2rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Votre panier est vide</div>
+    <div style="font-size:.84rem;color:var(--muted);margin-bottom:1.5rem">Découvrez nos produits et ajoutez-les à votre panier.</div>
+    <a href="{% url 'apps_core:catalogue' %}" class="btn-gold justify-content-center">
+      <i class="bi bi-bag-heart"></i> Découvrir les produits
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+"use strict";
+const csrf = () => document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+/* ── Modifier quantité ── */
+document.querySelectorAll('.btn-qte').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const id     = this.dataset.id;
+    const url    = this.dataset.url;   // ← URL générée par Django via data-url
+    const action = this.classList.contains('btn-qte-inc') ? 'increment' : 'decrement';
+
+    /* Désactiver pendant la requête */
+    const row = this.closest('[id^="article-"]');
+    const btns = row?.querySelectorAll('.btn-qte, .btn-retirer');
+    btns?.forEach(b => b.disabled = true);
+
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken':      csrf(),
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type':     'application/x-www-form-urlencoded',
+        },
+        body: `action=${action}`,
+      });
+
+      if (!r.ok) {
+        console.error(`modifier_quantite HTTP ${r.status}`);
+        btns?.forEach(b => b.disabled = false);
+        return;
+      }
+
+      const d = await r.json();
+
+      if (d.success) {
+        /* Mise à jour quantité */
+        const qteEl = document.getElementById(`qte-${id}`);
+        if (qteEl) qteEl.textContent = d.quantite;
+
+        /* Désactiver le bouton — si quantité == 1, pas de décrement */
+        const decBtn = row?.querySelector('.btn-qte-dec');
+        if (decBtn) decBtn.disabled = (d.quantite <= 1);
+
+        /* Sous-total ligne */
+        const stEl = document.getElementById(`stotal-${id}`);
+        if (stEl) stEl.textContent = fmt(d.sous_total) + ' F';
+
+        /* Totaux récapitulatif */
+        const rstEl = document.getElementById('recap-sous-total');
+        const rtEl  = document.getElementById('recap-total');
+        if (rstEl) rstEl.textContent = fmt(d.panier_total) + ' FCFA';
+        if (rtEl)  rtEl.textContent  = fmt(d.panier_total) + ' FCFA';
+
+        /* Badge navbar */
+        mettreAJourBadge(d.nb_articles);
+
+        if (d.message) showToast(d.message, 'warning');
+      }
+    } catch(e) {
+      console.error('Erreur modifier quantité:', e);
+    } finally {
+      btns?.forEach(b => b.disabled = false);
+    }
+  });
+});
+
+
+/* ── Retirer article ── */
+document.querySelectorAll('.btn-retirer').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const id   = this.dataset.id;
+    const url  = this.dataset.url;   // ← URL générée par Django via data-url
+    const card = document.getElementById(`article-${id}`);
+
+    /* Animation de sortie immédiate */
+    if (card) {
+      card.style.transition = 'opacity .2s, transform .2s';
+      card.style.opacity    = '0';
+      card.style.transform  = 'translateX(20px)';
+    }
+
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken':      csrf(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!r.ok) {
+        /* Annuler l'animation si erreur */
+        if (card) { card.style.opacity = '1'; card.style.transform = ''; }
+        console.error(`retirer_du_panier HTTP ${r.status}`);
+        return;
+      }
+
+      const d = await r.json();
+
+      if (d.success) {
+        /* Supprimer la carte après animation */
+        setTimeout(() => card?.remove(), 220);
+
+        /* Mettre à jour les totaux */
+        const rstEl = document.getElementById('recap-sous-total');
+        const rtEl  = document.getElementById('recap-total');
+        if (rstEl) rstEl.textContent = fmt(d.panier_total) + ' FCFA';
+        if (rtEl)  rtEl.textContent  = fmt(d.panier_total) + ' FCFA';
+
+        /* Badge navbar */
+        mettreAJourBadge(d.nb_articles);
+
+        /* Si panier vide → recharger pour afficher l'état vide */
+        if (d.nb_articles === 0) {
+          setTimeout(() => location.reload(), 400);
+        } else {
+          showToast('Article retiré du panier.', 'info');
+        }
+      }
+    } catch(e) {
+      if (card) { card.style.opacity = '1'; card.style.transform = ''; }
+      console.error('Erreur retirer article:', e);
+    }
+  });
+});
+
+
+/* ── Vider le panier (intercepter le form en AJAX) ── */
+document.getElementById('form-vider')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!confirm('Vider tout le panier ?')) return;
+
+  const url = this.action;   
+
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken':      csrf(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+    const d = await r.json();
+    if (d.success) {
+      mettreAJourBadge(0);
+      location.reload();
+    }
+  } catch(e) {
+    console.error('Erreur vider panier:', e);
+  }
+});
+
+
+/* ══ Helpers ══ */
+
+function fmt(n) {
+  return Math.round(n).toLocaleString('fr');
+}
+
+function mettreAJourBadge(nb) {
+  /* Sélecteur précis sur le lien panier dans la navbar */
+  const panierLink = document.querySelector(
+    'a[href*="voir_panier"].nav-icon, a[href="/panier/"].nav-icon'
+  );
+  if (!panierLink) return;
+
+  let bc = panierLink.querySelector('.bc');
+  if (nb > 0) {
+    if (bc) {
+      bc.textContent = nb;
+    } else {
+      bc = document.createElement('span');
+      bc.className   = 'bc';
+      bc.textContent = nb;
+      panierLink.appendChild(bc);
+    }
+  } else {
+    bc?.remove();
+  }
+}
+
+function showToast(msg, type = 'info') {
+  const colors = {
+    info:    'var(--indigo)',
+    warning: 'var(--saffron)',
+    error:   'var(--ember)',
+    success: 'var(--jade)',
+  };
+  const t = document.createElement('div');
+  t.style.cssText = `
+    position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;
+    background:var(--card);
+    border:1px solid ${colors[type] || 'var(--border)'};
+    border-left:4px solid ${colors[type] || 'var(--saffron)'};
+    border-radius:var(--r);padding:.75rem 1.1rem;
+    font-size:.82rem;color:var(--text);
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+    max-width:300px;opacity:1;transition:opacity .3s
+  `;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => {
+    t.style.opacity = '0';
+    setTimeout(() => t.remove(), 300);
+  }, 3000);
+}
+</script>
+{% endblock %}

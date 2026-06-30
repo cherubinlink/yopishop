@@ -1,0 +1,303 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes promotions — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER DASHBOARD ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_core:tableau_de_bord' %}" class="cpill">
+          <i class="bi bi-speedometer2 me-1"></i>Dashboard
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;color:var(--text-2);font-weight:600">
+          <i class="bi bi-percent me-1" style="color:var(--saffron)"></i>Mes promotions
+        </span>
+      </div>
+      <a href="{% url 'apps_core:creer_promotion' %}" class="btn-gold" style="font-size:.78rem;padding:.4rem 1rem">
+        <i class="bi bi-plus-lg me-1"></i>Nouvelle promotion
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ STATS ═══════ -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="row g-0 text-center">
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--text)">{{ stats.total }}</div>
+        <div class="stat-l">Total</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--jade)">{{ stats.actives }}</div>
+        <div class="stat-l">Actives</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--muted)">{{ stats.brouillons }}</div>
+        <div class="stat-l">Brouillons</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--ember)">{{ stats.expirees }}</div>
+        <div class="stat-l">Expirées</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ FILTRES + RECHERCHE ═══════ -->
+<section class="ys" style="padding:1.5rem 0">
+  <div class="container">
+    <form method="get" class="d-flex align-items-center gap-3 flex-wrap" id="filtreForm">
+
+      <!-- Recherche -->
+      <div class="search-wrap" style="max-width:280px;flex:1">
+        <i class="bi bi-search si"></i>
+        <input type="text" name="q" class="search-input" placeholder="Nom, code promo…" value="{{ q }}">
+        <button type="submit" class="search-submit"><i class="bi bi-arrow-right"></i></button>
+      </div>
+
+      <!-- Filtre statut -->
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="?{% if q %}q={{ q }}{% endif %}" class="cpill {% if not statut %}on{% endif %}">Tout</a>
+        <a href="?statut=active{% if q %}&q={{ q }}{% endif %}" class="cpill {% if statut == 'active' %}on{% endif %}" style="{% if statut == 'active' %}color:var(--jade){% endif %}">
+          <i class="bi bi-check-circle"></i>Actives
+        </a>
+        <a href="?statut=brouillon{% if q %}&q={{ q }}{% endif %}" class="cpill {% if statut == 'brouillon' %}on{% endif %}">
+          <i class="bi bi-pencil"></i>Brouillons
+        </a>
+        <a href="?statut=en_pause{% if q %}&q={{ q }}{% endif %}" class="cpill {% if statut == 'en_pause' %}on{% endif %}">
+          <i class="bi bi-pause-circle"></i>En pause
+        </a>
+        <a href="?statut=expiree{% if q %}&q={{ q }}{% endif %}" class="cpill {% if statut == 'expiree' %}on{% endif %}" style="{% if statut == 'expiree' %}color:var(--ember){% endif %}">
+          <i class="bi bi-x-circle"></i>Expirées
+        </a>
+      </div>
+    </form>
+  </div>
+</section>
+
+
+<!-- ═══════ LISTE PROMOTIONS ═══════ -->
+<section class="ys bg-surface" style="padding-top:0">
+  <div class="container">
+
+    {% if promotions %}
+    <div class="d-flex flex-column gap-3">
+      {% for promo in promotions %}
+      <div class="ycard fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <div class="row align-items-center gy-3">
+
+          <!-- Icône + Nom -->
+          <div class="col-12 col-md-4">
+            <div class="d-flex align-items-center gap-3">
+              <!-- Icône type -->
+              {% if promo.type_promotion == 'pourcentage' %}
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-percent" style="color:var(--saffron);font-size:1.1rem"></i>
+              </div>
+              {% elif promo.type_promotion == 'montant_fixe' %}
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-currency-exchange" style="color:var(--jade);font-size:1.1rem"></i>
+              </div>
+              {% elif promo.type_promotion == 'livraison_gratuite' %}
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-truck" style="color:var(--indigo);font-size:1.1rem"></i>
+              </div>
+              {% else %}
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--ember-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-tags" style="color:var(--ember);font-size:1.1rem"></i>
+              </div>
+              {% endif %}
+
+              <div style="min-width:0">
+                <div style="font-size:.9rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  {{ promo.nom }}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                  <!-- Statut badge -->
+                  {% if promo.statut == 'active' %}
+                  <span class="chip chip-jade" style="font-size:.62rem;padding:.15rem .55rem"><i class="bi bi-circle-fill me-1" style="font-size:.45rem"></i>Active</span>
+                  {% elif promo.statut == 'brouillon' %}
+                  <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.62rem;padding:.15rem .55rem">Brouillon</span>
+                  {% elif promo.statut == 'en_pause' %}
+                  <span class="chip" style="background:rgba(246,169,43,.1);color:var(--saffron);font-size:.62rem;padding:.15rem .55rem">En pause</span>
+                  {% elif promo.statut == 'expiree' %}
+                  <span class="chip chip-ember" style="font-size:.62rem;padding:.15rem .55rem">Expirée</span>
+                  {% endif %}
+                  {% if promo.code %}
+                  <code style="font-size:.7rem;color:var(--saffron);background:var(--saffron-d);padding:.1rem .45rem;border-radius:4px">{{ promo.code }}</code>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Valeur + Période -->
+          <div class="col-6 col-md-3">
+            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.2rem">Réduction</div>
+            {% if promo.type_promotion == 'pourcentage' %}
+            <div style="font-size:1.4rem;font-weight:800;color:var(--saffron);font-family:var(--fm);line-height:1">-{{ promo.valeur_reduction|floatformat:0 }}%</div>
+            {% elif promo.type_promotion == 'montant_fixe' %}
+            <div style="font-size:1.1rem;font-weight:800;color:var(--jade);font-family:var(--fm);line-height:1">-{{ promo.valeur_reduction|floatformat:0 }} F</div>
+            {% elif promo.type_promotion == 'livraison_gratuite' %}
+            <div style="font-size:.85rem;font-weight:700;color:var(--indigo);line-height:1.2">Livraison<br>gratuite</div>
+            {% endif %}
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">
+              <i class="bi bi-calendar3 me-1"></i>{{ promo.date_debut|date:"d/m/y" }} → {{ promo.date_fin|date:"d/m/y" }}
+            </div>
+          </div>
+
+          <!-- Stats utilisation -->
+          <div class="col-6 col-md-2 d-none d-md-block">
+            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Utilisations</div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--text)">{{ promo.nb_utilisations|default:"—" }}</div>
+            {% if promo.limite_utilisation %}
+            <div style="margin-top:.4rem">
+              <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:{% widthratio promo.nb_utilisations|default:0 promo.limite_utilisation 100 %}%;background:var(--saffron);border-radius:2px;transition:width .4s"></div>
+              </div>
+              <div style="font-size:.65rem;color:var(--muted);margin-top:.2rem">/ {{ promo.limite_utilisation }}</div>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Actions -->
+          <div class="col-12 col-md-3">
+            <div class="d-flex align-items-center gap-2 justify-content-end flex-wrap">
+
+              <!-- Toggle statut (AJAX) -->
+              <div class="dropdown">
+                <button class="cpill dropdown-toggle" data-bs-toggle="dropdown" style="font-size:.75rem">
+                  <i class="bi bi-toggle-on me-1"></i>Statut
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end py-1" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:160px">
+                  {% for val, label in promo.STATUT_CHOICES|default:"" %}
+                  <li>
+                    <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 toggle-statut"
+                            data-pk="{{ promo.pk }}" data-statut="{{ val }}"
+                            style="color:var(--text-2);font-size:.8rem">
+                      <i class="bi bi-{% if val == 'active' %}check-circle text-success{% elif val == 'en_pause' %}pause-circle text-warning{% elif val == 'brouillon' %}pencil{% else %}x-circle text-danger{% endif %}"></i>
+                      {{ label }}
+                    </button>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+
+              <a href="{% url 'apps_core:stats_promotion' promo.pk %}" class="cpill" title="Statistiques">
+                <i class="bi bi-bar-chart"></i>
+              </a>
+              <a href="{% url 'apps_core:modifier_promotion' promo.pk %}" class="cpill" title="Modifier">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <a href="{% url 'apps_core:promotion_detail' promo.pk %}" class="cpill" title="Voir la page publique" >
+                <i class="bi bi-eye"></i>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if promotions.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi" aria-label="Pagination">
+      <ul class="pagination" style="gap:.4rem">
+        {% if promotions.has_previous %}
+        <li><a class="cpill" href="?page={{ promotions.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for num in promotions.paginator.page_range %}
+          {% if promotions.number == num %}
+          <li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= promotions.number and num|add:"2" >= promotions.number %}
+          <li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if promotions.has_next %}
+        <li><a class="cpill" href="?page={{ promotions.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <!-- État vide -->
+    <div class="text-center py-5 fi">
+      <i class="bi bi-percent" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+        {% if q or statut %}Aucune promotion trouvée{% else %}Aucune promotion pour l'instant{% endif %}
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+        {% if q or statut %}Essayez avec d'autres filtres ou termes de recherche.
+        {% else %}Créez votre première promotion pour fidéliser vos clients.{% endif %}
+      </div>
+      {% if q or statut %}
+      <a href="{% url 'apps_core:mes_promotions' %}" class="btn-ghost me-2">Réinitialiser les filtres</a>
+      {% endif %}
+      <a href="{% url 'apps_core:creer_promotion' %}" class="btn-gold">
+        <i class="bi bi-plus-lg me-1"></i>Créer une promotion
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Toggle statut AJAX */
+document.querySelectorAll('.toggle-statut').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    const pk      = this.dataset.pk;
+    const statut  = this.dataset.statut;
+    const card    = this.closest('.ycard');
+    try {
+      const r = await fetch(`/promotions/${pk}/toggle-statut/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: `statut=${statut}`
+      });
+      const d = await r.json();
+      if(d.success) {
+        /* Flash visuel */
+        card.style.transition = 'opacity .2s';
+        card.style.opacity = '.5';
+        setTimeout(() => { card.style.opacity = '1'; location.reload(); }, 400);
+      } else {
+        alert(d.message || 'Erreur');
+      }
+    } catch(e) { console.error(e); }
+  });
+});
+
+/* Dropdown hover style */
+document.querySelectorAll('.dropdown-item').forEach(item => {
+  item.addEventListener('mouseenter', function(){ this.style.background='var(--saffron-d)'; this.style.color='var(--saffron)'; });
+  item.addEventListener('mouseleave', function(){ this.style.background=''; this.style.color=''; });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

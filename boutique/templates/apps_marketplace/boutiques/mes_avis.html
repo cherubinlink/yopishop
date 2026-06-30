@@ -1,0 +1,331 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'apps_marketplace:dashboard_vendeur' %}" style="color:var(--saffron);text-decoration:none">Tableau de bord</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Mes avis reçus</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Mes avis reçus
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        {{ avis.paginator.count }} avis au total
+      </p>
+    </div>
+    <a href="{% url 'apps_marketplace:dashboard_vendeur' %}" class="btn-ghost" style="font-size:.82rem">
+      <i class="bi bi-arrow-left"></i> Tableau de bord
+    </a>
+  </div>
+
+  <!-- ── Bloc statistiques ── -->
+  {% if stats.total %}
+  <div class="row g-3 mb-4">
+
+    <!-- Note globale -->
+    <div class="col-12 col-md-4">
+      <div class="ycard p-4 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:3rem;font-weight:900;font-family:var(--fm);color:var(--saffron);line-height:1">
+          {{ stats.moyenne|floatformat:1|default:"—" }}
+        </div>
+        <div class="d-flex justify-content-center gap-1 my-2">
+          {% with val=stats.moyenne|default:0 %}
+          {% for i in "12345" %}
+          <i class="bi {% if forloop.counter <= val|floatformat:0|add:'0' %}bi-star-fill{% else %}bi-star{% endif %}" style="color:var(--saffron);font-size:1rem"></i>
+          {% endfor %}
+          {% endwith %}
+        </div>
+        <div style="font-size:.78rem;color:var(--muted)">{{ stats.total }} avis approuvé{{ stats.total|pluralize }}</div>
+      </div>
+    </div>
+
+    <!-- Détail sous-notes -->
+    <div class="col-12 col-md-8">
+      <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);height:100%">
+        <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:1rem">Détail des critères</div>
+        <div class="d-grid gap-3">
+
+          {% for label, val, color in sub_notes|default:"" %}{% endfor %}
+          <!-- Communication -->
+          <div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span style="font-size:.78rem;color:var(--text-2)"><i class="bi bi-chat-dots me-1" style="color:var(--indigo)"></i>Communication</span>
+              <span style="font-size:.78rem;font-weight:700;color:var(--text)">{{ stats.moy_comm|floatformat:1|default:"—" }}/5</span>
+            </div>
+            <div style="height:6px;background:var(--surface);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:{% widthratio stats.moy_comm|default:0 5 100 %}%;background:var(--indigo);border-radius:99px;transition:width .4s"></div>
+            </div>
+          </div>
+
+          <!-- Expédition -->
+          <div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span style="font-size:.78rem;color:var(--text-2)"><i class="bi bi-truck me-1" style="color:var(--jade)"></i>Expédition</span>
+              <span style="font-size:.78rem;font-weight:700;color:var(--text)">{{ stats.moy_exp|floatformat:1|default:"—" }}/5</span>
+            </div>
+            <div style="height:6px;background:var(--surface);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:{% widthratio stats.moy_exp|default:0 5 100 %}%;background:var(--jade);border-radius:99px;transition:width .4s"></div>
+            </div>
+          </div>
+
+          <!-- Emballage -->
+          <div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span style="font-size:.78rem;color:var(--text-2)"><i class="bi bi-box-seam me-1" style="color:var(--ember)"></i>Emballage</span>
+              <span style="font-size:.78rem;font-weight:700;color:var(--text)">{{ stats.moy_emb|floatformat:1|default:"—" }}/5</span>
+            </div>
+            <div style="height:6px;background:var(--surface);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:{% widthratio stats.moy_emb|default:0 5 100 %}%;background:var(--ember);border-radius:99px;transition:width .4s"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Filtres ── -->
+  <div class="d-flex gap-2 flex-wrap mb-4">
+    <a href="{% url 'apps_marketplace:mes_avis_recus' %}"
+      class="cpill {% if not statut %}on{% endif %}"
+      style="{% if not statut %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      Tous
+    </a>
+    <a href="?statut=non_repondu"
+      class="cpill {% if statut == 'non_repondu' %}on{% endif %}"
+      style="{% if statut == 'non_repondu' %}background:rgba(239,68,68,.12);border-color:var(--ember);color:var(--ember){% endif %}">
+      <i class="bi bi-chat-left"></i> Sans réponse
+    </a>
+    <a href="?statut=repondu"
+      class="cpill {% if statut == 'repondu' %}on{% endif %}"
+      style="{% if statut == 'repondu' %}background:rgba(16,185,129,.12);border-color:var(--jade);color:var(--jade){% endif %}">
+      <i class="bi bi-chat-left-fill"></i> Répondus
+    </a>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};color:var(--text)">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Liste des avis ── -->
+  {% if avis %}
+  <div style="display:grid;gap:1rem">
+    {% for av in avis %}
+    <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)" id="avis-{{ av.pk }}">
+
+      <!-- En-tête avis -->
+      <div class="d-flex align-items-start gap-3 mb-3">
+        <!-- Avatar acheteur -->
+        <div style="width:42px;height:42px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem;font-weight:700;color:var(--saffron)">
+          {% if av.utilisateur.avatar %}
+            <img src="{{ av.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+          {% else %}
+            {{ av.utilisateur.username|first|upper }}
+          {% endif %}
+        </div>
+
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <span style="font-size:.88rem;font-weight:700;color:var(--text)">
+                {{ av.utilisateur.get_full_name|default:av.utilisateur.username }}
+              </span>
+              {% if av.commande %}
+              <span style="font-size:.7rem;color:var(--muted);margin-left:.5rem">
+                <i class="bi bi-box me-1"></i>Commande #{{ av.commande.pk }}
+              </span>
+              {% endif %}
+            </div>
+            <span style="font-size:.7rem;color:var(--muted)">
+              <i class="bi bi-clock me-1"></i>{{ av.date_creation|timesince }} ago
+            </span>
+          </div>
+
+          <!-- Étoiles note globale -->
+          <div class="d-flex align-items-center gap-2 mt-1">
+            <div class="d-flex gap-1">
+              {% for i in "12345" %}
+              <i class="bi {% if forloop.counter <= av.note %}bi-star-fill{% else %}bi-star{% endif %}" style="color:var(--saffron);font-size:.85rem"></i>
+              {% endfor %}
+            </div>
+            <span style="font-size:.78rem;font-weight:700;color:var(--saffron)">{{ av.note }}/5</span>
+            {% if not av.est_approuve %}
+            <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(246,169,43,.15);color:var(--saffron)">
+              <i class="bi bi-hourglass-split me-1"></i>En modération
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Commentaire -->
+      {% if av.commentaire %}
+      <p style="font-size:.84rem;color:var(--text-2);line-height:1.6;margin:0 0 .8rem;padding:.75rem 1rem;background:var(--surface);border-radius:var(--r);border-left:3px solid var(--saffron)">
+        {{ av.commentaire }}
+      </p>
+      {% endif %}
+
+      <!-- Sous-notes -->
+      {% if av.note_communication or av.note_expedition or av.note_emballage %}
+      <div class="d-flex gap-3 flex-wrap mb-3">
+        {% if av.note_communication %}
+        <div style="font-size:.72rem;color:var(--text-2);display:flex;align-items:center;gap:.3rem">
+          <i class="bi bi-chat-dots" style="color:var(--indigo)"></i>Comm. :
+          <strong style="color:var(--text)">{{ av.note_communication }}/5</strong>
+        </div>
+        {% endif %}
+        {% if av.note_expedition %}
+        <div style="font-size:.72rem;color:var(--text-2);display:flex;align-items:center;gap:.3rem">
+          <i class="bi bi-truck" style="color:var(--jade)"></i>Expéd. :
+          <strong style="color:var(--text)">{{ av.note_expedition }}/5</strong>
+        </div>
+        {% endif %}
+        {% if av.note_emballage %}
+        <div style="font-size:.72rem;color:var(--text-2);display:flex;align-items:center;gap:.3rem">
+          <i class="bi bi-box-seam" style="color:var(--ember)"></i>Emball. :
+          <strong style="color:var(--text)">{{ av.note_emballage }}/5</strong>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Réponse existante -->
+      {% if av.reponse_vendeur %}
+      <div style="padding:.75rem 1rem;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:var(--r);margin-bottom:.75rem">
+        <div style="font-size:.72rem;font-weight:700;color:var(--indigo);margin-bottom:.4rem">
+          <i class="bi bi-reply-fill me-1"></i>Votre réponse
+        </div>
+        <p style="font-size:.82rem;color:var(--text-2);margin:0;line-height:1.55">{{ av.reponse_vendeur }}</p>
+        <button class="btn-ghost mt-2" style="font-size:.72rem;padding:.2rem .6rem;width:auto;color:var(--muted)"
+          onclick="toggleReponseForm({{ av.pk }})">
+          <i class="bi bi-pencil"></i> Modifier
+        </button>
+      </div>
+      {% endif %}
+
+      <!-- Formulaire réponse -->
+      <div id="form-reponse-{{ av.pk }}" {% if av.reponse_vendeur %}style="display:none"{% endif %}>
+        <form method="post" action="{% url 'apps_marketplace:repondre_avis_vendeur' av.pk %}"
+          class="reponse-form" data-pk="{{ av.pk }}">
+          {% csrf_token %}
+          <textarea name="reponse_vendeur" rows="2"
+            class="form-control mb-2"
+            placeholder="Répondre publiquement à cet avis…"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.8rem;resize:vertical">{{ av.reponse_vendeur }}</textarea>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn-gold" style="font-size:.78rem;padding:.35rem .9rem;width:auto">
+              <i class="bi bi-send"></i> Publier ma réponse
+            </button>
+            {% if av.reponse_vendeur %}
+            <button type="button" class="btn-ghost" style="font-size:.78rem;width:auto"
+              onclick="toggleReponseForm({{ av.pk }})">Annuler</button>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if avis.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+    {% if avis.has_previous %}
+    <a href="?statut={{ statut }}&page={{ avis.previous_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto">
+      <i class="bi bi-chevron-left"></i>
+    </a>
+    {% endif %}
+    {% for p in avis.paginator.page_range %}
+      {% if p == avis.number %}
+      <span class="btn-gold" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center">{{ p }}</span>
+      {% elif p >= avis.number|add:"-2" and p <= avis.number|add:"2" %}
+      <a href="?statut={{ statut }}&page={{ p }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center;width:auto">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if avis.has_next %}
+    <a href="?statut={{ statut }}&page={{ avis.next_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto">
+      <i class="bi bi-chevron-right"></i>
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-star" style="font-size:1.8rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun avis reçu</div>
+    <div style="font-size:.82rem;color:var(--muted)">
+      {% if statut == 'non_repondu' %}Tous vos avis ont une réponse. Excellent !
+      {% else %}Vos premiers avis apparaîtront ici après vos premières ventes.
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+"use strict";
+
+function toggleReponseForm(pk) {
+  const form = document.getElementById('form-reponse-' + pk);
+  form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+// Soumission AJAX des formulaires de réponse
+document.querySelectorAll('.reponse-form').forEach(form => {
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const pk   = this.dataset.pk;
+    const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    const data = new FormData(this);
+
+    try {
+      const r = await fetch(this.action, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+        body: data
+      });
+      const d = await r.json();
+      if (d.success) {
+        const card = document.getElementById('avis-' + pk);
+        // Mettre à jour ou créer le bloc réponse
+        let reponseBlock = card.querySelector('[data-reponse-block]');
+        if (!reponseBlock) {
+          reponseBlock = document.createElement('div');
+          reponseBlock.setAttribute('data-reponse-block', '1');
+          reponseBlock.style.cssText = 'padding:.75rem 1rem;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:var(--r);margin-bottom:.75rem';
+          form.closest('.ycard').insertBefore(reponseBlock, form.parentElement);
+        }
+        reponseBlock.innerHTML = `
+          <div style="font-size:.72rem;font-weight:700;color:var(--indigo);margin-bottom:.4rem"><i class="bi bi-reply-fill me-1"></i>Votre réponse</div>
+          <p style="font-size:.82rem;color:var(--text-2);margin:0;line-height:1.55">${d.reponse}</p>
+          <button class="btn-ghost mt-2" style="font-size:.72rem;padding:.2rem .6rem;width:auto;color:var(--muted)" onclick="toggleReponseForm(${pk})"><i class="bi bi-pencil"></i> Modifier</button>
+        `;
+        document.getElementById('form-reponse-' + pk).style.display = 'none';
+      }
+    } catch (err) { console.error(err); }
+  });
+});
+</script>
+{% endblock %}

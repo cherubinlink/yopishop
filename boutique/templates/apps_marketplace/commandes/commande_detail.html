@@ -1,0 +1,403 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      {% if est_acheteur %}
+      <li class="breadcrumb-item"><a href="{% url 'apps_marketplace:mes_commandes' %}" style="color:var(--saffron);text-decoration:none">Mes commandes</a></li>
+      {% else %}
+      <li class="breadcrumb-item"><a href="{% url 'apps_marketplace:commandes_recues' %}" style="color:var(--saffron);text-decoration:none">Commandes reçues</a></li>
+      {% endif %}
+      <li class="breadcrumb-item active" style="color:var(--muted)">{{ commande.numero_commande }}</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.5rem;font-weight:800;color:var(--text);margin:0">
+        {{ commande.numero_commande }}
+      </h1>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">
+        <i class="bi bi-calendar3 me-1"></i>{{ commande.date_creation|date:"d M Y à H:i" }}
+        {% if commande.source != 'web' %}
+        &bull;
+        <i class="bi bi-{% if commande.source == 'live' %}broadcast{% elif commande.source == 'enchere' %}hammer{% elif commande.source == 'groupe' %}people{% else %}globe{% endif %} me-1"></i>{{ commande.get_source_display }}
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <span class="chip" style="font-size:.75rem;padding:.3rem .8rem;
+        background:{% if commande.statut == 'livree' %}rgba(16,185,129,.15){% elif commande.statut == 'annulee' %}rgba(239,68,68,.15){% elif commande.statut == 'expediee' %}rgba(99,102,241,.15){% else %}rgba(246,169,43,.15){% endif %};
+        color:{% if commande.statut == 'livree' %}var(--jade){% elif commande.statut == 'annulee' %}var(--ember){% elif commande.statut == 'expediee' %}var(--indigo){% else %}var(--saffron){% endif %}">
+        {{ commande.get_statut_display }}
+      </span>
+      <span class="chip" style="font-size:.75rem;padding:.3rem .8rem;
+        background:{% if commande.statut_paiement == 'payee' %}rgba(16,185,129,.15){% elif commande.statut_paiement == 'echec' %}rgba(239,68,68,.15){% else %}rgba(246,169,43,.15){% endif %};
+        color:{% if commande.statut_paiement == 'payee' %}var(--jade){% elif commande.statut_paiement == 'echec' %}var(--ember){% else %}var(--saffron){% endif %}">
+        <i class="bi bi-credit-card me-1"></i>{{ commande.get_statut_paiement_display }}
+      </span>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ══ Colonne principale ══ -->
+    <div class="col-12 col-lg-8">
+
+      <!-- Articles -->
+      <div class="ycard mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+        <div class="px-4 py-3" style="border-bottom:1px solid var(--border);background:var(--surface)">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+            <i class="bi bi-bag me-2" style="color:var(--saffron)"></i>
+            {{ commande.articles.count }} article{{ commande.articles.count|pluralize }}
+          </div>
+        </div>
+        {% for art in commande.articles.all %}
+        <div class="d-flex align-items-center gap-3 px-4 py-3" style="{% if not forloop.last %}border-bottom:1px solid var(--border){% endif %}">
+          <!-- Image -->
+          <div style="width:64px;height:64px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0">
+            {% if art.produit.image_principale %}
+              <img src="{{ art.produit.image_principale }}" alt="{{ art.produit.titre }}" style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted);font-size:1.2rem"></i></div>
+            {% endif %}
+          </div>
+          <!-- Infos -->
+          <div class="flex-grow-1 min-width-0">
+            <a href="{% url 'apps_core:produit_detail' art.produit.slug %}" style="text-decoration:none">
+              <div style="font-size:.88rem;font-weight:700;color:var(--text)">{{ art.produit.titre }}</div>
+            </a>
+            {% if art.variante %}<div style="font-size:.74rem;color:var(--indigo)"><i class="bi bi-tag me-1"></i>{{ art.variante.nom }}</div>{% endif %}
+            <div style="font-size:.74rem;color:var(--muted)">
+              <i class="bi bi-shop me-1"></i>{{ art.produit.vendeur.boutique.nom|default:art.produit.vendeur.username }}
+            </div>
+            <!-- Commission (visible vendeur/admin) -->
+            {% if not est_acheteur or request.user.is_staff %}
+            <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">
+              Taux commission : {{ art.taux_commission_applique }}% — {{ art.commission_boutique|floatformat:0 }} FCFA
+            </div>
+            {% endif %}
+          </div>
+          <!-- Prix -->
+          <div class="text-end flex-shrink-0">
+            <div style="font-size:.82rem;color:var(--muted)">{{ art.prix_unitaire|floatformat:0 }} F × {{ art.quantite }}</div>
+            <div style="font-size:.95rem;font-weight:800;color:var(--saffron)">{{ art.prix_total|floatformat:0 }} F</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Livraison -->
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+          <i class="bi bi-truck me-2" style="color:var(--jade)"></i>Livraison
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-sm-6">
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Adresse de livraison</div>
+            <div style="font-size:.82rem;color:var(--text)">{{ commande.adresse_livraison }}</div>
+            {% if commande.ville_livraison %}<div style="font-size:.78rem;color:var(--text-2)">{{ commande.ville_livraison.nom }}{% if commande.quartier_livraison %}, {{ commande.quartier_livraison.nom }}{% endif %}</div>{% endif %}
+          </div>
+          <div class="col-12 col-sm-6">
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Adresse de facturation</div>
+            <div style="font-size:.82rem;color:var(--text)">{{ commande.adresse_facturation }}</div>
+          </div>
+          {% if commande.instructions_livraison %}
+          <div class="col-12">
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Instructions</div>
+            <div style="font-size:.82rem;color:var(--text-2)">{{ commande.instructions_livraison }}</div>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if commande.date_expedition %}
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.8rem;color:var(--jade)">
+          <i class="bi bi-truck me-1"></i>Expédiée le {{ commande.date_expedition|date:"d M Y à H:i" }}
+        </div>
+        {% endif %}
+        {% if commande.date_livraison %}
+        <div style="margin-top:.5rem;font-size:.8rem;color:var(--jade)">
+          <i class="bi bi-check-circle-fill me-1"></i>Livrée le {{ commande.date_livraison|date:"d M Y à H:i" }}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Vendeur : changer statut -->
+     {% if not est_acheteur %}
+{% if commande.statut != 'livree' and commande.statut != 'annulee' and commande.statut != 'remboursee' %}
+<div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+  <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+    <i class="bi bi-arrow-repeat me-2" style="color:var(--indigo)"></i>Changer le statut
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+
+    {% if commande.statut == 'en_attente' %}
+    <button class="btn-ghost btn-statut"
+            data-statut="confirmee"
+            data-url="{% url 'apps_marketplace:changer_statut_commande' commande.pk %}"
+            style="font-size:.8rem;width:auto;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--jade)">
+      <i class="bi bi-check-circle"></i> Confirmer
+    </button>
+    {% endif %}
+
+    {% if commande.statut == 'confirmee' or commande.statut == 'en_attente' %}
+    <button class="btn-ghost btn-statut"
+            data-statut="en_traitement"
+            data-url="{% url 'apps_marketplace:changer_statut_commande' commande.pk %}"
+            style="font-size:.8rem;width:auto">
+      <i class="bi bi-gear"></i> En traitement
+    </button>
+    {% endif %}
+
+    {% if commande.statut == 'en_traitement' or commande.statut == 'confirmee' %}
+    <button class="btn-ghost btn-statut"
+            data-statut="expediee"
+            data-url="{% url 'apps_marketplace:changer_statut_commande' commande.pk %}"
+            style="font-size:.8rem;width:auto;background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:var(--indigo)">
+      <i class="bi bi-truck"></i> Marquer expédiée
+    </button>
+    {% endif %}
+
+    {% if commande.statut == 'expediee' %}
+    <button class="btn-ghost btn-statut"
+            data-statut="livree"
+            data-url="{% url 'apps_marketplace:changer_statut_commande' commande.pk %}"
+            style="font-size:.8rem;width:auto;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--jade)">
+      <i class="bi bi-check2-all"></i> Marquer livrée
+    </button>
+    {% endif %}
+
+  </div>
+  <div id="statut-feedback" style="font-size:.78rem;margin-top:.6rem;color:var(--muted)"></div>
+</div>
+{% endif %}
+{% endif %}
+
+    </div>
+
+    <!-- ══ Colonne latérale ══ -->
+    <div class="col-12 col-lg-4">
+
+      <!-- Récapitulatif financier -->
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+          <i class="bi bi-receipt me-2" style="color:var(--saffron)"></i>Récapitulatif
+        </div>
+        <div class="d-grid gap-2">
+          <div class="d-flex justify-content-between">
+            <span style="font-size:.8rem;color:var(--text-2)">Sous-total</span>
+            <span style="font-size:.8rem;color:var(--text)">{{ commande.sous_total|floatformat:0 }} FCFA</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span style="font-size:.8rem;color:var(--text-2)">Livraison</span>
+            <span style="font-size:.8rem;color:var(--text)">{{ commande.frais_livraison|floatformat:0 }} FCFA</span>
+          </div>
+          {% if commande.montant_taxe %}
+          <div class="d-flex justify-content-between">
+            <span style="font-size:.8rem;color:var(--text-2)">Taxes</span>
+            <span style="font-size:.8rem;color:var(--text)">{{ commande.montant_taxe|floatformat:0 }} FCFA</span>
+          </div>
+          {% endif %}
+          {% if commande.montant_reduction %}
+          <div class="d-flex justify-content-between">
+            <span style="font-size:.8rem;color:var(--jade)"><i class="bi bi-tag me-1"></i>Réduction</span>
+            <span style="font-size:.8rem;color:var(--jade)">-{{ commande.montant_reduction|floatformat:0 }} FCFA</span>
+          </div>
+          {% endif %}
+        </div>
+        <div style="border-top:2px solid var(--border);margin-top:.8rem;padding-top:.8rem">
+          <div class="d-flex justify-content-between align-items-center">
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">Total</span>
+            <span style="font-size:1.1rem;font-weight:900;color:var(--saffron);font-family:var(--fm)">{{ commande.montant_total|floatformat:0 }} FCFA</span>
+          </div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">{{ commande.devise }}</div>
+        </div>
+      </div>
+
+      <!-- Boutique / vendeur -->
+      {% if commande.boutique %}
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+          <i class="bi bi-shop me-2" style="color:var(--jade)"></i>Boutique
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:44px;height:44px;border-radius:10px;overflow:hidden;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            {% if commande.boutique.logo %}
+              <img src="{{ commande.boutique.logo.url }}" alt="" style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+              <i class="bi bi-shop" style="color:var(--saffron)"></i>
+            {% endif %}
+          </div>
+          <div>
+            <div style="font-size:.86rem;font-weight:700;color:var(--text)">{{ commande.boutique.nom }}</div>
+            {% if commande.boutique.est_verifiee %}
+            <div style="font-size:.72rem;color:var(--jade)"><i class="bi bi-patch-check-fill me-1"></i>Boutique vérifiée</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Actions acheteur -->
+      {% if est_acheteur %}
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">Actions</div>
+        {% if commande.statut not in 'expediee,livree,annulee,remboursee' %}
+        <form method="post" action="{% url 'apps_marketplace:annuler_commande' commande.pk %}"
+          onsubmit="return confirm('Annuler cette commande ?')">
+          {% csrf_token %}
+          <button type="submit" class="btn-ghost w-100 justify-content-center mb-2"
+            style="font-size:.82rem;color:var(--ember);border-color:rgba(239,68,68,.3)">
+            <i class="bi bi-x-circle"></i> Annuler la commande
+          </button>
+        </form>
+        {% endif %}
+       {% if commande.statut == 'livree' %}
+
+<!-- Avis -->
+<a href="{% url 'apps_core:ajouter_avis' commande.pk %}"
+   class="btn-gold w-100 justify-content-center mb-3"
+   style="font-size:.82rem">
+    <i class="bi bi-star"></i> Laisser un avis
+</a>
+
+<!-- Retours -->
+<div class="mt-3">
+    <div class="fw-bold mb-2" style="font-size:.82rem">
+        <i class="bi bi-arrow-return-left"></i>
+        Demande de retour
+    </div>
+
+    {% for article in commande.articles.all %}
+
+        <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2">
+
+            <div>
+                <div style="font-size:.82rem;font-weight:600">
+                    {{ article.produit.titre }}
+                </div>
+
+                <div style="font-size:.72rem;color:var(--muted)">
+                    Quantité : {{ article.quantite }}
+                </div>
+            </div>
+
+            <a href="{% url 'apps_marketplace:demander_retour' commande.pk article.pk %}"
+               class="btn-ghost"
+               style="font-size:.75rem;padding:.35rem .7rem;width:auto">
+
+                <i class="bi bi-arrow-return-left"></i>
+                Retour
+            </a>
+
+        </div>
+
+    {% empty %}
+
+        <div class="text-muted">
+            Aucun article.
+        </div>
+
+    {% endfor %}
+</div>
+
+{% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Paiements -->
+      {% if commande.paiements.exists %}
+      <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+          <i class="bi bi-credit-card me-2" style="color:var(--indigo)"></i>Paiements
+        </div>
+        {% for p in commande.paiements.all %}
+        <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}" style="border-color:var(--border)">
+          <div>
+            <div style="font-size:.8rem;color:var(--text)">{{ p.get_methode_display }}</div>
+            <div style="font-size:.7rem;color:var(--muted)">{{ p.date_creation|date:"d M Y" }}</div>
+          </div>
+          <div class="text-end">
+            <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ p.montant|floatformat:0 }} F</div>
+            <span style="font-size:.68rem;padding:.15rem .5rem;border-radius:99px;
+              background:{% if p.statut == 'complete' %}rgba(16,185,129,.15){% elif p.statut == 'echec' %}rgba(239,68,68,.15){% else %}rgba(246,169,43,.15){% endif %};
+              color:{% if p.statut == 'complete' %}var(--jade){% elif p.statut == 'echec' %}var(--ember){% else %}var(--saffron){% endif %}">
+              {{ p.get_statut_display }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+<script>
+const urlTemplate = "{% url 'apps_marketplace:changer_statut_commande' '00000000-0000-0000-0000-000000000000' %}";
+</script>
+
+{% if not est_acheteur %}
+<script>
+"use strict";
+const csrf = () => document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+document.querySelectorAll('.btn-statut').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const url = this.dataset.url;    
+    const st  = this.dataset.statut;
+    const fb  = document.getElementById('statut-feedback');
+
+    this.disabled = true;
+    if (fb) { fb.textContent = 'Mise à jour…'; fb.style.color = 'var(--muted)'; }
+
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken':      csrf(),
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type':     'application/x-www-form-urlencoded',
+        },
+        body: `statut=${encodeURIComponent(st)}`,
+      });
+
+      if (!r.ok) {
+        const texte = await r.text();
+        console.error(`HTTP ${r.status}:`, texte);
+        if (fb) {
+          fb.textContent = `Erreur serveur (${r.status}) — vérifiez la console.`;
+          fb.style.color = 'var(--ember)';
+        }
+        this.disabled = false;
+        return;
+      }
+
+      const d = await r.json();
+
+      if (d.success) {
+        if (fb) { fb.textContent = `✓ ${d.label}`; fb.style.color = 'var(--jade)'; }
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        if (fb) { fb.textContent = d.message || 'Erreur.'; fb.style.color = 'var(--ember)'; }
+        this.disabled = false;
+      }
+
+    } catch (err) {
+      console.error('Statut fetch error:', err);
+      if (fb) { fb.textContent = 'Erreur réseau.'; fb.style.color = 'var(--ember)'; }
+      this.disabled = false;
+    }
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

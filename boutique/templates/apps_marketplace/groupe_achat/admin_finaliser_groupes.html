@@ -1,0 +1,101 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+.fg-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+.fg-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.fg-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem; }
+.fg-stat-n { font-family: var(--fm); font-size: 1.6rem; font-weight: 800; line-height: 1; margin-bottom: .2rem; }
+.fg-stat-l { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+.fg-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: .85rem; display: flex; align-items: center; gap: 1rem; }
+.fg-card-img { width: 56px; height: 56px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: var(--surface); }
+.fg-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.fg-card-name { font-size: .87rem; font-weight: 700; color: var(--text); }
+.fg-card-meta { font-size: .76rem; color: var(--muted); }
+
+.btn-finaliser-all {
+  background: linear-gradient(90deg, var(--jade), #00e0a8); color: #0A0B1A; border: none;
+  border-radius: 10px; padding: .65rem 1.4rem; font-size: .87rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: .5rem;
+}
+.btn-finaliser-all:hover { opacity: .9; }
+
+.fg-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+.fg-empty i { font-size: 2.4rem; opacity: .4; display: block; margin-bottom: .7rem; }
+</style>
+
+<div class="fg-wrap">
+  <div class="container" style="max-width:780px">
+
+    <nav class="mb-3" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"><i class="bi bi-house-fill"></i> Accueil</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Finalisation achats groupés</span>
+      </div>
+    </nav>
+
+    {% if messages %}{% for msg in messages %}
+    <div class="mb-3" style="background:var(--jade-d);border:1px solid rgba(0,200,150,.25);border-radius:var(--r);padding:.85rem 1.1rem;font-size:.84rem;color:var(--jade)">
+      <i class="bi bi-check-circle-fill"></i> {{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+
+    <div style="margin-bottom:1.5rem">
+      <div style="font-family:var(--fg);font-size:1.4rem;font-weight:800;color:var(--text)">
+        <i class="bi bi-people-fill" style="color:var(--jade)"></i> Finalisation des achats groupés
+      </div>
+    </div>
+
+    <div class="fg-stats">
+      <div class="fg-stat">
+        <div class="fg-stat-n" style="color:var(--ember)">{{ nb_expires }}</div>
+        <div class="fg-stat-l">Groupes expirés (auto-clôturés)</div>
+      </div>
+      <div class="fg-stat">
+        <div class="fg-stat-n" style="color:var(--jade)">{{ groupes_a_finaliser|length }}</div>
+        <div class="fg-stat-l">Groupes complets à finaliser</div>
+      </div>
+    </div>
+
+    {% if groupes_a_finaliser %}
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="finaliser_tout">
+
+      <div style="margin-bottom:1rem">
+        {% for g in groupes_a_finaliser %}
+        <div class="fg-card">
+          <div class="fg-card-img">
+            {% if g.produit.image_principale %}<img src="{{ g.produit.image_principale }}" alt="">{% endif %}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="fg-card-name">{{ g.produit.titre|truncatechars:50 }}</div>
+            <div class="fg-card-meta">
+              Vendeur : {{ g.createur.username }} &bull;
+              {{ g.participants.count }} participants &bull;
+              Prix groupé : {{ g.prix_groupe|floatformat:0 }} FCFA
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <button type="submit" class="btn-finaliser-all" onclick="return confirm('Finaliser tous ces groupes et créer les commandes correspondantes ?')">
+        <i class="bi bi-check2-all"></i> Finaliser tous les groupes complets
+      </button>
+    </form>
+    {% else %}
+    <div class="fg-empty">
+      <i class="bi bi-check-circle"></i>
+      Aucun groupe en attente de finalisation.
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

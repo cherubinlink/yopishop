@@ -1,0 +1,297 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Statistiques promotion — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_core:mes_promotions' %}" class="cpill">
+          <i class="bi bi-arrow-left me-1"></i>Mes promotions
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;color:var(--text-2);font-weight:600">
+          <i class="bi bi-bar-chart me-1" style="color:var(--saffron)"></i>Statistiques — {{ promo.nom|truncatechars:30 }}
+        </span>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'apps_core:modifier_promotion' promo.pk %}" class="cpill">
+          <i class="bi bi-pencil me-1"></i>Modifier
+        </a>
+        <a href="{% url 'apps_core:promotion_detail' promo.pk %}" class="cpill" target="_blank">
+          <i class="bi bi-eye me-1"></i>Voir la page
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ HERO STATS ═══════ -->
+<section class="hero" style="min-height:260px;padding:2rem 0">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="container position-relative" style="z-index:2">
+    <div class="row align-items-center gy-3">
+      <div class="col-lg-7 fi">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          {% if promo.statut == 'active' %}
+          <span class="chip chip-jade"><i class="bi bi-circle-fill me-1" style="font-size:.45rem"></i>Active</span>
+          {% else %}
+          <span class="chip chip-ember">{{ promo.get_statut_display }}</span>
+          {% endif %}
+          <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border)">{{ promo.get_type_promotion_display }}</span>
+          {% if promo.code %}
+          <code style="font-size:.78rem;color:var(--saffron);background:var(--saffron-d);padding:.15rem .55rem;border-radius:5px;letter-spacing:.08em">{{ promo.code }}</code>
+          {% endif %}
+        </div>
+        <h1 class="hero-title" style="font-size:clamp(1.5rem,3.5vw,2.4rem)">{{ promo.nom }}</h1>
+        <div style="font-size:.82rem;color:var(--muted)">
+          <i class="bi bi-calendar3 me-1"></i>{{ promo.date_debut|date:"d M Y" }} — {{ promo.date_fin|date:"d M Y" }}
+          {% if promo.montant_min_achat %}
+          &nbsp;·&nbsp;<i class="bi bi-bag-check me-1"></i>Min. {{ promo.montant_min_achat|floatformat:0 }} FCFA
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-lg-5 fi fi-d2 d-none d-lg-flex justify-content-end gap-3">
+        {% if promo.type_promotion == 'pourcentage' %}
+        <div class="ycard text-center px-4 py-3" style="border:2px solid var(--saffron)">
+          <div style="font-family:var(--fm);font-size:2.5rem;font-weight:900;color:var(--saffron);line-height:1">-{{ promo.valeur_reduction|floatformat:0 }}%</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;text-transform:uppercase;letter-spacing:.08em">de réduction</div>
+        </div>
+        {% elif promo.type_promotion == 'montant_fixe' %}
+        <div class="ycard text-center px-4 py-3" style="border:2px solid var(--jade)">
+          <div style="font-family:var(--fm);font-size:2rem;font-weight:900;color:var(--jade);line-height:1">-{{ promo.valeur_reduction|floatformat:0 }} F</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;text-transform:uppercase;letter-spacing:.08em">fixe par commande</div>
+        </div>
+        {% elif promo.type_promotion == 'livraison_gratuite' %}
+        <div class="ycard text-center px-4 py-3" style="border:2px solid var(--indigo)">
+          <i class="bi bi-truck" style="font-size:2rem;color:var(--indigo);display:block;margin-bottom:.3rem"></i>
+          <div style="font-size:.9rem;font-weight:700;color:var(--indigo)">Livraison gratuite</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════ STATS BAR ═══════ -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="row g-0 text-center">
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--saffron)">{{ nb_utilisations }}</div>
+        <div class="stat-l">Utilisations</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--jade)">{{ montant_total_reduction|floatformat:0 }}</div>
+        <div class="stat-l">FCFA économisés</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--indigo)">{{ taux_utilisation }}%</div>
+        <div class="stat-l">Taux d'utilisation</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--text)">{{ promo.limite_utilisation|default:"∞" }}</div>
+        <div class="stat-l">Limite</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ CONTENU STATS ═══════ -->
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- Colonne gauche : utilisation & barre -->
+      <div class="col-12 col-lg-4">
+
+        <!-- Taux d'utilisation -->
+        <div class="ycard mb-4 fi">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-pie-chart" style="color:var(--saffron)"></i>
+            <span style="font-size:.88rem;font-weight:700;color:var(--text)">Taux d'utilisation</span>
+          </div>
+          {% if promo.limite_utilisation %}
+          <div style="position:relative;text-align:center;margin-bottom:1rem">
+            <svg viewBox="0 0 120 120" style="width:120px;height:120px;transform:rotate(-90deg)">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border)" stroke-width="10"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--saffron)" stroke-width="10"
+                      stroke-dasharray="{{ taux_utilisation|default:0 }} 100"
+                      stroke-linecap="round"
+                      style="transition:stroke-dasharray 1s ease"/>
+            </svg>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)">
+              <div style="font-family:var(--fm);font-size:1.6rem;font-weight:800;color:var(--saffron)">{{ taux_utilisation }}%</div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between" style="font-size:.78rem;color:var(--muted)">
+            <span>{{ nb_utilisations }} utilisés</span>
+            <span>{{ promo.limite_utilisation }} max</span>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:3px;margin-top:.5rem;overflow:hidden">
+            <div style="height:100%;width:{{ taux_utilisation }}%;background:linear-gradient(90deg,var(--saffron),var(--ember));border-radius:3px;transition:width 1s ease"></div>
+          </div>
+          {% else %}
+          <div class="text-center py-2">
+            <i class="bi bi-infinity" style="font-size:2.5rem;color:var(--saffron);display:block;margin-bottom:.5rem"></i>
+            <div style="font-size:.9rem;font-weight:700;color:var(--text)">{{ nb_utilisations }}</div>
+            <div style="font-size:.75rem;color:var(--muted)">utilisation{{ nb_utilisations|pluralize }} — sans limite</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Détails promo -->
+        <div class="ycard fi">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-info-circle" style="color:var(--indigo)"></i>
+            <span style="font-size:.88rem;font-weight:700;color:var(--text)">Détails</span>
+          </div>
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size:.78rem;color:var(--muted)">Type</span>
+              <span style="font-size:.8rem;font-weight:600;color:var(--text-2)">{{ promo.get_type_promotion_display }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size:.78rem;color:var(--muted)">Valeur</span>
+              <span style="font-size:.8rem;font-weight:700;color:var(--saffron)">
+                {% if promo.type_promotion == 'pourcentage' %}-{{ promo.valeur_reduction }}%
+                {% elif promo.type_promotion == 'montant_fixe' %}-{{ promo.valeur_reduction|floatformat:0 }} FCFA
+                {% else %}Livraison offerte{% endif %}
+              </span>
+            </div>
+            {% if promo.montant_max_reduction %}
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size:.78rem;color:var(--muted)">Réduc. max</span>
+              <span style="font-size:.8rem;color:var(--text-2)">{{ promo.montant_max_reduction|floatformat:0 }} FCFA</span>
+            </div>
+            {% endif %}
+            {% if promo.montant_min_achat %}
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size:.78rem;color:var(--muted)">Achat min.</span>
+              <span style="font-size:.8rem;color:var(--text-2)">{{ promo.montant_min_achat|floatformat:0 }} FCFA</span>
+            </div>
+            {% endif %}
+            {% if promo.limite_par_utilisateur %}
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size:.78rem;color:var(--muted)">Limite/user</span>
+              <span style="font-size:.8rem;color:var(--text-2)">{{ promo.limite_par_utilisateur }}x</span>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size:.78rem;color:var(--muted)">Priorité</span>
+              <span style="font-size:.8rem;color:var(--text-2)">{{ promo.priorite }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Colonne droite : historique commandes -->
+      <div class="col-12 col-lg-8">
+        <div class="ycard fi">
+          <div class="d-flex align-items-center justify-content-between mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-clock-history" style="color:var(--saffron)"></i>
+              <span style="font-size:.88rem;font-weight:700;color:var(--text)">Historique des utilisations</span>
+            </div>
+            <span style="font-size:.75rem;color:var(--muted)">20 dernières</span>
+          </div>
+
+          {% if utilisations %}
+          <div class="d-flex flex-column" style="gap:0">
+            {% for cmd in utilisations %}
+            <div class="d-flex align-items-center gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %}"
+                 style="border-color:var(--border)!important">
+              <!-- Avatar utilisateur -->
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem;font-weight:700;color:var(--saffron);border:1px solid var(--border)">
+                {% if cmd.utilisateur.avatar %}
+                <img src="{{ cmd.utilisateur.avatar.url }}" alt="{{ cmd.utilisateur.username }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                {% else %}
+                {{ cmd.utilisateur.username|first|upper }}
+                {% endif %}
+              </div>
+              <!-- Infos commande -->
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  {{ cmd.utilisateur.get_full_name|default:cmd.utilisateur.username }}
+                </div>
+                <div style="font-size:.7rem;color:var(--muted)">
+                  Commande #{{ cmd.pk }} · {{ cmd.date_creation|date:"d M Y à H:i" }}
+                </div>
+              </div>
+              <!-- Montant commande -->
+              <div class="d-none d-sm-block text-end">
+                <div style="font-size:.78rem;color:var(--muted)">Total commande</div>
+                <div style="font-size:.85rem;font-weight:700;color:var(--text)">{{ cmd.montant_total|floatformat:0 }} F</div>
+              </div>
+              <!-- Réduction appliquée -->
+              <div class="text-end" style="min-width:80px">
+                <div style="font-size:.7rem;color:var(--muted)">Économie</div>
+                <div style="font-size:.9rem;font-weight:800;color:var(--jade)">-{{ cmd.montant_reduction|floatformat:0 }} F</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Résumé total économies -->
+          <div class="d-flex align-items-center justify-content-between mt-4 pt-3" style="border-top:1px solid var(--border)">
+            <span style="font-size:.82rem;color:var(--muted)">
+              Total économisé via cette promotion
+            </span>
+            <span style="font-family:var(--fm);font-size:1.2rem;font-weight:800;color:var(--jade)">
+              {{ montant_total_reduction|floatformat:0 }} FCFA
+            </span>
+          </div>
+
+          {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-receipt" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+            <div style="font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.3rem">Aucune utilisation enregistrée</div>
+            <div style="font-size:.78rem;color:var(--muted)">
+              {% if promo.statut == 'active' %}Les commandes passées avec ce code apparaîtront ici.
+              {% else %}Cette promotion n'était pas active ou n'a pas été utilisée.{% endif %}
+            </div>
+            {% if promo.statut != 'active' %}
+            <a href="{% url 'apps_core:modifier_promotion' promo.pk %}" class="btn-ghost mt-3">Activer la promotion</a>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Animer la barre de progression et le cercle SVG */
+window.addEventListener('load', () => {
+  const circle = document.querySelector('circle[stroke="var(--saffron)"]');
+  if(circle) {
+    const full = 2 * Math.PI * 50; /* circumference */
+    const taux = {{ taux_utilisation|default:0 }};
+    circle.style.strokeDasharray = `${(taux / 100) * full} ${full}`;
+  }
+});
+</script>
+{% endblock %}
+
+{% endblock %}

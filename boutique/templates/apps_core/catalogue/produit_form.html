@@ -1,0 +1,793 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% load yopi_filters %}
+
+{% block title %}{{ page_titre|default:"Produit — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.pf-page{padding:2.5rem 0 4rem;min-height:80vh}
+
+/* Layout 2 col */
+.pf-grid{display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start}
+@media(max-width:991px){.pf-grid{grid-template-columns:1fr}}
+
+/* Header */
+.pf-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.4rem 1.75rem;margin-bottom:1.75rem;
+  position:relative;overflow:hidden;
+}
+.pf-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:{% if mode == 'edition' %}linear-gradient(90deg,var(--indigo),var(--jade)){% else %}linear-gradient(90deg,var(--saffron),var(--ember)){% endif %}
+}
+.pf-header::after{content:'';position:absolute;right:-5%;top:-40%;width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,{% if mode == 'edition' %}var(--indigo-d){% else %}var(--saffron-d){% endif %} 0%,transparent 70%);pointer-events:none}
+
+/* Section card */
+.pf-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem}
+.pf-card-head{
+  padding:.85rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.6rem;
+}
+.pf-card-head i{color:var(--saffron);font-size:1rem}
+.pf-card-title{font-size:.88rem;font-weight:700;color:var(--text)}
+.pf-card-body{padding:1.25rem}
+
+/* Champs */
+.ef-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;display:flex;align-items:center;gap:.35rem}
+.ef-label .req{color:var(--ember)}
+.ef-label i{color:var(--muted);font-size:.8rem}
+.ef-input,.ef-select,.ef-textarea{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-family:var(--fd);font-size:.87rem;padding:.62rem .95rem;outline:none;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+.ef-input:focus,.ef-select:focus,.ef-textarea:focus{border-color:var(--saffron);box-shadow:0 0 0 3px var(--saffron-d)}
+.ef-input::placeholder,.ef-textarea::placeholder{color:var(--muted)}
+.ef-input.err,.ef-select.err,.ef-textarea.err{border-color:var(--ember)}
+.ef-select option{background:var(--card)}
+.ef-textarea{resize:vertical;min-height:90px}
+.ef-hint{font-size:.7rem;color:var(--muted);margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+.ef-error{font-size:.72rem;color:var(--ember);margin-top:.35rem;display:flex;align-items:center;gap:.3rem}
+
+/* Toggle checkbox custom */
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.6rem 0;border-bottom:1px solid var(--border);gap:1rem;
+}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info{flex:1;min-width:0}
+.toggle-title{font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:.1rem}
+.toggle-sub{font-size:.73rem;color:var(--muted)}
+.tgl-wrap{position:relative;flex-shrink:0}
+.tgl-input{position:absolute;opacity:0;width:0;height:0}
+.tgl-label{
+  display:block;width:44px;height:24px;border-radius:99px;
+  background:var(--surface);border:1.5px solid var(--border);
+  cursor:pointer;position:relative;
+  transition:background var(--tr),border-color var(--tr);
+}
+.tgl-label::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:16px;height:16px;border-radius:50%;
+  background:var(--muted);transition:transform var(--tr),background var(--tr);
+}
+.tgl-input:checked + .tgl-label{background:var(--saffron-d);border-color:var(--saffron)}
+.tgl-input:checked + .tgl-label::after{transform:translateX(20px);background:var(--saffron)}
+
+/* Prix zone */
+.prix-group{display:grid;grid-template-columns:1fr 1fr 120px;gap:.75rem}
+@media(max-width:575px){.prix-group{grid-template-columns:1fr 1fr}}
+
+/* Formset table */
+.fs-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.fs-table th{font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:.4rem .6rem;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
+.fs-table td{padding:.4rem .6rem;vertical-align:middle;border-bottom:1px solid var(--border)}
+.fs-table tr:last-child td{border-bottom:none}
+.fs-table .ef-input,.fs-table .ef-select{font-size:.8rem;padding:.38rem .6rem}
+.fs-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
+.fs-add-row{text-align:center;padding:.6rem;background:var(--surface);border-top:1px solid var(--border)}
+
+/* Sticky sidebar */
+.pf-sidebar{position:sticky;top:80px}
+
+/* Badge mode */
+.mode-badge{
+  display:inline-flex;align-items:center;gap:.4rem;
+  font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:.28rem .85rem;border-radius:99px;
+}
+
+/* Danger zone */
+.pf-danger{border:1px solid rgba(255,90,71,.2);background:rgba(255,90,71,.04);border-radius:var(--r);padding:1rem 1.1rem}
+
+/* Char counter */
+.char-counter{font-size:.68rem;color:var(--muted);text-align:right;margin-top:.25rem}
+.char-counter.warn{color:var(--saffron)}
+.char-counter.over{color:var(--ember)}
+</style>
+
+<div class="pf-page">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+      <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <a href="{% url 'apps_core:mes_produits' %}" style="color:var(--muted)">Mes produits</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <span style="color:var(--saffron)">{% if mode == 'edition' %}Modifier{% else %}Ajouter{% endif %}</span>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+      {{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- Header page -->
+    <div class="pf-header fi">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:46px;height:46px;border-radius:13px;background:{% if mode == 'edition' %}var(--indigo-d){% else %}var(--saffron-d){% endif %};display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:{% if mode == 'edition' %}var(--indigo){% else %}var(--saffron){% endif %};flex-shrink:0">
+            <i class="bi bi-{% if mode == 'edition' %}pencil-square{% else %}plus-circle-fill{% endif %}"></i>
+          </div>
+          <div>
+            <div style="font-family:var(--fg);font-size:1.2rem;font-weight:700;color:var(--text)">
+              {% if mode == 'edition' %}Modifier le produit{% else %}Ajouter un produit{% endif %}
+            </div>
+            <div style="font-size:.8rem;color:var(--muted)">
+              {% if mode == 'edition' %}Modifiez les informations de « {{ form.instance.titre }} »{% else %}Remplissez les informations de votre nouveau produit{% endif %}
+            </div>
+          </div>
+        </div>
+        <span class="mode-badge {% if mode == 'edition' %}{% else %}{% endif %}"
+              style="background:{% if mode == 'edition' %}var(--indigo-d);color:var(--indigo);border:1px solid rgba(99,102,241,.2){% else %}var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.2){% endif %}">
+          <i class="bi bi-{% if mode == 'edition' %}pencil{% else %}plus{% endif %}"></i>
+          {% if mode == 'edition' %}Modification{% else %}Création{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- FORMULAIRE PRINCIPAL -->
+    <form method="post" enctype="multipart/form-data" id="produitForm" novalidate>
+      {% csrf_token %}
+
+      <!-- Gestion des formsets -->
+      {{ images_formset.management_form }}
+      {{ variantes_formset.management_form }}
+      {{ attributs_formset.management_form }}
+
+      <div class="pf-grid">
+
+        <!-- ════ COL PRINCIPALE ════ -->
+        <div>
+
+          <!-- ── 1. INFORMATIONS GÉNÉRALES ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-info-circle-fill"></i><span class="pf-card-title">Informations générales</span></div>
+            <div class="pf-card-body">
+              <div class="row g-3">
+
+                <!-- Titre -->
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.titre.id_for_label }}">Titre du produit <span class="req">*</span></label>
+                  <input type="text" name="{{ form.titre.html_name }}" id="{{ form.titre.id_for_label }}"
+                         class="ef-input {% if form.titre.errors %}err{% endif %}"
+                         placeholder="Ex : iPhone 15 Pro Max 256Go Titane"
+                         value="{{ form.titre.value|default:'' }}"
+                         maxlength="200"
+                         oninput="countChars(this, 200, 'cTitre')">
+                  <div class="d-flex justify-content-between">
+                    {% if form.titre.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.titre.errors.0 }}</div>{% else %}<div></div>{% endif %}
+                    <div class="char-counter" id="cTitre">0/200</div>
+                  </div>
+                </div>
+
+                <!-- Type + Catégorie + Marque -->
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.type_produit.id_for_label }}">Type <span class="req">*</span></label>
+                  <select name="{{ form.type_produit.html_name }}" id="{{ form.type_produit.id_for_label }}"
+                          class="ef-select {% if form.type_produit.errors %}err{% endif %}">
+                    {% for val, lbl in form.type_produit.field.choices %}
+                    <option value="{{ val }}" {% if form.type_produit.value|stringformat:'s' == val|stringformat:'s' %}selected{% endif %}>{{ lbl }}</option>
+                    {% endfor %}
+                  </select>
+                  {% if form.type_produit.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.type_produit.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.categorie.id_for_label }}">Catégorie <span class="req">*</span></label>
+                  <select name="{{ form.categorie.html_name }}" id="{{ form.categorie.id_for_label }}"
+                          class="ef-select {% if form.categorie.errors %}err{% endif %}">
+                    <option value="">— Choisir —</option>
+                    {% for cat in form.categorie.field.queryset %}
+                    <option value="{{ cat.pk }}" {% if form.categorie.value|stringformat:'s' == cat.pk|stringformat:'s' %}selected{% endif %}>{{ cat.nom }}</option>
+                    {% endfor %}
+                  </select>
+                  {% if form.categorie.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.categorie.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.marque.id_for_label }}">Marque</label>
+                  <select name="{{ form.marque.html_name }}" id="{{ form.marque.id_for_label }}" class="ef-select">
+                    <option value="">— Aucune —</option>
+                    {% for m in form.marque.field.queryset %}
+                    <option value="{{ m.pk }}" {% if form.marque.value|stringformat:'s' == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nom }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <!-- État + SKU -->
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.etat.id_for_label }}">État</label>
+                  <select name="{{ form.etat.html_name }}" id="{{ form.etat.id_for_label }}" class="ef-select">
+                    {% for val, lbl in form.etat.field.choices %}
+                    <option value="{{ val }}" {% if form.etat.value|stringformat:'s' == val|stringformat:'s' %}selected{% endif %}>{{ lbl }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.sku.id_for_label }}"><i class="bi bi-upc-scan"></i> SKU / Référence</label>
+                  <input type="text" name="{{ form.sku.html_name }}" id="{{ form.sku.id_for_label }}"
+                         class="ef-input" placeholder="Référence interne (optionnel)"
+                         value="{{ form.sku.value|default:'' }}">
+                  <div class="ef-hint"><i class="bi bi-info-circle"></i> Généré automatiquement si vide</div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 2. DESCRIPTIONS ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-file-text-fill"></i><span class="pf-card-title">Descriptions</span></div>
+            <div class="pf-card-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.description_courte.id_for_label }}">Description courte <span class="req">*</span></label>
+                  <textarea name="{{ form.description_courte.html_name }}" id="{{ form.description_courte.id_for_label }}"
+                            class="ef-textarea {% if form.description_courte.errors %}err{% endif %}"
+                            rows="2" maxlength="500"
+                            placeholder="Résumé affiché dans les listings (max 500 caractères)"
+                            oninput="countChars(this, 500, 'cShort')">{{ form.description_courte.value|default:'' }}</textarea>
+                  <div class="d-flex justify-content-between">
+                    {% if form.description_courte.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.description_courte.errors.0 }}</div>{% else %}<div></div>{% endif %}
+                    <div class="char-counter" id="cShort">0/500</div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.description.id_for_label }}">Description complète <span class="req">*</span></label>
+                  <textarea name="{{ form.description.html_name }}" id="{{ form.description.id_for_label }}"
+                            class="ef-textarea {% if form.description.errors %}err{% endif %}"
+                            rows="7"
+                            placeholder="Description détaillée : caractéristiques, utilisation, garantie…">{{ form.description.value|default:'' }}</textarea>
+                  {% if form.description.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.description.errors.0 }}</div>{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 3. PRIX & STOCK ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-currency-dollar"></i><span class="pf-card-title">Prix & Stock</span></div>
+            <div class="pf-card-body">
+              <div class="row g-3">
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.prix.id_for_label }}">Prix de vente <span class="req">*</span></label>
+                  <div style="position:relative">
+                    <input type="number" name="{{ form.prix.html_name }}" id="{{ form.prix.id_for_label }}"
+                           class="ef-input {% if form.prix.errors %}err{% endif %}"
+                           placeholder="Ex : 25000" step="0.01" min="0"
+                           value="{{ form.prix.value|default:'' }}"
+                           style="padding-right:3rem">
+                    <span style="position:absolute;right:.85rem;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--muted);font-weight:700">XAF</span>
+                  </div>
+                  {% if form.prix.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.prix.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.prix_achat.id_for_label }}">Prix d'achat</label>
+                  <div style="position:relative">
+                    <input type="number" name="{{ form.prix_achat.html_name }}" id="{{ form.prix_achat.id_for_label }}"
+                           class="ef-input" placeholder="Coût (privé)" step="0.01" min="0"
+                           value="{{ form.prix_achat.value|default:'' }}"
+                           style="padding-right:3rem">
+                    <span style="position:absolute;right:.85rem;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--muted);font-weight:700">XAF</span>
+                  </div>
+                  <div class="ef-hint"><i class="bi bi-lock"></i> Non visible par les acheteurs</div>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.devise.id_for_label }}">Devise</label>
+                  <select name="{{ form.devise.html_name }}" id="{{ form.devise.id_for_label }}" class="ef-select">
+                    <option value="XAF" {% if form.devise.value == 'XAF' %}selected{% endif %}>FCFA (XAF)</option>
+                    <option value="USD" {% if form.devise.value == 'USD' %}selected{% endif %}>USD</option>
+                    <option value="EUR" {% if form.devise.value == 'EUR' %}selected{% endif %}>EUR</option>
+                  </select>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.quantite_stock.id_for_label }}">Quantité en stock <span class="req">*</span></label>
+                  <input type="number" name="{{ form.quantite_stock.html_name }}" id="{{ form.quantite_stock.id_for_label }}"
+                         class="ef-input {% if form.quantite_stock.errors %}err{% endif %}"
+                         min="0" value="{{ form.quantite_stock.value|default:'0' }}">
+                  {% if form.quantite_stock.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.quantite_stock.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.alerte_stock_min.id_for_label }}">Seuil d'alerte stock</label>
+                  <input type="number" name="{{ form.alerte_stock_min.html_name }}" id="{{ form.alerte_stock_min.id_for_label }}"
+                         class="ef-input" min="0" value="{{ form.alerte_stock_min.value|default:'5' }}">
+                  <div class="ef-hint"><i class="bi bi-bell"></i> Alerte si stock ≤ cette valeur</div>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="ef-label" for="{{ form.quantite_min_commande.id_for_label }}">Qté min commande</label>
+                  <input type="number" name="{{ form.quantite_min_commande.html_name }}" id="{{ form.quantite_min_commande.id_for_label }}"
+                         class="ef-input" min="1" value="{{ form.quantite_min_commande.value|default:'1' }}">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 4. IMAGES ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head">
+              <i class="bi bi-images"></i>
+              <span class="pf-card-title">Images du produit</span>
+              <span style="font-size:.72rem;color:var(--muted);margin-left:.5rem">Max 10 images</span>
+            </div>
+            <div class="pf-card-body">
+              <div class="ef-hint mb-3"><i class="bi bi-info-circle"></i> La première image cochée "Principale" sera l'image de couverture affichée dans les listings.</div>
+              <div class="fs-wrap">
+                <table class="fs-table">
+                  <thead>
+                    <tr>
+                      <th>Image</th>
+                      <th>Texte alt (SEO)</th>
+                      <th style="text-align:center;width:80px">Principale</th>
+                      <th style="width:60px">Ordre</th>
+                      <th style="width:40px;text-align:center">✕</th>
+                    </tr>
+                  </thead>
+                  <tbody id="imagesFormset">
+                    {% for img_form in images_formset %}
+                    <tr class="img-row" {% if img_form.instance.pk %}data-has-image="1"{% endif %}>
+                      <td>
+                        {{ img_form.id }}
+                        {% if img_form.instance.image %}
+                        <div style="display:flex;align-items:center;gap:.5rem">
+                          <img src="{{ img_form.instance.image.url }}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--border)">
+                          <input type="file" name="{{ img_form.image.html_name }}" class="ef-input" accept="image/*" style="font-size:.75rem;padding:.3rem .5rem">
+                        </div>
+                        {% else %}
+                        <input type="file" name="{{ img_form.image.html_name }}" class="ef-input" accept="image/*" style="font-size:.75rem;padding:.3rem .5rem">
+                        {% endif %}
+                      </td>
+                      <td><input type="text" name="{{ img_form.texte_alternatif.html_name }}" class="ef-input" placeholder="Texte alt" value="{{ img_form.texte_alternatif.value|default:'' }}" style="font-size:.78rem"></td>
+                      <td style="text-align:center"><input type="checkbox" name="{{ img_form.est_principale.html_name }}" class="principale-check" {% if img_form.est_principale.value %}checked{% endif %} style="width:16px;height:16px;accent-color:var(--saffron)"></td>
+                      <td><input type="number" name="{{ img_form.ordre.html_name }}" class="ef-input" value="{{ img_form.ordre.value|default:'0' }}" min="0" style="font-size:.78rem;width:60px;text-align:center"></td>
+                      <td style="text-align:center">
+                        {% if img_form.instance.pk %}
+                        <input type="checkbox" name="{{ img_form.DELETE.html_name }}" style="accent-color:var(--ember);width:16px;height:16px" title="Supprimer">
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 5. VARIANTES ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head">
+              <i class="bi bi-collection-fill"></i>
+              <span class="pf-card-title">Variantes</span>
+              <span style="font-size:.72rem;color:var(--muted);margin-left:.5rem">Couleurs, tailles, etc.</span>
+            </div>
+            <div class="pf-card-body">
+              <div class="fs-wrap">
+                <table class="fs-table">
+                  <thead>
+                    <tr>
+                      <th>Attribut</th>
+                      <th>Valeur</th>
+                      <th>Prix sup.</th>
+                      <th>Stock</th>
+                      <th>SKU</th>
+                      <th style="text-align:center;width:60px">Active</th>
+                      <th style="width:40px;text-align:center">✕</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for v_form in variantes_formset %}
+                    <tr>
+                      {{ v_form.id }}
+                      <td><input type="text" name="{{ v_form.nom.html_name }}" class="ef-input" placeholder="Couleur" value="{{ v_form.nom.value|default:'' }}" style="font-size:.78rem"></td>
+                      <td><input type="text" name="{{ v_form.valeur.html_name }}" class="ef-input" placeholder="Rouge" value="{{ v_form.valeur.value|default:'' }}" style="font-size:.78rem"></td>
+                      <td><input type="number" name="{{ v_form.prix_supplementaire.html_name }}" class="ef-input" placeholder="0" step="0.01" min="0" value="{{ v_form.prix_supplementaire.value|default:'' }}" style="font-size:.78rem;width:80px"></td>
+                      <td><input type="number" name="{{ v_form.stock.html_name }}" class="ef-input" placeholder="0" min="0" value="{{ v_form.stock.value|default:'' }}" style="font-size:.78rem;width:70px"></td>
+                      <td><input type="text" name="{{ v_form.sku_variante.html_name }}" class="ef-input" placeholder="SKU" value="{{ v_form.sku_variante.value|default:'' }}" style="font-size:.78rem;width:90px"></td>
+                      <td style="text-align:center"><input type="checkbox" name="{{ v_form.est_active.html_name }}" {% if v_form.est_active.value %}checked{% endif %} style="accent-color:var(--saffron);width:16px;height:16px"></td>
+                      <td style="text-align:center">{% if v_form.instance.pk %}<input type="checkbox" name="{{ v_form.DELETE.html_name }}" style="accent-color:var(--ember);width:16px;height:16px" title="Supprimer">{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 6. ATTRIBUTS / SPÉCIFICATIONS ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-list-check"></i><span class="pf-card-title">Spécifications techniques</span></div>
+            <div class="pf-card-body">
+              <div class="fs-wrap">
+                <table class="fs-table">
+                  <thead>
+                    <tr>
+                      <th>Attribut</th>
+                      <th>Valeur</th>
+                      <th style="width:80px">Unité</th>
+                      <th style="width:60px">Ordre</th>
+                      <th style="width:40px;text-align:center">✕</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for a_form in attributs_formset %}
+                    <tr>
+                      {{ a_form.id }}
+                      <td><input type="text" name="{{ a_form.nom.html_name }}" class="ef-input" placeholder="Ex : RAM" value="{{ a_form.nom.value|default:'' }}" style="font-size:.78rem"></td>
+                      <td><input type="text" name="{{ a_form.valeur.html_name }}" class="ef-input" placeholder="Ex : 8" value="{{ a_form.valeur.value|default:'' }}" style="font-size:.78rem"></td>
+                      <td><input type="text" name="{{ a_form.unite.html_name }}" class="ef-input" placeholder="Go" value="{{ a_form.unite.value|default:'' }}" style="font-size:.78rem;width:80px"></td>
+                      <td><input type="number" name="{{ a_form.ordre.html_name }}" class="ef-input" value="{{ a_form.ordre.value|default:'0' }}" min="0" style="font-size:.78rem;width:60px;text-align:center"></td>
+                      <td style="text-align:center">{% if a_form.instance.pk %}<input type="checkbox" name="{{ a_form.DELETE.html_name }}" style="accent-color:var(--ember);width:16px;height:16px" title="Supprimer">{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 7. LOCALISATION & LIVRAISON ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-geo-alt-fill"></i><span class="pf-card-title">Localisation & Livraison</span></div>
+            <div class="pf-card-body">
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.ville.id_for_label }}">Ville</label>
+                  <select name="{{ form.ville.html_name }}" id="{{ form.ville.id_for_label }}" class="ef-select">
+                    <option value="">— Choisir —</option>
+                    {% for val, lbl in form.ville.field.choices %}
+                    {% if val %}<option value="{{ val }}" {% if form.ville.value|stringformat:'s' == val|stringformat:'s' %}selected{% endif %}>{{ lbl }}</option>{% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-sm-3">
+                  <label class="ef-label" for="{{ form.poids.id_for_label }}">Poids (kg)</label>
+                  <input type="number" name="{{ form.poids.html_name }}" id="{{ form.poids.id_for_label }}"
+                         class="ef-input" placeholder="Ex: 0.5" step="0.01" min="0"
+                         value="{{ form.poids.value|default:'' }}">
+                </div>
+                <div class="col-12 col-sm-3">
+                  <label class="ef-label" for="{{ form.dimensions.id_for_label }}">Dimensions</label>
+                  <input type="text" name="{{ form.dimensions.html_name }}" id="{{ form.dimensions.id_for_label }}"
+                         class="ef-input" placeholder="30x20x10 cm"
+                         value="{{ form.dimensions.value|default:'' }}">
+                </div>
+              </div>
+              <!-- Options livraison -->
+              <div class="row g-0">
+                
+                {% with lf=form.livraison_disponible %}
+                <div class="col-12">
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <div class="toggle-title"><i class="bi bi-truck" style="color:var(--indigo)"></i> Livraison disponible</div>
+                      <div class="toggle-sub">Proposer la livraison pour ce produit</div>
+                    </div>
+                    <div class="tgl-wrap">
+                      <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                      <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                    </div>
+                  </div>
+                </div>
+                {% endwith %}
+                {% with lf=form.livraison_locale_uniquement %}
+                <div class="col-12">
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <div class="toggle-title"><i class="bi bi-geo" style="color:var(--muted)"></i> Livraison locale uniquement</div>
+                      <div class="toggle-sub">Limiter la livraison à votre ville</div>
+                    </div>
+                    <div class="tgl-wrap">
+                      <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                      <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                    </div>
+                  </div>
+                </div>
+                {% endwith %}
+                {% with lf=form.retrait_sur_place %}
+                <div class="col-12">
+                  <div class="toggle-row">
+                    <div class="toggle-info">
+                      <div class="toggle-title"><i class="bi bi-shop" style="color:var(--jade)"></i> Retrait sur place</div>
+                      <div class="toggle-sub">Permettre au client de venir récupérer le produit</div>
+                    </div>
+                    <div class="tgl-wrap">
+                      <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                      <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                    </div>
+                  </div>
+                </div>
+                {% endwith %}
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 8. SEO ── -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-search"></i><span class="pf-card-title">Référencement (SEO)</span></div>
+            <div class="pf-card-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.titre_meta.id_for_label }}">Titre SEO</label>
+                  <input type="text" name="{{ form.titre_meta.html_name }}" id="{{ form.titre_meta.id_for_label }}"
+                         class="ef-input" maxlength="200" placeholder="Titre optimisé pour les moteurs de recherche"
+                         value="{{ form.titre_meta.value|default:'' }}"
+                         oninput="countChars(this, 200, 'cMetaT')">
+                  <div class="d-flex justify-content-end"><div class="char-counter" id="cMetaT">0/200</div></div>
+                </div>
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.description_meta.id_for_label }}">Description SEO</label>
+                  <textarea name="{{ form.description_meta.html_name }}" id="{{ form.description_meta.id_for_label }}"
+                            class="ef-textarea" rows="2" maxlength="300"
+                            placeholder="Description affichée dans les résultats de recherche (max 300 car.)"
+                            oninput="countChars(this, 300, 'cMetaD')">{{ form.description_meta.value|default:'' }}</textarea>
+                  <div class="d-flex justify-content-end"><div class="char-counter" id="cMetaD">0/300</div></div>
+                </div>
+                {% if form.modele_3d_url %}
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.modele_3d_url.id_for_label }}">URL modèle 3D / AR</label>
+                  <input type="url" name="{{ form.modele_3d_url.html_name }}" id="{{ form.modele_3d_url.id_for_label }}"
+                         class="ef-input" placeholder="https://…"
+                         value="{{ form.modele_3d_url.value|default:'' }}">
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- /col principale -->
+
+        <!-- ════ SIDEBAR ════ -->
+        <aside class="pf-sidebar">
+
+          <!-- Publication -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-toggle-on"></i><span class="pf-card-title">Publication</span></div>
+            <div class="pf-card-body" style="padding:.85rem 1rem">
+
+              {% with lf=form.est_actif %}
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <div class="toggle-title">Produit actif</div>
+                  <div class="toggle-sub">Visible sur la plateforme</div>
+                </div>
+                <div class="tgl-wrap">
+                  <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                  <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                </div>
+              </div>
+              {% endwith %}
+
+              {% with lf=form.est_vedette %}
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <div class="toggle-title"><i class="bi bi-star-fill" style="color:var(--saffron);font-size:.8rem"></i> Mettre en vedette</div>
+                  <div class="toggle-sub">Afficher dans la section Vedettes</div>
+                </div>
+                <div class="tgl-wrap">
+                  <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                  <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                </div>
+              </div>
+              {% endwith %}
+
+              {% if peut_yopishop and form.est_produit_yopishop %}
+              {% with lf=form.est_produit_yopishop %}
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <div class="toggle-title"><i class="bi bi-patch-check-fill" style="color:var(--jade);font-size:.8rem"></i> YopiShop Officiel</div>
+                  <div class="toggle-sub">Badge ✅ dans les listings</div>
+                </div>
+                <div class="tgl-wrap">
+                  <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                  <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                </div>
+              </div>
+              {% endwith %}
+              {% endif %}
+
+            </div>
+          </div>
+
+          <!-- Options de vente -->
+          <div class="pf-card fi">
+            <div class="pf-card-head"><i class="bi bi-shop-window"></i><span class="pf-card-title">Options de vente</span></div>
+            <div class="pf-card-body" style="padding:.85rem 1rem">
+
+              {% with lf=form.autorise_vente_directe %}
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <div class="toggle-title"><i class="bi bi-cart" style="color:var(--indigo);font-size:.8rem"></i> Vente directe</div>
+                  <div class="toggle-sub">Acheter maintenant</div>
+                </div>
+                <div class="tgl-wrap">
+                  <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                  <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                </div>
+              </div>
+              {% endwith %}
+
+              {% with lf=form.autorise_enchere %}
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <div class="toggle-title"><i class="bi bi-hammer" style="color:var(--ember);font-size:.8rem"></i> Enchères</div>
+                  <div class="toggle-sub">Autoriser les enchères</div>
+                </div>
+                <div class="tgl-wrap">
+                  <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                  <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                </div>
+              </div>
+              {% endwith %}
+
+              {% with lf=form.autorise_achat_groupe %}
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <div class="toggle-title"><i class="bi bi-people" style="color:var(--jade);font-size:.8rem"></i> Achat groupé</div>
+                  <div class="toggle-sub">Achats collectifs</div>
+                </div>
+                <div class="tgl-wrap">
+                  <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                  <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                </div>
+              </div>
+              {% endwith %}
+
+              {% with lf=form.est_b2b %}
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <div class="toggle-title"><i class="bi bi-briefcase" style="color:var(--muted);font-size:.8rem"></i> B2B (vente en gros)</div>
+                  <div class="toggle-sub">Réservé aux professionnels</div>
+                </div>
+                <div class="tgl-wrap">
+                  <input type="checkbox" class="tgl-input" id="{{ lf.id_for_label }}" name="{{ lf.html_name }}" {% if lf.value %}checked{% endif %}>
+                  <label class="tgl-label" for="{{ lf.id_for_label }}"></label>
+                </div>
+              </div>
+              {% endwith %}
+
+            </div>
+          </div>
+
+          <!-- Boutons submit -->
+          <div class="pf-card fi">
+            <div class="pf-card-body" style="display:flex;flex-direction:column;gap:.6rem">
+              <button type="submit" class="btn-gold" style="width:100%;justify-content:center;font-size:.88rem" id="btnSubmit">
+                <i class="bi bi-{% if mode == 'edition' %}check-lg{% else %}plus-lg{% endif %}"></i>
+                {% if mode == 'edition' %}Enregistrer les modifications{% else %}Publier le produit{% endif %}
+              </button>
+              {% if mode == 'edition' %}
+              <button type="submit" name="save_and_continue" value="1" class="btn-ghost" style="width:100%;justify-content:center;font-size:.85rem">
+                <i class="bi bi-floppy2"></i> Enregistrer et continuer
+              </button>
+              {% endif %}
+              <a href="{% url 'apps_core:mes_produits' %}" class="btn-ghost" style="width:100%;justify-content:center;font-size:.85rem">
+                <i class="bi bi-x-lg"></i> Annuler
+              </a>
+            </div>
+          </div>
+
+          <!-- Danger zone (édition uniquement) -->
+          {% if mode == 'edition' %}
+          <div class="pf-danger fi">
+            <div style="font-size:.8rem;font-weight:700;color:var(--ember);margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem">
+              <i class="bi bi-exclamation-triangle-fill"></i> Zone de danger
+            </div>
+            <div style="font-size:.77rem;color:var(--muted);margin-bottom:.75rem">Supprimer ce produit de façon définitive. Cette action est irréversible.</div>
+            <button type="button" class="btn-ghost" style="font-size:.78rem;border-color:var(--ember);color:var(--ember);width:100%;justify-content:center"
+                    onclick="if(confirm('Supprimer définitivement ce produit ?')) document.getElementById('formSupprProd').submit()">
+              <i class="bi bi-trash3"></i> Supprimer ce produit
+            </button>
+            <form id="formSupprProd" method="post" action="{% url 'apps_core:supprimer_produit' form.instance.pk %}">{% csrf_token %}</form>
+          </div>
+          {% endif %}
+
+        </aside>
+
+      </div>
+      {# /pf-grid #}
+
+    </form>
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.06});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* ── Compteur de caractères ── */
+function countChars(el, max, counterId){
+  const n = el.value.length;
+  const counter = document.getElementById(counterId);
+  if(!counter) return;
+  counter.textContent = n + '/' + max;
+  counter.className = 'char-counter' + (n > max * .9 ? (n >= max ? ' over' : ' warn') : '');
+}
+
+/* ── Init compteurs au chargement ── */
+document.addEventListener('DOMContentLoaded', () => {
+  [
+    ['{{ form.titre.id_for_label }}',           200, 'cTitre'],
+    ['{{ form.description_courte.id_for_label }}', 500, 'cShort'],
+    ['{{ form.titre_meta.id_for_label }}',       200, 'cMetaT'],
+    ['{{ form.description_meta.id_for_label }}', 300, 'cMetaD'],
+  ].forEach(([id, max, cid]) => {
+    const el = document.getElementById(id);
+    if(el) countChars(el, max, cid);
+  });
+});
+
+/* ── Règle : 1 seule image principale ── */
+document.querySelectorAll('.principale-check').forEach(cb => {
+  cb.addEventListener('change', function(){
+    if(this.checked){
+      document.querySelectorAll('.principale-check').forEach(c => {
+        if(c !== this) c.checked = false;
+      });
+    }
+  });
+});
+
+/* ── Spinner submit ── */
+document.getElementById('produitForm')?.addEventListener('submit', function(){
+  const btn = document.getElementById('btnSubmit');
+  if(btn){
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px"></span> Enregistrement…';
+  }
+});
+
+/* ── Prévisualisation image à l'upload ── */
+document.querySelectorAll('.img-row input[type="file"]').forEach(input => {
+  input.addEventListener('change', function(){
+    const file = this.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      let prev = this.closest('td').querySelector('img');
+      if(!prev){
+        prev = document.createElement('img');
+        prev.style.cssText = 'width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--border);margin-right:.5rem';
+        this.parentElement.insertBefore(prev, this);
+      }
+      prev.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

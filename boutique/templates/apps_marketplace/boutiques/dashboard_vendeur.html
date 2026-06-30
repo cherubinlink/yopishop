@@ -1,0 +1,331 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Dashboard vendeur — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1 flex-wrap">
+      <span style="font-size:.82rem;font-weight:700;color:var(--text-2)">
+        <i class="bi bi-speedometer2 me-1" style="color:var(--saffron)"></i>Tableau de bord vendeur
+      </span>
+      <div class="d-flex gap-2 ms-auto flex-wrap">
+        {% if boutique %}
+        <a href="{% url 'apps_marketplace:boutique_detail' boutique.slug %}" class="cpill">
+          <i class="bi bi-eye me-1"></i>Ma boutique
+        </a>
+        <a href="{% url 'apps_marketplace:editer_boutique' boutique.slug %}" class="cpill">
+          <i class="bi bi-pencil me-1"></i>Modifier
+        </a>
+        {% else %}
+        <a href="{% url 'apps_marketplace:creer_boutique' %}" class="btn-gold" style="font-size:.78rem;padding:.4rem 1rem">
+          <i class="bi bi-plus-lg me-1"></i>Créer ma boutique
+        </a>
+        {% endif %}
+        <a href="{% url 'apps_core:ajouter_produit' %}" class="btn-gold" style="font-size:.78rem;padding:.4rem 1rem">
+          <i class="bi bi-plus-lg me-1"></i>Ajouter un produit
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ HERO DASHBOARD ═══════ -->
+<section class="hero" style="min-height:200px;padding:2rem 0">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="container position-relative" style="z-index:2">
+    <div class="row align-items-center gy-3">
+      <div class="col-lg-7 fi">
+        <div class="hero-slide-eyebrow">
+          <i class="bi bi-speedometer2"></i>Espace vendeur
+        </div>
+        <h1 class="hero-title" style="font-size:clamp(1.5rem,3.5vw,2.2rem)">
+          Bonjour, <span class="hl">{{ request.user.get_full_name|default:request.user.username }}</span> 👋
+        </h1>
+        {% if boutique %}
+        <div style="font-size:.82rem;color:var(--muted)">
+          <i class="bi bi-shop me-1" style="color:var(--saffron)"></i>{{ boutique.nom }}
+          <span class="chip ms-2 {% if boutique.statut == 'active' %}chip-jade{% else %}chip-ember{% endif %}" style="font-size:.62rem">
+            {{ boutique.get_statut_display }}
+          </span>
+          {% if boutique.est_verifiee %}
+          <span class="chip chip-jade ms-1" style="font-size:.62rem"><i class="bi bi-patch-check-fill"></i> Vérifiée</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <!-- Mini stats -->
+      <div class="col-lg-5 fi fi-d2">
+        <div class="row g-2">
+          <div class="col-4">
+            <div class="ycard text-center py-3" style="border:1px solid var(--border)">
+              <div style="font-family:var(--fm);font-size:1.6rem;font-weight:800;color:var(--saffron)">{{ produits_stats.actifs }}</div>
+              <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Produits actifs</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="ycard text-center py-3" style="border:1px solid var(--border)">
+              <div style="font-family:var(--fm);font-size:1.6rem;font-weight:800;color:var(--jade)">{{ commandes_stats.en_cours }}</div>
+              <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En cours</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="ycard text-center py-3" style="border:1px solid var(--border)">
+              <div style="font-family:var(--fm);font-size:1.6rem;font-weight:800;color:var(--ember)">{{ avis_stats.moyenne|default:"—"|floatformat:1 }}</div>
+              <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Note /5</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════ STATS BAR ═══════ -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="row g-0 text-center">
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--saffron)">{{ produits_stats.total }}</div>
+        <div class="stat-l">Produits total</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--jade)">{{ commandes_stats.total }}</div>
+        <div class="stat-l">Commandes</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--ember)">{{ produits_stats.rupture }}</div>
+        <div class="stat-l">En rupture</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-n" style="color:var(--indigo)">{{ avis_stats.total }}</div>
+        <div class="stat-l">Avis reçus</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ ALERTES ═══════ -->
+{% if boutique and boutique.statut == 'en_attente' %}
+<div style="background:rgba(246,169,43,.08);border-bottom:1px solid rgba(246,169,43,.2);padding:1rem 0">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3" style="font-size:.85rem">
+      <i class="bi bi-hourglass-split" style="color:var(--saffron);font-size:1.2rem;flex-shrink:0"></i>
+      <div>
+        <strong style="color:var(--saffron)">Boutique en cours de vérification</strong>
+        <div style="color:var(--muted);font-size:.78rem">Notre équipe va examiner votre boutique sous 24–48h. Vous serez notifié par email.</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if not boutique %}
+<div style="background:var(--indigo-d);border-bottom:1px solid rgba(99,102,241,.2);padding:1rem 0">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div class="d-flex align-items-center gap-3" style="font-size:.85rem">
+        <i class="bi bi-shop" style="color:var(--indigo);font-size:1.2rem;flex-shrink:0"></i>
+        <div>
+          <strong style="color:var(--indigo)">Vous vendez actuellement sans boutique dédiée</strong>
+          <div style="color:var(--muted);font-size:.78rem">Créez votre boutique pour bénéficier de plus de visibilité et de fonctionnalités.</div>
+        </div>
+      </div>
+      <a href="{% url 'apps_marketplace:creer_boutique' %}" class="btn-ghost" style="white-space:nowrap;font-size:.8rem">
+        <i class="bi bi-plus-lg me-1"></i>Créer ma boutique
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ═══════ CONTENU PRINCIPAL ═══════ -->
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- COL GAUCHE — Navigation rapide + Liens -->
+      <div class="col-12 col-lg-3">
+        <div class="ycard fi" style="border:1px solid var(--border);position:sticky;top:80px">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.8rem">Navigation</div>
+          <div class="d-flex flex-column gap-1">
+            <a href="{% url 'apps_core:mes_produits' %}" class="cpill justify-content-start">
+              <i class="bi bi-box me-2" style="color:var(--saffron)"></i>Mes produits
+              <span class="ms-auto chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.65rem">{{ produits_stats.actifs }}</span>
+            </a>
+            <a href="/commandes/mes-ventes/" class="cpill justify-content-start">
+              <i class="bi bi-receipt me-2" style="color:var(--jade)"></i>Mes ventes
+              {% if commandes_stats.en_cours > 0 %}
+              <span class="ms-auto chip chip-ember" style="font-size:.65rem">{{ commandes_stats.en_cours }}</span>
+              {% endif %}
+            </a>
+            <a href="{% url 'apps_marketplace:mes_avis_recus' %}" class="cpill justify-content-start">
+              <i class="bi bi-star me-2" style="color:var(--ember)"></i>Mes avis
+            </a>
+            <a href="{% url 'apps_core:mes_promotions' %}" class="cpill justify-content-start">
+              <i class="bi bi-percent me-2" style="color:var(--indigo)"></i>Promotions
+            </a>
+            {% if boutique and boutique.type_boutique in 'pro,yopishop' %}
+            <a href="{% url 'apps_marketplace:employes_boutique' %}" class="cpill justify-content-start">
+              <i class="bi bi-people me-2" style="color:var(--jade)"></i>Mon équipe
+            </a>
+            {% endif %}
+            <a href="{% url 'apps_marketplace:kyc_documents' %}" class="cpill justify-content-start">
+              <i class="bi bi-file-earmark-check me-2" style="color:var(--muted)"></i>Documents KYC
+            </a>
+            <hr style="border-color:var(--border);margin:.4rem 0">
+            <a href="{% url 'apps_core:wallet' %}" class="cpill justify-content-start">
+              <i class="bi bi-wallet2 me-2" style="color:var(--saffron)"></i>YopiPay
+              <span class="ms-auto" style="font-size:.78rem;font-weight:700;color:var(--jade)">{{ request.user.solde_wallet|default:0|floatformat:0 }} F</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- COL DROITE — Contenu dynamique -->
+      <div class="col-12 col-lg-9">
+
+        <!-- Commandes récentes -->
+        <div class="ycard mb-4 fi">
+          <div class="d-flex align-items-center justify-content-between mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-receipt" style="color:var(--saffron)"></i>
+              <span style="font-size:.9rem;font-weight:700;color:var(--text)">Commandes récentes</span>
+            </div>
+            <a href="{% url 'app_marketplace:commandes_recues' %}" class="cpill" style="font-size:.72rem">Voir tout <i class="bi bi-arrow-right ms-1"></i></a>
+          </div>
+
+          {% if commandes_recentes %}
+          <div class="d-flex flex-column" style="gap:0">
+            {% for cmd in commandes_recentes %}
+            <div class="d-flex align-items-center gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %}"
+                 style="border-color:var(--border)!important">
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--surface);border:1px solid var(--border);
+                          display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-receipt" style="color:var(--muted);font-size:.85rem"></i>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.82rem;font-weight:600;color:var(--text)">
+                  Commande #{{ cmd.numero|default:cmd.pk }}
+                </div>
+                <div style="font-size:.7rem;color:var(--muted)">
+                  {{ cmd.utilisateur.get_full_name|default:cmd.utilisateur.username }} · {{ cmd.date_creation|date:"d M Y" }}
+                </div>
+              </div>
+              <div class="text-end">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ cmd.montant_total|floatformat:0 }} F</div>
+                <span class="chip" style="font-size:.62rem;
+                  background:{% if cmd.statut == 'livree' %}rgba(16,185,129,.12){% elif cmd.statut in 'en_traitement,expediee' %}var(--indigo-d){% else %}var(--saffron-d){% endif %};
+                  color:{% if cmd.statut == 'livree' %}var(--jade){% elif cmd.statut in 'en_traitement,expediee' %}var(--indigo){% else %}var(--saffron){% endif %}">
+                  {{ cmd.get_statut_display }}
+                </span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-4">
+            <i class="bi bi-receipt" style="font-size:2rem;color:var(--muted);display:block;margin-bottom:.6rem"></i>
+            <div style="font-size:.85rem;color:var(--muted)">Aucune commande pour l'instant.</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Avis récents -->
+        <div class="ycard mb-4 fi">
+          <div class="d-flex align-items-center justify-content-between mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-star" style="color:var(--ember)"></i>
+              <span style="font-size:.9rem;font-weight:700;color:var(--text)">Avis récents</span>
+              {% if avis_stats.moyenne %}
+              <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.65rem">
+                <i class="bi bi-star-fill me-1"></i>{{ avis_stats.moyenne|floatformat:1 }} / 5
+              </span>
+              {% endif %}
+            </div>
+            <a href="{% url 'apps_marketplace:mes_avis_recus' %}" class="cpill" style="font-size:.72rem">Voir tout <i class="bi bi-arrow-right ms-1"></i></a>
+          </div>
+
+          {% if avis_recents %}
+          <div class="d-flex flex-column gap-3">
+            {% for avis in avis_recents %}
+            <div class="d-flex align-items-start gap-3 {% if not forloop.last %}pb-3 border-bottom{% endif %}"
+                 style="border-color:var(--border)!important">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--surface);border:1px solid var(--border);
+                          display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--saffron);font-weight:700;font-size:.85rem">
+                {% if avis.utilisateur.avatar %}
+                <img src="{{ avis.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                {% else %}
+                {{ avis.utilisateur.username|first|upper }}
+                {% endif %}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                  <span style="font-size:.82rem;font-weight:600;color:var(--text)">
+                    {{ avis.utilisateur.get_full_name|default:avis.utilisateur.username }}
+                  </span>
+                  <div>
+                    {% for i in "12345" %}
+                    <i class="bi bi-star{% if forloop.counter <= avis.note %}-fill{% endif %}"
+                       style="color:var(--saffron);font-size:.72rem"></i>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% if avis.commentaire %}
+                <div style="font-size:.8rem;color:var(--text-2);line-height:1.5">{{ avis.commentaire|truncatechars:100 }}</div>
+                {% endif %}
+                <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem">
+                  {{ avis.date_creation|timesince }} ago
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-4">
+            <i class="bi bi-star" style="font-size:2rem;color:var(--muted);display:block;margin-bottom:.6rem"></i>
+            <div style="font-size:.85rem;color:var(--muted)">Vous n'avez pas encore reçu d'avis.</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Produits en rupture -->
+        {% if produits_stats.rupture > 0 %}
+        <div class="ycard fi" style="border:1px solid rgba(var(--ember-rgb,.9),.2);background:var(--ember-d)">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-exclamation-triangle" style="color:var(--ember);font-size:1.1rem"></i>
+            <span style="font-size:.9rem;font-weight:700;color:var(--ember)">
+              {{ produits_stats.rupture }} produit{{ produits_stats.rupture|pluralize }} en rupture de stock
+            </span>
+          </div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:.8rem">Ces produits ne sont plus visibles par les acheteurs.</div>
+          <a href="{% url 'apps_core:mes_produits' %}?rupture=1" class="btn-ghost" style="font-size:.8rem">
+            <i class="bi bi-box me-1"></i>Gérer les stocks
+          </a>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

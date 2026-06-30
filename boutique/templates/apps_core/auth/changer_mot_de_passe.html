@@ -1,0 +1,244 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Changer mon mot de passe — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.auth-page{padding:2.5rem 0 4rem;min-height:80vh;background:var(--bg);position:relative;overflow:hidden}
+.auth-glow{position:absolute;inset:0;pointer-events:none;z-index:0}
+.auth-glow span{position:absolute;border-radius:50%;filter:blur(110px);opacity:.18}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:2.25rem;position:relative;z-index:1;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--ember),var(--indigo));border-radius:var(--rl) var(--rl) 0 0}
+.auth-logo-ico{width:58px;height:58px;border-radius:16px;background:var(--ember-d);border:1px solid rgba(255,90,71,.25);display:flex;align-items:center;justify-content:center;margin:0 auto .9rem;font-size:1.5rem;color:var(--ember)}
+.auth-title{font-family:var(--fg);font-size:1.5rem;font-weight:700;color:var(--text);margin-bottom:.3rem}
+.auth-sub{font-size:.84rem;color:var(--muted)}
+.ef-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;display:block}
+.ef-wrap{position:relative}
+.ef-input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--fd);font-size:.87rem;padding:.65rem 2.8rem .65rem 1rem;outline:none;transition:border-color var(--tr),box-shadow var(--tr)}
+.ef-input:focus{border-color:var(--saffron);box-shadow:0 0 0 3px var(--saffron-d)}
+.ef-input::placeholder{color:var(--muted)}
+.ef-input.err{border-color:var(--ember)}
+.ef-input.err:focus{box-shadow:0 0 0 3px var(--ember-d)}
+.ef-eye{position:absolute;right:.85rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;transition:color var(--tr);padding:.2rem}
+.ef-eye:hover{color:var(--saffron)}
+.ef-error{font-size:.73rem;color:var(--ember);margin-top:.35rem;display:flex;align-items:center;gap:.35rem}
+.ef-hint{font-size:.71rem;color:var(--muted);margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+
+/* Force meter */
+.force-meter{height:4px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:.5rem}
+.force-bar{height:100%;border-radius:99px;width:0;transition:width .4s ease,background .4s ease}
+.force-lbl{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+
+/* Submit */
+.auth-submit{width:100%;background:var(--grad-a);color:#0A0B1A;font-family:var(--fd);font-weight:700;font-size:.9rem;border:none;border-radius:var(--r);padding:.75rem 1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:transform var(--tr),box-shadow var(--tr);box-shadow:0 4px 20px rgba(247,183,49,.3)}
+.auth-submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(247,183,49,.45)}
+
+/* Alert */
+.auth-alert{display:flex;align-items:center;gap:.5rem;padding:.75rem 1rem;border-radius:var(--r);font-size:.82rem;font-weight:500;margin-bottom:.5rem}
+.auth-alert-success{background:var(--jade-d);color:var(--jade);border:1px solid rgba(16,212,160,.2)}
+.auth-alert-error{background:var(--ember-d);color:var(--ember);border:1px solid rgba(255,90,71,.2)}
+</style>
+
+<div class="auth-page">
+  <div class="auth-glow">
+    <span style="width:450px;height:450px;background:var(--ember);top:-15%;right:-10%"></span>
+    <span style="width:350px;height:350px;background:var(--indigo);bottom:10%;left:-5%"></span>
+  </div>
+  <div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height:calc(100vh - 120px)">
+      <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+
+        <!-- Breadcrumb -->
+        <nav class="mb-3" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+          <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <a href="{% url 'apps_core:profil' %}" style="color:var(--muted)">Mon profil</a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <span style="color:var(--saffron)">Changer le mot de passe</span>
+        </nav>
+
+        <!-- Messages -->
+        {% if messages %}{% for msg in messages %}
+        <div class="auth-alert {% if msg.tags == 'success' %}auth-alert-success{% else %}auth-alert-error{% endif %} mb-3">
+          <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+          {{ msg }}
+        </div>
+        {% endfor %}{% endif %}
+
+        <!-- Card -->
+        <div class="auth-card fi">
+          <!-- Header -->
+          <div class="text-center mb-4">
+            <div class="auth-logo-ico"><i class="bi bi-key-fill"></i></div>
+            <div class="auth-title">Changer le mot de passe</div>
+            <div class="auth-sub">Renforcez la sécurité de votre compte</div>
+          </div>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Mot de passe actuel -->
+            <div class="mb-3">
+              <label class="ef-label" for="{{ form.old_password.id_for_label }}">
+                <i class="bi bi-lock" style="color:var(--muted)"></i> Mot de passe actuel
+              </label>
+              <div class="ef-wrap">
+                <input type="password"
+                       name="{{ form.old_password.html_name }}"
+                       id="{{ form.old_password.id_for_label }}"
+                       class="ef-input {% if form.old_password.errors %}err{% endif %}"
+                       placeholder="••••••••"
+                       autocomplete="current-password">
+                <button type="button" class="ef-eye" onclick="togglePwd(this)"><i class="bi bi-eye"></i></button>
+              </div>
+              {% if form.old_password.errors %}
+              <div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.old_password.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Séparateur -->
+            <div style="border-top:1px solid var(--border);margin:1.25rem 0;position:relative">
+              <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);padding:0 .75rem;font-size:.7rem;color:var(--muted);white-space:nowrap">Nouveau mot de passe</span>
+            </div>
+
+            <!-- Nouveau mot de passe -->
+            <div class="mb-3">
+              <label class="ef-label" for="{{ form.new_password1.id_for_label }}">
+                <i class="bi bi-lock-fill" style="color:var(--saffron)"></i> Nouveau mot de passe
+              </label>
+              <div class="ef-wrap">
+                <input type="password"
+                       name="{{ form.new_password1.html_name }}"
+                       id="{{ form.new_password1.id_for_label }}"
+                       class="ef-input {% if form.new_password1.errors %}err{% endif %}"
+                       placeholder="Min. 8 caractères"
+                       autocomplete="new-password"
+                       oninput="checkForce(this.value)">
+                <button type="button" class="ef-eye" onclick="togglePwd(this)"><i class="bi bi-eye"></i></button>
+              </div>
+              <!-- Jauge de force -->
+              <div class="force-meter mt-2"><div class="force-bar" id="forceBar"></div></div>
+              <div class="force-lbl" id="forceLbl">Entrez un mot de passe</div>
+              {% if form.new_password1.errors %}
+              <div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.new_password1.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Confirmer -->
+            <div class="mb-4">
+              <label class="ef-label" for="{{ form.new_password2.id_for_label }}">
+                <i class="bi bi-lock-fill" style="color:var(--saffron)"></i> Confirmer le mot de passe
+              </label>
+              <div class="ef-wrap">
+                <input type="password"
+                       name="{{ form.new_password2.html_name }}"
+                       id="{{ form.new_password2.id_for_label }}"
+                       class="ef-input {% if form.new_password2.errors %}err{% endif %}"
+                       placeholder="••••••••"
+                       autocomplete="new-password"
+                       oninput="checkMatch(this.value)">
+                <button type="button" class="ef-eye" onclick="togglePwd(this)"><i class="bi bi-eye"></i></button>
+              </div>
+              <div id="matchMsg" style="display:none" class="ef-hint"></div>
+              {% if form.new_password2.errors %}
+              <div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.new_password2.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Règles -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:1.4rem;font-size:.78rem;color:var(--muted)">
+              <div style="font-weight:700;color:var(--text);margin-bottom:.5rem"><i class="bi bi-shield-check" style="color:var(--jade)"></i> Règles de sécurité</div>
+              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.3rem">
+                <li id="rule-len"><i class="bi bi-circle" style="font-size:.6rem;margin-right:.4rem"></i> Au moins 8 caractères</li>
+                <li id="rule-upper"><i class="bi bi-circle" style="font-size:.6rem;margin-right:.4rem"></i> Une lettre majuscule</li>
+                <li id="rule-num"><i class="bi bi-circle" style="font-size:.6rem;margin-right:.4rem"></i> Un chiffre</li>
+                <li id="rule-special"><i class="bi bi-circle" style="font-size:.6rem;margin-right:.4rem"></i> Un caractère spécial (!@#$…)</li>
+              </ul>
+            </div>
+
+            <button type="submit" class="auth-submit">
+              <i class="bi bi-lock-fill"></i> Mettre à jour le mot de passe
+            </button>
+
+          </form>
+
+          <p style="text-align:center;font-size:.8rem;color:var(--muted);margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+            <a href="{% url 'apps_core:profil' %}" style="color:var(--saffron);font-weight:600">
+              <i class="bi bi-arrow-left"></i> Retour au profil
+            </a>
+          </p>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+/* Toggle visibilité mdp */
+function togglePwd(btn){
+  const input = btn.closest('.ef-wrap').querySelector('.ef-input');
+  const ic    = btn.querySelector('i');
+  input.type  = input.type === 'password' ? 'text' : 'password';
+  ic.className= input.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+
+/* Jauge de force */
+function checkForce(val){
+  const bar = document.getElementById('forceBar');
+  const lbl = document.getElementById('forceLbl');
+  let score = 0;
+  const rules = [
+    { id:'rule-len',     test: v => v.length >= 8        },
+    { id:'rule-upper',   test: v => /[A-Z]/.test(v)      },
+    { id:'rule-num',     test: v => /[0-9]/.test(v)      },
+    { id:'rule-special', test: v => /[!@#$%^&*(),.?":{}|<>]/.test(v) },
+  ];
+  rules.forEach(r => {
+    const ok = r.test(val);
+    if(ok) score++;
+    const li = document.getElementById(r.id);
+    if(li){
+      li.style.color = ok ? 'var(--jade)' : 'var(--muted)';
+      li.querySelector('i').className = ok ? 'bi bi-check-circle-fill' : 'bi bi-circle';
+      li.querySelector('i').style.color = ok ? 'var(--jade)' : 'var(--muted)';
+      li.querySelector('i').style.fontSize = '.6rem';
+      li.querySelector('i').style.marginRight = '.4rem';
+    }
+  });
+  const pct   = ['0%','30%','55%','80%','100%'][score];
+  const color = ['','var(--ember)','var(--saffron)','var(--saffron)','var(--jade)'][score];
+  const text  = ['Entrez un mot de passe','Trop faible 😟','Faible 😐','Bon 👍','Fort 🔐'][score];
+  bar.style.width      = pct;
+  bar.style.background = color;
+  lbl.textContent      = text;
+  lbl.style.color      = color || 'var(--muted)';
+}
+
+/* Vérification correspondance */
+function checkMatch(val){
+  const p1  = document.getElementById('{{ form.new_password1.id_for_label }}')?.value;
+  const msg = document.getElementById('matchMsg');
+  if(!msg || !val) return;
+  msg.style.display = 'flex';
+  if(val === p1){
+    msg.innerHTML = '<i class="bi bi-check-circle-fill" style="color:var(--jade)"></i> Les mots de passe correspondent';
+    msg.style.color = 'var(--jade)';
+  } else {
+    msg.innerHTML = '<i class="bi bi-x-circle-fill" style="color:var(--ember)"></i> Les mots de passe ne correspondent pas';
+    msg.style.color = 'var(--ember)';
+  }
+}
+
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

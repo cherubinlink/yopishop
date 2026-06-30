@@ -1,0 +1,195 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+.ga-wrap { padding: 2rem 0 4rem; min-height: 80vh; }
+
+.ga-hero {
+  background: linear-gradient(135deg, #0e1038 0%, #1a1050 45%, #0e2444 100%);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 2rem; margin-bottom: 1.75rem; position: relative; overflow: hidden;
+}
+.ga-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 55% 70% at 85% 30%, rgba(0,200,150,.18) 0%, transparent 60%),
+              radial-gradient(ellipse 40% 50% at 5% 80%, rgba(247,183,49,.12) 0%, transparent 55%);
+  pointer-events: none;
+}
+.ga-eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--jade); margin-bottom: .5rem; }
+.ga-title { font-family: var(--fg); font-size: clamp(1.4rem,3vw,2rem); font-weight: 800; color: var(--text); margin-bottom: .5rem; }
+.ga-sub { font-size: .88rem; color: var(--muted); max-width: 560px; }
+
+.ga-search-bar { display: flex; gap: .6rem; margin-top: 1.25rem; flex-wrap: wrap; }
+.ga-search-input {
+  flex: 1; min-width: 200px; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text); font-family: var(--fd); font-size: .87rem;
+  padding: .6rem 1rem; outline: none; transition: border-color .2s;
+}
+.ga-search-input:focus { border-color: var(--jade); }
+.ga-search-btn {
+  background: var(--jade); color: #0A0B1A; border: none; border-radius: 10px;
+  padding: .6rem 1.3rem; font-size: .85rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: .4rem; transition: opacity .2s;
+}
+.ga-search-btn:hover { opacity: .9; }
+
+.ga-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.25rem; }
+.ga-count { font-size: .85rem; color: var(--muted); }
+.ga-count strong { color: var(--jade); }
+
+.ga-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; }
+@media (max-width: 1199px) { .ga-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 767px)  { .ga-grid { grid-template-columns: repeat(2, 1fr); gap: .8rem; } }
+@media (max-width: 420px)  { .ga-grid { grid-template-columns: 1fr; } }
+
+.ga-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+  overflow: hidden; text-decoration: none; display: block;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+.ga-card:hover { transform: translateY(-4px); border-color: rgba(0,200,150,.3); box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+
+.ga-card-img { position: relative; aspect-ratio: 1/1; background: var(--surface); }
+.ga-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.ga-card-badge {
+  position: absolute; top: .6rem; left: .6rem;
+  background: var(--jade); color: #0A0B1A; font-size: .65rem; font-weight: 800;
+  padding: .25rem .65rem; border-radius: 99px; display: flex; align-items: center; gap: .25rem;
+}
+.ga-card-timer {
+  position: absolute; bottom: .6rem; right: .6rem;
+  background: rgba(10,11,26,.75); color: #fff; font-size: .65rem; font-weight: 700;
+  padding: .2rem .6rem; border-radius: 99px; display: flex; align-items: center; gap: .25rem;
+}
+
+.ga-card-body { padding: .85rem .9rem; }
+.ga-card-name { font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: .5rem; line-height: 1.3; min-height: 2.2em; overflow: hidden; }
+
+.ga-price-row { display: flex; align-items: baseline; gap: .4rem; margin-bottom: .6rem; }
+.ga-price-groupe { font-family: var(--fm); font-size: 1.1rem; font-weight: 800; color: var(--jade); }
+.ga-price-normal { font-size: .75rem; color: var(--muted); text-decoration: line-through; }
+.ga-discount-badge { font-size: .65rem; font-weight: 700; background: var(--ember-d); color: var(--ember); padding: 1px 6px; border-radius: 6px; margin-left: auto; }
+
+.ga-progress-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: .35rem; }
+.ga-progress-fill { height: 100%; background: linear-gradient(90deg, var(--jade), #00e0a8); border-radius: 99px; }
+.ga-progress-nums { display: flex; justify-content: space-between; font-size: .68rem; color: var(--muted); }
+
+.ga-empty { text-align: center; padding: 4rem 1rem; border: 1.5px dashed var(--border); border-radius: var(--r); }
+.ga-empty i { font-size: 3rem; color: var(--muted); opacity: .35; display: block; margin-bottom: 1rem; }
+
+.yopi-pager { display: flex; justify-content: center; gap: .35rem; margin-top: 2rem; flex-wrap: wrap; }
+.yopi-pager a, .yopi-pager span {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 36px; padding: 0 .5rem; border-radius: 8px;
+  font-size: .8rem; font-weight: 600; text-decoration: none;
+  border: 1.5px solid var(--border); color: var(--muted); transition: all .2s;
+}
+.yopi-pager a:hover { border-color: var(--jade); color: var(--jade); background: var(--jade-d); }
+.yopi-pager .current { background: var(--jade); color: #0A0B1A; border-color: var(--jade); }
+</style>
+
+<div class="ga-wrap">
+  <div class="container">
+
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"><i class="bi bi-house-fill"></i> Accueil</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Achats groupés</span>
+      </div>
+    </nav>
+
+    <div class="ga-hero fi">
+      <div class="ga-eyebrow"><i class="bi bi-people-fill"></i> Achetez ensemble, payez moins</div>
+      <div class="ga-title">Achats groupés</div>
+      <p class="ga-sub">Rejoignez un groupe et débloquez des prix réduits dès que l'objectif de participants est atteint.</p>
+
+      <form method="get" class="ga-search-bar">
+        <input type="text" name="q" class="ga-search-input" placeholder="Rechercher un produit..." value="{{ q }}">
+        <button type="submit" class="ga-search-btn"><i class="bi bi-search"></i> Rechercher</button>
+      </form>
+    </div>
+
+    <div class="ga-toolbar fi">
+      <div class="ga-count"><strong>{{ groupes.paginator.count }}</strong> groupe{{ groupes.paginator.count|pluralize }} ouvert{{ groupes.paginator.count|pluralize }}</div>
+    </div>
+
+    {% if groupes %}
+    <div class="ga-grid fi">
+      {% for g in groupes %}
+      <a href="{% url 'app_marketplace:groupe_detail' g.pk %}" class="ga-card">
+        <div class="ga-card-img">
+          {% if g.produit.image_principale %}
+          <img src="{{ g.produit.image_principale }}" alt="{{ g.produit.titre }}" loading="lazy">
+          {% else %}
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:2rem"></i></div>
+          {% endif %}
+          <div class="ga-card-badge"><i class="bi bi-people-fill"></i> Groupe</div>
+          <div class="ga-card-timer" data-fin="{{ g.date_expiration|date:'c' }}">
+            <i class="bi bi-clock"></i> <span class="ga-tmr-v">--:--:--</span>
+          </div>
+        </div>
+        <div class="ga-card-body">
+          <div class="ga-card-name">{{ g.produit.titre|truncatechars:48 }}</div>
+          <div class="ga-price-row">
+            <span class="ga-price-groupe">{{ g.prix_groupe|floatformat:0 }} F</span>
+            <span class="ga-price-normal">{{ g.prix_normal|floatformat:0 }} F</span>
+            <span class="ga-discount-badge">-{{ g.pourcentage_reduction|floatformat:0 }}%</span>
+          </div>
+          <div class="ga-progress-track">
+            <div class="ga-progress-fill" style="width:{% widthratio g.nb_participants g.nb_participants_min 100 %}%"></div>
+          </div>
+          <div class="ga-progress-nums">
+            <span>{{ g.nb_participants }} / {{ g.nb_participants_min }} participants</span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    {% if groupes.has_other_pages %}
+    <div class="yopi-pager">
+      {% if groupes.has_previous %}<a href="?q={{ q }}&page={{ groupes.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>{% endif %}
+      {% for num in groupes.paginator.page_range %}
+        {% if groupes.number == num %}<span class="current">{{ num }}</span>
+        {% elif num > groupes.number|add:'-3' and num < groupes.number|add:'3' %}<a href="?q={{ q }}&page={{ num }}">{{ num }}</a>{% endif %}
+      {% endfor %}
+      {% if groupes.has_next %}<a href="?q={{ q }}&page={{ groupes.next_page_number }}"><i class="bi bi-chevron-right"></i></a>{% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="ga-empty fi">
+      <i class="bi bi-people"></i>
+      <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.3rem">Aucun groupe d'achat actif</div>
+      <div style="font-size:.85rem;color:var(--muted)">Revenez bientôt pour découvrir de nouvelles offres groupées.</div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+function fmt(ms){
+  if(ms<=0) return 'Terminé';
+  const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), s=Math.floor(ms%60000/1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function runTimers(){
+  document.querySelectorAll('.ga-card-timer').forEach(el=>{
+    const fin = new Date(el.dataset.fin);
+    const v = el.querySelector('.ga-tmr-v');
+    if(v && !isNaN(fin)) v.textContent = fmt(fin - new Date());
+  });
+}
+setInterval(runTimers, 1000); runTimers();
+
+const io = new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}})},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

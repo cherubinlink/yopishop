@@ -1,0 +1,326 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes codes promo — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_marketplace:dashboard_vendeur' %}" class="cpill">
+          <i class="bi bi-speedometer2 me-1"></i>Dashboard
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+          <i class="bi bi-ticket-perforated me-1" style="color:var(--saffron)"></i>Codes promo
+        </span>
+      </div>
+      <a href="{% url 'apps_marketplace:creer_code_promo' %}" class="btn-gold" style="font-size:.78rem;padding:.4rem 1rem">
+        <i class="bi bi-plus-lg me-1"></i>Nouveau code
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ STATS BAR ═══════ -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="row g-0 text-center">
+      <div class="col-4 stat-item">
+        <div class="stat-n" style="color:var(--text)">{{ stats.total }}</div>
+        <div class="stat-l">Total</div>
+      </div>
+      <div class="col-4 stat-item">
+        <div class="stat-n" style="color:var(--jade)">{{ stats.actifs }}</div>
+        <div class="stat-l">Actifs</div>
+      </div>
+      <div class="col-4 stat-item">
+        <div class="stat-n" style="color:var(--ember)">{{ stats.expires }}</div>
+        <div class="stat-l">Expirés</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ FILTRES + RECHERCHE ═══════ -->
+<section class="ys" style="padding:1.2rem 0">
+  <div class="container">
+    <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+
+      <!-- Recherche -->
+      <div class="search-wrap" style="max-width:300px;flex:1">
+        <i class="bi bi-search si"></i>
+        <input type="text" name="q" class="search-input"
+               placeholder="Code, nom…" value="{{ q }}">
+        {% if statut %}<input type="hidden" name="statut" value="{{ statut }}">{% endif %}
+        <button type="submit" class="search-submit"><i class="bi bi-arrow-right"></i></button>
+      </div>
+
+      <!-- Filtre statut -->
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="?{% if q %}q={{ q }}{% endif %}"
+           class="cpill {% if not statut %}on{% endif %}">Tout</a>
+        {% for val, label in statuts %}
+        <a href="?statut={{ val }}{% if q %}&q={{ q }}{% endif %}"
+           class="cpill {% if statut == val %}on{% endif %}"
+           style="{% if statut == val and val == 'actif' %}color:var(--jade){% elif statut == val and val == 'expire' %}color:var(--ember){% endif %}">
+          {% if val == 'actif' %}<i class="bi bi-check-circle"></i>
+          {% elif val == 'inactif' %}<i class="bi bi-pause-circle"></i>
+          {% elif val == 'expire' %}<i class="bi bi-x-circle"></i>
+          {% else %}<i class="bi bi-circle"></i>{% endif %}
+          {{ label }}
+        </a>
+        {% endfor %}
+      </div>
+
+      {% if q or statut %}
+      <a href="{% url 'apps_marketplace:mes_codes_promo' %}" class="cpill" style="color:var(--ember)">
+        <i class="bi bi-x-circle me-1"></i>Effacer
+      </a>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+
+<!-- ═══════ LISTE DES CODES ═══════ -->
+<section class="ys bg-surface" style="padding-top:0">
+  <div class="container">
+
+    {% if codes_promo %}
+    <div class="d-flex flex-column gap-3">
+      {% for code in codes_promo %}
+      <div class="ycard fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <div class="row align-items-center gy-3">
+
+          <!-- Icône + Code + Nom -->
+          <div class="col-12 col-md-4">
+            <div class="d-flex align-items-center gap-3">
+              <!-- Icône type -->
+              {% if code.type_reduction == 'pourcentage' %}
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-percent" style="color:var(--saffron);font-size:1.1rem"></i>
+              </div>
+              {% elif code.type_reduction == 'montant_fixe' %}
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-currency-exchange" style="color:var(--jade);font-size:1.1rem"></i>
+              </div>
+              {% elif code.type_reduction == 'livraison_gratuite' %}
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-truck" style="color:var(--indigo);font-size:1.1rem"></i>
+              </div>
+              {% else %}
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--ember-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-ticket-perforated" style="color:var(--ember);font-size:1.1rem"></i>
+              </div>
+              {% endif %}
+
+              <div style="min-width:0">
+                <!-- Code en monospace -->
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <code style="font-size:.9rem;font-weight:800;color:var(--saffron);letter-spacing:.1em;background:var(--saffron-d);padding:.15rem .5rem;border-radius:6px">
+                    {{ code.code }}
+                  </code>
+                  <button class="cpill" style="font-size:.65rem;padding:.15rem .5rem;border:none;cursor:pointer"
+                          onclick="navigator.clipboard.writeText('{{ code.code }}');this.innerHTML='✓ Copié';setTimeout(()=>this.innerHTML='<i class=\'bi bi-copy\'></i>',1500)"
+                          title="Copier le code">
+                    <i class="bi bi-copy"></i>
+                  </button>
+                </div>
+                <div style="font-size:.78rem;color:var(--text-2);font-weight:600">{{ code.nom|truncatechars:28 }}</div>
+                <!-- Statut badge -->
+                <div class="mt-1">
+                  {% if code.statut == 'actif' %}
+                  <span class="chip chip-jade" style="font-size:.62rem;padding:.12rem .5rem">
+                    <i class="bi bi-circle-fill me-1" style="font-size:.4rem"></i>Actif
+                  </span>
+                  {% elif code.statut == 'inactif' %}
+                  <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.62rem;padding:.12rem .5rem">
+                    <i class="bi bi-pause-circle me-1"></i>Inactif
+                  </span>
+                  {% elif code.statut == 'expire' %}
+                  <span class="chip chip-ember" style="font-size:.62rem;padding:.12rem .5rem">
+                    <i class="bi bi-x-circle me-1"></i>Expiré
+                  </span>
+                  {% else %}
+                  <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.62rem">{{ code.get_statut_display }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Réduction + Période -->
+          <div class="col-6 col-md-3">
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Réduction</div>
+            {% if code.type_reduction == 'pourcentage' %}
+            <div style="font-family:var(--fm);font-size:1.5rem;font-weight:800;color:var(--saffron);line-height:1">-{{ code.valeur_reduction|floatformat:0 }}%</div>
+            {% elif code.type_reduction == 'montant_fixe' %}
+            <div style="font-family:var(--fm);font-size:1.2rem;font-weight:800;color:var(--jade);line-height:1">-{{ code.valeur_reduction|floatformat:0 }} F</div>
+            {% elif code.type_reduction == 'livraison_gratuite' %}
+            <div style="font-size:.85rem;font-weight:700;color:var(--indigo)"><i class="bi bi-truck me-1"></i>Livraison offerte</div>
+            {% endif %}
+            <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">
+              <i class="bi bi-calendar3 me-1"></i>{{ code.date_debut|date:"d/m/y" }} → {{ code.date_fin|date:"d/m/y" }}
+            </div>
+          </div>
+
+          <!-- Utilisations -->
+          <div class="col-6 col-md-2 d-none d-md-block">
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Utilisations</div>
+            <div style="font-size:1.2rem;font-weight:700;color:var(--text)">{{ code.nombre_utilisations|default:0 }}</div>
+            {% if code.limite_utilisation_globale %}
+            <div style="margin-top:.4rem">
+              <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:{% widthratio code.nombre_utilisations|default:0 code.limite_utilisation_globale 100 %}%;background:var(--saffron);border-radius:2px;transition:width .4s"></div>
+              </div>
+              <div style="font-size:.65rem;color:var(--muted);margin-top:.2rem">/ {{ code.limite_utilisation_globale }}</div>
+            </div>
+            {% else %}
+            <div style="font-size:.7rem;color:var(--muted)">Illimité</div>
+            {% endif %}
+          </div>
+
+          <!-- Actions -->
+          <div class="col-12 col-md-3">
+            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-md-end">
+
+              <!-- Toggle statut -->
+              <div class="dropdown">
+                <button class="cpill dropdown-toggle toggle-statut-btn"
+                        data-pk="{{ code.pk }}"
+                        data-bs-toggle="dropdown"
+                        style="font-size:.72rem;border:none;cursor:pointer">
+                  <i class="bi bi-toggle-on me-1"></i>Statut
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end py-1"
+                    style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:150px">
+                  {% for val, label in statuts %}
+                  <li>
+                    <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 toggle-statut"
+                            data-pk="{{ code.pk }}" data-statut="{{ val }}"
+                            style="color:var(--text-2);font-size:.8rem;border:none;background:none;width:100%;cursor:pointer">
+                      {% if val == 'actif' %}<i class="bi bi-check-circle" style="color:var(--jade)"></i>
+                      {% elif val == 'inactif' %}<i class="bi bi-pause-circle" style="color:var(--muted)"></i>
+                      {% elif val == 'expire' %}<i class="bi bi-x-circle" style="color:var(--ember)"></i>
+                      {% endif %}{{ label }}
+                    </button>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+
+              <a href="{% url 'apps_marketplace:stats_code_promo' code.pk %}" class="cpill" title="Statistiques" style="font-size:.72rem">
+                <i class="bi bi-bar-chart"></i>
+              </a>
+              <a href="{% url 'apps_marketplace:modifier_code_promo' code.pk %}" class="cpill" title="Modifier" style="font-size:.72rem">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <!-- Suppression -->
+              <form method="post" action="{% url 'apps_marketplace:supprimer_code_promo' code.pk %}"
+                    onsubmit="return confirm('Supprimer le code {{ code.code }} ?')">
+                {% csrf_token %}
+                <button type="submit" class="cpill" style="font-size:.72rem;border:none;cursor:pointer;color:var(--ember)" title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if codes_promo.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if codes_promo.has_previous %}
+        <li><a class="cpill" href="?page={{ codes_promo.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for num in codes_promo.paginator.page_range %}
+          {% if codes_promo.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= codes_promo.number and num|add:"2" >= codes_promo.number %}
+          <li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if codes_promo.has_next %}
+        <li><a class="cpill" href="?page={{ codes_promo.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}{% if q %}&q={{ q }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-ticket-perforated" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+        {% if q or statut %}Aucun code trouvé{% else %}Aucun code promo pour l'instant{% endif %}
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+        {% if q or statut %}Essayez avec d'autres filtres.
+        {% else %}Créez votre premier code promo pour fidéliser vos clients.{% endif %}
+      </div>
+      {% if q or statut %}
+      <a href="{% url 'apps_marketplace:mes_codes_promo' %}" class="btn-ghost me-2">Réinitialiser</a>
+      {% endif %}
+      <a href="{% url 'apps_marketplace:creer_code_promo' %}" class="btn-gold">
+        <i class="bi bi-plus-lg me-1"></i>Créer un code
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+/* Toggle statut AJAX */
+document.querySelectorAll('.toggle-statut').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    const pk     = this.dataset.pk;
+    const statut = this.dataset.statut;
+    const card   = this.closest('.ycard');
+    try {
+      const r = await fetch(`/codes-promo/${pk}/toggle-statut/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': CSRF,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: `statut=${statut}`,
+      });
+      const d = await r.json();
+      if (d.success) {
+        card.style.transition = 'opacity .2s';
+        card.style.opacity = '.5';
+        setTimeout(() => location.reload(), 400);
+      }
+    } catch(e) { console.error(e); }
+  });
+});
+
+document.querySelectorAll('.dropdown-item').forEach(item => {
+  item.addEventListener('mouseenter', function(){ this.style.background='var(--saffron-d)'; this.style.color='var(--saffron)'; });
+  item.addEventListener('mouseleave', function(){ this.style.background=''; this.style.color=''; });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

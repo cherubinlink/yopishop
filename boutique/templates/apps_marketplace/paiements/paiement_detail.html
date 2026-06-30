@@ -1,0 +1,231 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Paiement — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1">
+      <a href="{% url 'apps_marketplace:mes_paiements' %}" class="cpill">
+        <i class="bi bi-arrow-left me-1"></i>Mes paiements
+      </a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-receipt me-1" style="color:var(--saffron)"></i>Détail paiement
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="row g-4 justify-content-center">
+      <div class="col-12 col-lg-8">
+
+        <!-- ─── Statut principal ─── -->
+        <div class="ycard mb-4 text-center fi" style="border:2px solid
+          {% if paiement.statut == 'complete' %}var(--jade)
+          {% elif paiement.statut == 'rejete' %}var(--ember)
+          {% else %}var(--saffron){% endif %}">
+
+          <div style="width:64px;height:64px;border-radius:50%;
+                      background:{% if paiement.statut == 'complete' %}rgba(16,185,129,.15){% elif paiement.statut == 'rejete' %}var(--ember-d){% else %}var(--saffron-d){% endif %};
+                      display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+            {% if paiement.statut == 'complete' %}
+            <i class="bi bi-check-circle-fill" style="font-size:1.8rem;color:var(--jade)"></i>
+            {% elif paiement.statut == 'rejete' %}
+            <i class="bi bi-x-circle-fill" style="font-size:1.8rem;color:var(--ember)"></i>
+            {% else %}
+            <i class="bi bi-hourglass-split" style="font-size:1.8rem;color:var(--saffron)"></i>
+            {% endif %}
+          </div>
+
+          <div style="font-family:var(--fm);font-size:2.5rem;font-weight:900;
+                      color:{% if paiement.statut == 'complete' %}var(--jade){% elif paiement.statut == 'rejete' %}var(--ember){% else %}var(--saffron){% endif %};
+                      line-height:1;margin-bottom:.5rem">
+            {{ paiement.montant|floatformat:0 }} <span style="font-size:1.2rem">FCFA</span>
+          </div>
+
+          <div style="font-size:.9rem;color:var(--text-2);font-weight:600">
+            {% if paiement.statut == 'complete' %}Paiement validé ✅
+            {% elif paiement.statut == 'rejete' %}Paiement rejeté ❌
+            {% elif paiement.statut == 'en_verification' %}En cours de vérification ⏳
+            {% else %}{{ paiement.get_statut_display }}{% endif %}
+          </div>
+
+          {% if paiement.statut == 'rejete' and paiement.motif_rejet %}
+          <div class="mt-3 p-3" style="background:var(--ember-d);border-radius:8px;text-align:left">
+            <div style="font-size:.75rem;font-weight:700;color:var(--ember);margin-bottom:.3rem">
+              <i class="bi bi-exclamation-triangle me-1"></i>Motif du rejet
+            </div>
+            <div style="font-size:.82rem;color:var(--text-2)">{{ paiement.motif_rejet }}</div>
+          </div>
+          {% endif %}
+
+          {% if paiement.statut == 'rejete' %}
+          <div class="mt-3">
+            <a href="{% url 'apps_marketplace:initier_paiement' paiement.commande.pk %}" class="btn-gold">
+              <i class="bi bi-arrow-clockwise me-1"></i>Réessayer le paiement
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+
+        <!-- ─── Détails ─── -->
+        <div class="ycard mb-4 fi">
+          <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-info-circle" style="color:var(--saffron)"></i>
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">Informations du paiement</span>
+          </div>
+
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Commande</span>
+              <a href="{% url 'apps_marketplace:commande_detail' paiement.commande.pk %}"
+                 style="font-size:.85rem;font-weight:700;color:var(--saffron);text-decoration:none">
+                {{ paiement.commande.numero_commande }}
+              </a>
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Méthode</span>
+              <span style="font-size:.85rem;font-weight:600;color:var(--text)">
+                {% if paiement.methode == 'orange_money' %}🟠 Orange Money
+                {% elif paiement.methode == 'mtn_momo' %}🟡 MTN MoMo
+                {% elif paiement.methode == 'wave' %}🌊 Wave
+                {% elif paiement.methode == 'yopipay' %}💛 YopiPay
+                {% else %}{{ paiement.get_methode_display|default:paiement.methode }}{% endif %}
+              </span>
+            </div>
+            {% if paiement.numero_expediteur %}
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Numéro expéditeur</span>
+              <span style="font-size:.85rem;color:var(--text)">{{ paiement.numero_expediteur }}</span>
+            </div>
+            {% endif %}
+            {% if paiement.reference_paiement %}
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Référence</span>
+              <code style="font-size:.82rem;color:var(--indigo)">{{ paiement.reference_paiement }}</code>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Date de soumission</span>
+              <span style="font-size:.82rem;color:var(--text)">{{ paiement.date_creation|date:"d M Y à H:i" }}</span>
+            </div>
+            {% if paiement.date_validation %}
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Date de validation</span>
+              <span style="font-size:.82rem;color:var(--jade)">{{ paiement.date_validation|date:"d M Y à H:i" }}</span>
+            </div>
+            {% endif %}
+            {% if paiement.valide_par %}
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Validé par</span>
+              <span style="font-size:.82rem;color:var(--text)">{{ paiement.valide_par.get_full_name|default:paiement.valide_par.username }}</span>
+            </div>
+            {% endif %}
+            {% if paiement.tranche_paiement %}
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span style="font-size:.8rem;color:var(--muted)">Tranche</span>
+              <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.72rem">
+                Tranche {{ paiement.tranche_paiement.numero_tranche }}
+              </span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+
+        <!-- ─── Preuve de paiement ─── -->
+        {% if paiement.preuve_paiement %}
+        <div class="ycard mb-4 fi">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-image" style="color:var(--indigo)"></i>
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">Preuve de paiement</span>
+          </div>
+          <div class="text-center">
+            {% if paiement.preuve_paiement.url|lower|slice:"-4:" in ".jpg.png.jpeg.webp.gif" %}
+            <img src="{{ paiement.preuve_paiement.url }}" alt="Preuve de paiement"
+                 style="max-width:100%;max-height:400px;border-radius:10px;border:1px solid var(--border)">
+            {% else %}
+            <a href="{{ paiement.preuve_paiement.url }}" target="_blank" class="btn-ghost">
+              <i class="bi bi-file-earmark-arrow-down me-1"></i>Télécharger la preuve
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+
+        <!-- ─── Message client ─── -->
+        {% if paiement.message_client %}
+        <div class="ycard fi">
+          <div class="d-flex align-items-center gap-2 mb-2" style="font-size:.82rem;color:var(--muted)">
+            <i class="bi bi-chat-dots" style="color:var(--saffron)"></i>Message
+          </div>
+          <div style="font-size:.85rem;color:var(--text-2);line-height:1.55">{{ paiement.message_client }}</div>
+        </div>
+        {% endif %}
+
+
+        <!-- ─── Actions admin ─── -->
+        {% if request.user.is_staff and paiement.statut == 'en_verification' %}
+        <div class="ycard mt-4 fi" style="border:1px solid var(--saffron)">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+            <i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Actions administrateur
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <form method="post" action="{% url 'apps_marketplace:admin_valider_paiement' paiement.pk %}">
+                {% csrf_token %}
+                <div class="mb-2">
+                  <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.3rem">Commentaire (optionnel)</label>
+                  <input type="text" name="commentaire" class="form-control"
+                         placeholder="Note de validation…"
+                         style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .8rem;font-size:.82rem;width:100%">
+                </div>
+                <button type="submit" class="btn-gold w-100">
+                  <i class="bi bi-check-circle me-1"></i>Valider ce paiement
+                </button>
+              </form>
+            </div>
+            <div class="col-12 col-md-6">
+              <form method="post" action="{% url 'apps_marketplace:admin_rejeter_paiement' paiement.pk %}">
+                {% csrf_token %}
+                <div class="mb-2">
+                  <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.3rem">
+                    Motif du rejet <span style="color:var(--ember)">*</span>
+                  </label>
+                  <input type="text" name="motif" class="form-control" required
+                         placeholder="Expliquez le motif du rejet…"
+                         style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .8rem;font-size:.82rem;width:100%">
+                </div>
+                <button type="submit" class="btn-ghost w-100" style="color:var(--ember);border-color:var(--ember)">
+                  <i class="bi bi-x-circle me-1"></i>Rejeter ce paiement
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

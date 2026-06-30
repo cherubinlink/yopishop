@@ -1,0 +1,273 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Détail promotion — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HERO DÉTAIL PROMO ═══════ -->
+<section class="hero" style="min-height:300px;padding:2.5rem 0">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="container position-relative" style="z-index:2">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="d-flex align-items-center gap-2 list-unstyled mb-0" style="font-size:.78rem;color:var(--muted)">
+        <li><a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none">Accueil</a></li>
+        <li><i class="bi bi-chevron-right" style="font-size:.6rem"></i></li>
+        <li><a href="{% url 'apps_core:promotions_liste' %}" style="color:var(--muted);text-decoration:none">Promotions</a></li>
+        <li><i class="bi bi-chevron-right" style="font-size:.6rem"></i></li>
+        <li style="color:var(--text-2)">{{ promo.nom|truncatechars:30 }}</li>
+      </ol>
+    </nav>
+
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-8 fi">
+        <!-- Statut -->
+        <div class="d-flex align-items-center gap-2 mb-2">
+          {% if est_active %}
+          <span class="chip chip-jade"><i class="bi bi-check-circle me-1"></i>Active</span>
+          {% else %}
+          <span class="chip" style="background:var(--ember-d);color:var(--ember)"><i class="bi bi-clock me-1"></i>{{ promo.get_statut_display }}</span>
+          {% endif %}
+          <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border)">{{ promo.get_type_promotion_display }}</span>
+        </div>
+
+        <h1 class="hero-title" style="font-size:clamp(1.8rem,4vw,2.8rem);margin-bottom:.8rem">{{ promo.nom }}</h1>
+        {% if promo.description %}
+        <p class="hero-desc">{{ promo.description }}</p>
+        {% endif %}
+
+        <div class="hero-actions">
+          <a href="#produits" class="btn-gold">
+            <i class="bi bi-bag"></i> Voir les produits éligibles
+          </a>
+          <a href="{% url 'apps_core:promotions_liste' %}" class="btn-ghost">
+            <i class="bi bi-arrow-left"></i> Retour
+          </a>
+        </div>
+      </div>
+
+      <!-- Carte réduction -->
+      <div class="col-lg-4 fi fi-d2">
+        <div class="ycard text-center" style="border:2px solid var(--saffron);background:var(--saffron-d)">
+          {% if promo.type_promotion == 'pourcentage' %}
+          <div style="font-family:var(--fm);font-size:3.5rem;font-weight:900;color:var(--saffron);line-height:1">
+            -{{ promo.valeur_reduction|floatformat:0 }}%
+          </div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:.3rem">de réduction</div>
+          {% elif promo.type_promotion == 'montant_fixe' %}
+          <div style="font-family:var(--fm);font-size:2.5rem;font-weight:900;color:var(--saffron);line-height:1">
+            -{{ promo.valeur_reduction|floatformat:0 }}<span style="font-size:1.2rem"> FCFA</span>
+          </div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:.3rem">de réduction immédiate</div>
+          {% elif promo.type_promotion == 'livraison_gratuite' %}
+          <div style="font-size:3rem;color:var(--indigo)"><i class="bi bi-truck"></i></div>
+          <div style="font-family:var(--fm);font-size:1.6rem;font-weight:900;color:var(--indigo);line-height:1.2">Livraison<br>Gratuite</div>
+          {% endif %}
+
+          {% if promo.montant_max_reduction %}
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.5rem">
+            Réduction max : {{ promo.montant_max_reduction|floatformat:0 }} FCFA
+          </div>
+          {% endif %}
+
+          {% if promo.code %}
+          <div class="mt-3 p-2" style="background:var(--surface);border:1.5px dashed var(--saffron);border-radius:8px">
+            <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.3rem">Code à utiliser</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:.6rem">
+              <code id="promoCode" style="font-size:1.2rem;font-weight:800;color:var(--saffron);letter-spacing:.15em">{{ promo.code }}</code>
+              <button class="btn-ghost" style="padding:.3rem .7rem;font-size:.75rem" id="copyBtn"
+                      onclick="navigator.clipboard.writeText('{{ promo.code }}');this.innerHTML='<i class=\'bi bi-check\'></i> Copié';setTimeout(()=>this.innerHTML='<i class=\'bi bi-copy\'></i>',2000)">
+                <i class="bi bi-copy"></i>
+              </button>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Infos validité -->
+          <div class="mt-3 d-flex flex-column gap-1" style="text-align:left">
+            <div style="font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-calendar3" style="color:var(--saffron)"></i>
+              Du {{ promo.date_debut|date:"d M Y" }} au {{ promo.date_fin|date:"d M Y" }}
+            </div>
+            {% if promo.montant_min_achat %}
+            <div style="font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-bag-check" style="color:var(--jade)"></i>
+              Achat minimum : {{ promo.montant_min_achat|floatformat:0 }} FCFA
+            </div>
+            {% endif %}
+            {% if promo.limite_utilisation %}
+            <div style="font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-people" style="color:var(--indigo)"></i>
+              {{ promo.limite_utilisation }} utilisation{{ promo.limite_utilisation|pluralize }} max
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════ CATÉGORIES & PRODUITS CONCERNÉS ═══════ -->
+{% if promo.categories.exists or promo.produits.exists %}
+<div class="stats-bar">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 flex-wrap py-1">
+      <span style="font-size:.78rem;font-weight:600;color:var(--text-2);white-space:nowrap">
+        <i class="bi bi-tags" style="color:var(--saffron)"></i> S'applique à :
+      </span>
+      {% for cat in promo.categories.all %}
+      <a href="{% url 'apps_core:categorie_detail' cat.slug %}" class="chip"
+         style="background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(246,169,43,.3);font-size:.72rem;text-decoration:none">
+        <i class="bi bi-tag me-1"></i>{{ cat.nom }}
+      </a>
+      {% endfor %}
+      {% for prod in promo.produits.all|slice:":5" %}
+      <a href="{% url 'apps_core:produit_detail' prod.slug %}" class="chip"
+         style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);font-size:.72rem;text-decoration:none">
+        <i class="bi bi-box me-1"></i>{{ prod.titre|truncatechars:20 }}
+      </a>
+      {% endfor %}
+      {% if promo.produits.count > 5 %}
+      <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.72rem">
+        +{{ promo.produits.count|add:"-5" }} autres
+      </span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ═══════ PRODUITS ÉLIGIBLES ═══════ -->
+<section class="ys bg-surface" id="produits">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🏷️ Profitez de l'offre</div>
+        <h2 class="sec-title">Produits <span class="ac">éligibles</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ produits_eligibles|length }} produit{{ produits_eligibles|length|pluralize }}</span>
+    </div>
+
+    {% if produits_eligibles %}
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-xl-4 g-3">
+      {% for p in produits_eligibles %}
+      <div class="col fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard h-100 text-decoration-none">
+          <div class="pcard-img">
+            {% if p.image_principale %}
+            <img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+            {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)">
+              <i class="bi bi-image" style="font-size:2rem"></i>
+            </div>
+            {% endif %}
+            {% if promo.type_promotion == 'pourcentage' %}
+            <div class="pcard-badge pb-off">-{{ promo.valeur_reduction|floatformat:0 }}%</div>
+            {% elif promo.type_promotion == 'livraison_gratuite' %}
+            <div class="pcard-badge pb-off" style="background:var(--indigo)"><i class="bi bi-truck"></i></div>
+            {% endif %}
+            <button class="pcard-fav" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-heart"></i></button>
+          </div>
+          <div class="pcard-body">
+            <div class="pcard-name">{{ p.titre }}</div>
+            <div class="pcard-vendor"><i class="bi bi-shop"></i> {{ p.vendeur.boutique.nom|default:p.vendeur.username }}</div>
+            <div class="pcard-price">
+              <span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>
+              {% if p.prix_promotionnel < p.prix %}<span class="po">{{ p.prix|floatformat:0 }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="pcard-foot">
+            <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false">
+              <i class="bi bi-bag-plus"></i> Ajouter
+            </button>
+            <div class="pcard-stars"><i class="bi bi-star-fill"></i> {{ p.note_moyenne|default:"4.8"|floatformat:1 }}</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-box" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+      <div style="font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:.4rem">Aucun produit éligible visible</div>
+      <div style="font-size:.8rem;color:var(--muted)">Le code promo s'applique automatiquement au panier.</div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+
+<!-- ═══════ CTA PANIER ═══════ -->
+{% if est_active and promo.code %}
+<div class="stats-bar">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <div style="font-size:.9rem;font-weight:700;color:var(--text)">Prêt à économiser ?</div>
+        <div style="font-size:.78rem;color:var(--muted)">Utilisez le code <code style="color:var(--saffron);font-weight:700">{{ promo.code }}</code> au moment du paiement.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'apps_core:catalogue' %}" class="btn-ghost"><i class="bi bi-search"></i> Explorer le catalogue</a>
+        <a href="{% url 'apps_marketplace:voir_panier' %}" class="btn-gold"><i class="bi bi-bag"></i> Mon panier</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% block extra_js %}
+<script>
+"use strict";
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+}, {threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Panier */
+document.querySelectorAll('.pcard-cart').forEach(btn => {
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    const id=this.dataset.id, orig=this.innerHTML;
+    this.innerHTML='<span class="spinner-border spinner-border-sm" style="width:14px;height:14px"></span>';
+    this.disabled=true;
+    try{
+      const r = await fetch(`/panier/ajouter/${id}/`,{
+        method:'POST',
+        headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}
+      });
+      const d = await r.json();
+      if(d.success){
+        this.innerHTML='<i class="bi bi-check-lg"></i> Ajouté !';
+        this.style.cssText='background:var(--jade);color:#0A0B1A;border-color:var(--jade)';
+        const bc=document.querySelector('.nav-icon .bc');
+        if(bc) bc.textContent=d.nb_articles;
+        setTimeout(()=>{this.innerHTML=orig;this.style.cssText='';this.disabled=false},2000);
+      } else {this.innerHTML=orig;this.disabled=false;}
+    } catch {this.innerHTML=orig;this.disabled=false;}
+  });
+});
+
+/* Favoris */
+document.querySelectorAll('.pcard-fav').forEach(btn=>{
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    try{
+      const r=await fetch(`/favoris/toggle/${this.dataset.id}/`,{
+        method:'POST',headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}
+      });
+      const d=await r.json();
+      if(d.success){const ic=this.querySelector('i');ic.className=d.ajoute?'bi bi-heart-fill':'bi bi-heart';this.style.color=d.ajoute?'var(--ember)':'';}
+    }catch{}
+  });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

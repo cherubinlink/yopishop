@@ -1,0 +1,170 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:680px">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'app_marketplace:admin_commandes_liste' %}" style="color:var(--saffron);text-decoration:none">Commandes</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'app_marketplace:commande_detail' commande.pk %}" style="color:var(--saffron);text-decoration:none">{{ commande.numero_commande }}</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Plan de paiement</li>
+    </ol>
+  </nav>
+
+  <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0 0 1.5rem">
+    Créer un plan de paiement
+  </h1>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% else %}rgba(16,185,129,.12){% endif %};
+      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% else %}rgba(16,185,129,.25){% endif %};
+      color:var(--text)">{{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Récapitulatif commande ── -->
+  <div class="ycard p-4 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+      <i class="bi bi-box me-2" style="color:var(--saffron)"></i>Commande concernée
+    </div>
+    <div class="row g-3">
+      <div class="col-6">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">N° Commande</div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);font-family:var(--fm)">{{ commande.numero_commande }}</div>
+      </div>
+      <div class="col-6">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Client</div>
+        <div style="font-size:.88rem;color:var(--text)">{{ commande.utilisateur.get_full_name|default:commande.utilisateur.username }}</div>
+      </div>
+      <div class="col-6">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Montant total</div>
+        <div style="font-size:1.2rem;font-weight:900;color:var(--saffron);font-family:var(--fm)">{{ commande.montant_total|floatformat:0 }} FCFA</div>
+      </div>
+      <div class="col-6">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Date</div>
+        <div style="font-size:.82rem;color:var(--text-2)">{{ commande.date_creation|date:"d M Y" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Formulaire plan ── -->
+  <div class="ycard p-4 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1.2rem">
+      <i class="bi bi-calendar3 me-2" style="color:var(--jade)"></i>Paramètres du plan
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="mb-4">
+        <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.6rem">
+          Nombre de tranches <span style="color:var(--ember)">*</span>
+        </label>
+        <!-- Sélection visuelle -->
+        <div class="d-flex gap-2 flex-wrap" id="tranches-btns">
+          {% for n in "2,3,4,6,12"|split:"," %}
+          <button type="button" class="btn-ghost tranche-btn" data-val="{{ n }}"
+            style="font-size:.82rem;padding:.4rem 1rem;width:auto;{% if n == '3' %}background:var(--saffron-d);border-color:var(--saffron);color:var(--saffron){% endif %}">
+            {{ n }}x
+          </button>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="nombre_tranches" id="input-tranches" value="3">
+      </div>
+
+      <div class="mb-4">
+        <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+          Taux d'intérêt (%) <span style="font-weight:400;color:var(--muted)">— 0 pour sans intérêt</span>
+        </label>
+        <div style="position:relative">
+          <input type="number" name="taux_interet" id="input-taux" value="0" min="0" max="50" step="0.5"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding-right:2.5rem"
+            oninput="recalculer()">
+          <span style="position:absolute;right:.8rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.82rem">%</span>
+        </div>
+      </div>
+
+      <!-- Simulation -->
+      <div id="simulation" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1.5rem">
+        <div style="font-size:.78rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">
+          <i class="bi bi-calculator me-1" style="color:var(--indigo)"></i>Simulation
+        </div>
+        <div class="d-grid gap-2">
+          <div class="d-flex justify-content-between">
+            <span style="font-size:.8rem;color:var(--text-2)">Montant de base</span>
+            <span style="font-size:.8rem;font-weight:600;color:var(--text)">{{ commande.montant_total|floatformat:0 }} FCFA</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span style="font-size:.8rem;color:var(--text-2)">Montant avec intérêts</span>
+            <span style="font-size:.8rem;font-weight:600;color:var(--text)" id="sim-total">{{ commande.montant_total|floatformat:0 }} FCFA</span>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:.6rem" class="d-flex justify-content-between align-items-center">
+            <span style="font-size:.82rem;font-weight:700;color:var(--text)">Par tranche</span>
+            <span style="font-size:1rem;font-weight:900;color:var(--saffron);font-family:var(--fm)" id="sim-tranche">— FCFA</span>
+          </div>
+          <div style="font-size:.72rem;color:var(--muted)" id="sim-detail">
+            3 tranches mensuelles
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <a href="{% url 'app_marketplace:commande_detail' commande.pk %}" class="btn-ghost flex-grow-1 justify-content-center" style="font-size:.85rem">
+          Annuler
+        </a>
+        <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.85rem">
+          <i class="bi bi-check-circle-fill"></i> Créer le plan
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Info BNPL -->
+  <div style="font-size:.75rem;color:var(--muted);text-align:center;padding:.5rem">
+    <i class="bi bi-info-circle me-1"></i>
+    Le plan de paiement fractionné est réservé aux commandes YopiShop Officiel.
+    Les tranches sont créées mensuellement à partir de la date de commande.
+  </div>
+
+</div>
+
+<script>
+"use strict";
+const montantBase = {{ commande.montant_total|floatformat:0 }};
+let nbTranches = 3;
+
+// Sélection visuelle des tranches
+document.querySelectorAll('.tranche-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tranche-btn').forEach(b => {
+      b.style.background = ''; b.style.borderColor = ''; b.style.color = '';
+    });
+    this.style.background   = 'var(--saffron-d)';
+    this.style.borderColor  = 'var(--saffron)';
+    this.style.color        = 'var(--saffron)';
+    nbTranches = parseInt(this.dataset.val);
+    document.getElementById('input-tranches').value = nbTranches;
+    recalculer();
+  });
+});
+
+function recalculer() {
+  const taux       = parseFloat(document.getElementById('input-taux').value) || 0;
+  const total      = montantBase * (1 + taux / 100);
+  const parTranche = Math.ceil(total / nbTranches);
+  document.getElementById('sim-total').textContent   = total.toLocaleString('fr') + ' FCFA';
+  document.getElementById('sim-tranche').textContent = parTranche.toLocaleString('fr') + ' FCFA';
+  document.getElementById('sim-detail').textContent  = `${nbTranches} tranche${nbTranches > 1 ? 's' : ''} mensuelle${nbTranches > 1 ? 's' : ''}${taux > 0 ? ` (taux ${taux}%)` : ' sans intérêt'}`;
+}
+recalculer();
+</script>
+{% endblock %}

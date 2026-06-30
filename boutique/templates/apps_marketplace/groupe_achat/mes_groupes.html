@@ -1,0 +1,171 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+.mg-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+
+.mg-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.5rem; }
+.mg-title { font-family: var(--fg); font-size: 1.4rem; font-weight: 800; color: var(--text); }
+.mg-sub { font-size: .82rem; color: var(--muted); margin-top: .2rem; }
+
+.btn-creer-groupe {
+  background: linear-gradient(90deg, var(--jade), #00e0a8); color: #0A0B1A; border: none;
+  border-radius: 10px; padding: .55rem 1.2rem; font-size: .84rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: .45rem; text-decoration: none;
+}
+.btn-creer-groupe:hover { opacity: .9; color: #0A0B1A; }
+
+.mg-filters { display: flex; gap: .5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.mg-pill { padding: .35rem .9rem; border-radius: 99px; font-size: .78rem; font-weight: 600; border: 1.5px solid var(--border); color: var(--muted); text-decoration: none; }
+.mg-pill.on, .mg-pill:hover { border-color: var(--jade); color: var(--jade); background: var(--jade-d); }
+
+.mg-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: .85rem; display: flex; align-items: center; gap: 1rem; }
+.mg-card-img { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: var(--surface); }
+.mg-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.mg-card-info { flex: 1; min-width: 0; }
+.mg-card-name { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
+.mg-card-meta { font-size: .76rem; color: var(--muted); display: flex; gap: .8rem; flex-wrap: wrap; }
+
+.mg-statut-badge { font-size: .68rem; font-weight: 700; padding: .2rem .7rem; border-radius: 99px; flex-shrink: 0; }
+.ms-ouvert { background: var(--saffron-d); color: var(--saffron); }
+.ms-complet { background: var(--jade-d); color: var(--jade); }
+.ms-expire { background: var(--ember-d); color: var(--ember); }
+.ms-traite { background: var(--indigo-d); color: var(--indigo); }
+
+.mg-progress-mini { width: 100px; flex-shrink: 0; }
+.mg-progress-track { height: 5px; background: var(--surface); border-radius: 99px; overflow: hidden; margin-bottom: .25rem; }
+.mg-progress-fill { height: 100%; background: var(--jade); border-radius: 99px; }
+.mg-progress-txt { font-size: .68rem; color: var(--muted); text-align: center; }
+
+.mg-actions { display: flex; gap: .4rem; flex-shrink: 0; flex-wrap: wrap; }
+.mg-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .35rem .7rem; font-size: .74rem; color: var(--text-2); text-decoration: none; cursor: pointer; }
+.mg-btn:hover { border-color: var(--jade); color: var(--jade); }
+.mg-btn-finaliser { background: var(--jade-d); border-color: rgba(0,200,150,.3); color: var(--jade); }
+.mg-btn-finaliser:hover { background: var(--jade); color: #0A0B1A; }
+.mg-btn-annuler { background: var(--ember-d); border-color: rgba(255,90,71,.3); color: var(--ember); }
+.mg-btn-annuler:hover { background: var(--ember); color: #fff; }
+
+.mg-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+.mg-empty i { font-size: 2.4rem; opacity: .4; display: block; margin-bottom: .7rem; }
+
+.yopi-pager { display: flex; justify-content: center; gap: .35rem; margin-top: 1.5rem; flex-wrap: wrap; }
+.yopi-pager a, .yopi-pager span { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 .5rem; border-radius: 8px; font-size: .8rem; font-weight: 600; text-decoration: none; border: 1.5px solid var(--border); color: var(--muted); }
+.yopi-pager a:hover { border-color: var(--jade); color: var(--jade); background: var(--jade-d); }
+.yopi-pager .current { background: var(--jade); color: #0A0B1A; border-color: var(--jade); }
+</style>
+
+<div class="mg-wrap">
+  <div class="container">
+
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"><i class="bi bi-house-fill"></i> Accueil</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'app_marketplace:dashboard_vendeur' %}" style="color:var(--muted);text-decoration:none">Tableau de bord</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Achats groupés</span>
+      </div>
+    </nav>
+
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}var(--jade-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi bi-info-circle-fill"></i> {{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+
+    <div class="mg-header fi">
+      <div>
+        <div class="mg-title"><i class="bi bi-people-fill" style="color:var(--jade)"></i> Mes achats groupés</div>
+        <div class="mg-sub">{{ groupes.paginator.count }} groupe{{ groupes.paginator.count|pluralize }} créé{{ groupes.paginator.count|pluralize }}</div>
+      </div>
+      <a href="{% url 'app_marketplace:creer_groupe_achat' %}" class="btn-creer-groupe">
+        <i class="bi bi-plus-lg"></i> Créer un groupe
+      </a>
+    </div>
+
+    <div class="mg-filters fi">
+      <a href="?" class="mg-pill {% if not statut %}on{% endif %}">Tous</a>
+      {% for val, lbl in statuts %}
+      <a href="?statut={{ val }}" class="mg-pill {% if statut == val %}on{% endif %}">{{ lbl }}</a>
+      {% endfor %}
+    </div>
+
+    {% if groupes %}
+    {% for g in groupes %}
+    <div class="mg-card fi">
+      <div class="mg-card-img">
+        {% if g.produit.image_principale %}<img src="{{ g.produit.image_principale }}" alt="{{ g.produit.titre }}">
+        {% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image"></i></div>{% endif %}
+      </div>
+
+      <div class="mg-card-info">
+        <div class="mg-card-name">{{ g.produit.titre|truncatechars:48 }}</div>
+        <div class="mg-card-meta">
+          <span><i class="bi bi-tag"></i> {{ g.prix_groupe|floatformat:0 }} F (-{{ g.pourcentage_reduction|floatformat:0 }}%)</span>
+          <span><i class="bi bi-calendar3"></i> Expire {{ g.date_expiration|date:"d M Y" }}</span>
+        </div>
+      </div>
+
+      <span class="mg-statut-badge ms-{{ g.statut }}">{{ g.get_statut_display }}</span>
+
+      <div class="mg-progress-mini">
+        <div class="mg-progress-track">
+          <div class="mg-progress-fill" style="width:{% widthratio g.nb_participants g.nb_participants_min 100 %}%"></div>
+        </div>
+        <div class="mg-progress-txt">{{ g.nb_participants }} / {{ g.nb_participants_min }}</div>
+      </div>
+
+      <div class="mg-actions">
+        <a href="{% url 'app_marketplace:groupe_detail' g.pk %}" class="mg-btn"><i class="bi bi-eye"></i></a>
+        {% if g.statut == 'ouvert' %}
+        <a href="{% url 'app_marketplace:modifier_groupe_achat' g.pk %}" class="mg-btn"><i class="bi bi-pencil"></i></a>
+        <form method="POST" action="{% url 'app_marketplace:annuler_groupe_achat' g.pk %}" style="display:inline" onsubmit="return confirm('Annuler ce groupe ?')">
+          {% csrf_token %}
+          <button type="submit" class="mg-btn mg-btn-annuler"><i class="bi bi-x-lg"></i></button>
+        </form>
+        {% elif g.statut == 'complet' %}
+        <form method="POST" action="{% url 'app_marketplace:finaliser_groupe' g.pk %}" style="display:inline" onsubmit="return confirm('Finaliser ce groupe et créer les commandes ?')">
+          {% csrf_token %}
+          <button type="submit" class="mg-btn mg-btn-finaliser"><i class="bi bi-check-lg"></i> Finaliser</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    {% if groupes.has_other_pages %}
+    <div class="yopi-pager">
+      {% if groupes.has_previous %}<a href="?statut={{ statut }}&page={{ groupes.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>{% endif %}
+      {% for num in groupes.paginator.page_range %}
+        {% if groupes.number == num %}<span class="current">{{ num }}</span>
+        {% elif num > groupes.number|add:'-3' and num < groupes.number|add:'3' %}<a href="?statut={{ statut }}&page={{ num }}">{{ num }}</a>{% endif %}
+      {% endfor %}
+      {% if groupes.has_next %}<a href="?statut={{ statut }}&page={{ groupes.next_page_number }}"><i class="bi bi-chevron-right"></i></a>{% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="mg-empty fi">
+      <i class="bi bi-people"></i>
+      Aucun achat groupé pour le moment.
+      <div style="margin-top:1rem">
+        <a href="{% url 'app_marketplace:creer_groupe_achat' %}" class="btn-creer-groupe" style="display:inline-flex">
+          <i class="bi bi-plus-lg"></i> Créer mon premier groupe
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}})},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

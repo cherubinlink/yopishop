@@ -1,0 +1,626 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Catalogue — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════════════
+   CATALOGUE — hérite des vars de base.html
+══════════════════════════════════════════════════════ */
+.cat-wrap { padding: 2rem 0 4rem; min-height: 80vh; }
+
+/* ── En-tête résultats ── */
+.cat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem; flex-wrap: wrap; gap: .75rem;
+}
+.cat-title {
+  font-family: var(--fg); font-size: 1.3rem; font-weight: 800;
+  color: var(--text);
+}
+.cat-count { font-size: .82rem; color: var(--muted); }
+.cat-count strong { color: var(--saffron); }
+
+/* ── Bouton filtres mobile ── */
+.btn-filters-mobile {
+  display: none;
+  align-items: center; gap: .4rem;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 99px; padding: .45rem 1rem;
+  font-size: .82rem; font-weight: 600; color: var(--text-2);
+  cursor: pointer;
+}
+@media (max-width: 991px) { .btn-filters-mobile { display: inline-flex; } }
+
+/* ── Sidebar filtres ── */
+.filters-sidebar {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.2rem; position: sticky; top: 1rem;
+}
+@media (max-width: 991px) {
+  .filters-sidebar {
+    position: fixed; top: 0; right: -340px; bottom: 0; width: 320px;
+    z-index: 1060; border-radius: 0; overflow-y: auto;
+    transition: right .3s ease; box-shadow: -10px 0 40px rgba(0,0,0,.4);
+  }
+  .filters-sidebar.open { right: 0; }
+}
+.filters-backdrop {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  z-index: 1055;
+}
+.filters-backdrop.open { display: block; }
+
+.filter-group { margin-bottom: 1.3rem; }
+.filter-group:last-child { margin-bottom: 0; }
+.filter-label {
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: .55rem;
+  display: flex; align-items: center; gap: .4rem;
+}
+.filter-label i { color: var(--saffron); font-size: .85rem; }
+
+.filter-input, .filter-select {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--fd);
+  font-size: .85rem; padding: .55rem .8rem; outline: none;
+  transition: border-color .2s;
+}
+.filter-input:focus, .filter-select:focus { border-color: var(--saffron); }
+.filter-input::placeholder { color: var(--muted); }
+.filter-select option { background: var(--card); }
+
+.filter-price-row { display: flex; gap: .5rem; }
+.filter-price-row .filter-input { width: 50%; }
+
+.filter-check-row {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .35rem 0; cursor: pointer;
+}
+.filter-check-row input[type="checkbox"] {
+  width: 17px; height: 17px; accent-color: var(--saffron); cursor: pointer; flex-shrink: 0;
+}
+.filter-check-label { font-size: .83rem; color: var(--text-2); }
+
+.btn-apply-filters {
+  width: 100%; background: var(--saffron); color: #0A0B1A;
+  border: none; border-radius: 99px; padding: .6rem;
+  font-size: .85rem; font-weight: 700; cursor: pointer;
+  margin-top: .5rem; transition: opacity .2s;
+}
+.btn-apply-filters:hover { opacity: .9; }
+.btn-reset-filters {
+  width: 100%; background: transparent; border: 1.5px solid var(--border);
+  color: var(--muted); border-radius: 99px; padding: .55rem;
+  font-size: .82rem; font-weight: 600; cursor: pointer;
+  margin-top: .5rem; transition: border-color .2s, color .2s; text-decoration: none;
+  display: block; text-align: center;
+}
+.btn-reset-filters:hover { border-color: var(--ember); color: var(--ember); }
+
+/* ── Catégories sidebar (arbre) ── */
+.cat-tree-item { display: block; }
+.cat-tree-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .4rem .5rem; border-radius: 8px;
+  font-size: .83rem; color: var(--text-2); text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.cat-tree-link:hover, .cat-tree-link.active {
+  background: var(--saffron-d); color: var(--saffron);
+}
+.cat-tree-children { padding-left: 1rem; }
+.cat-tree-children .cat-tree-link { font-size: .78rem; color: var(--muted); }
+
+/* ── Chips de tri / filtres actifs ── */
+.active-filters { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.active-filter-chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: var(--saffron-d); border: 1px solid rgba(247,183,49,.25);
+  color: var(--saffron); border-radius: 99px; padding: .25rem .7rem;
+  font-size: .76rem; font-weight: 600; text-decoration: none;
+}
+.active-filter-chip i { font-size: .7rem; }
+
+/* ── Tri ── */
+.sort-select {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 99px; color: var(--text); font-family: var(--fd);
+  font-size: .82rem; padding: .45rem 1rem; outline: none; cursor: pointer;
+}
+.sort-select option { background: var(--card); }
+
+/* ── Grille produits (réutilise .pcard de l'accueil) ── */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1199px) { .cat-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 767px)  { .cat-grid { grid-template-columns: repeat(2, 1fr); gap: .75rem; } }
+@media (max-width: 420px)  { .cat-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── Empty state ── */
+.empty-cat {
+  text-align: center; padding: 4rem 1rem;
+  border: 1.5px dashed var(--border); border-radius: var(--r);
+}
+.empty-cat i { font-size: 3rem; color: var(--muted); opacity: .35; display: block; margin-bottom: 1rem; }
+.empty-cat-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; }
+.empty-cat-sub { font-size: .85rem; color: var(--muted); }
+
+/* ── Pagination ── */
+.yopi-pager {
+  display: flex; justify-content: center; gap: .35rem;
+  margin-top: 2rem; flex-wrap: wrap;
+}
+.yopi-pager a, .yopi-pager span {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 36px; padding: 0 .5rem; border-radius: 8px;
+  font-size: .8rem; font-weight: 600; text-decoration: none;
+  border: 1.5px solid var(--border); color: var(--muted);
+  transition: all .2s;
+}
+.yopi-pager a:hover { border-color: var(--saffron); color: var(--saffron); background: var(--saffron-d); }
+.yopi-pager .current { background: var(--saffron); color: #0A0B1A; border-color: var(--saffron); }
+
+/* ── Badge YopiShop dans filtres ── */
+.yopi-badge-mini {
+  background: var(--indigo-d); color: var(--indigo);
+  border: 1px solid rgba(124,111,255,.25); border-radius: 4px;
+  font-size: .62rem; font-weight: 700; padding: 1px 6px; margin-left: .35rem;
+}
+</style>
+
+
+<div class="cat-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Catalogue</span>
+        {% if vendeur_filtre == 'yopishop' %}
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--saffron)"><i class="bi bi-patch-check-fill"></i> YopiShop Officiel</span>
+        {% elif vendeur_filtre %}
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--indigo)">@{{ vendeur_filtre }}</span>
+        {% endif %}
+      </div>
+    </nav>
+
+    <div class="row g-4">
+
+      <!-- ══════════ SIDEBAR FILTRES ══════════ -->
+      <div class="col-lg-3">
+
+        <!-- Backdrop mobile -->
+        <div class="filters-backdrop" id="filtersBackdrop" onclick="toggleFilters()"></div>
+
+        <aside class="filters-sidebar fi" id="filtersSidebar">
+
+          <!-- Header mobile -->
+          <div class="d-flex d-lg-none align-items-center justify-content-between mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <span style="font-family:var(--fg);font-weight:700;font-size:1rem;color:var(--text)">
+              <i class="bi bi-funnel" style="color:var(--saffron)"></i> Filtres
+            </span>
+            <button onclick="toggleFilters()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer">✕</button>
+          </div>
+
+          <form method="get" action="{% url 'apps_core:catalogue' %}" id="filterForm">
+
+            <!-- Recherche -->
+            <div class="filter-group">
+              <label class="filter-label"><i class="bi bi-search"></i> Recherche</label>
+              <input type="text" name="q" class="filter-input"
+                     placeholder="Nom, référence, catégorie..."
+                     value="{{ form.q.value|default:'' }}">
+            </div>
+
+            <!-- Catégories -->
+            <div class="filter-group">
+              <label class="filter-label"><i class="bi bi-grid-3x3-gap"></i> Catégorie</label>
+              <select name="categorie" class="filter-select">
+                <option value="">Toutes les catégories</option>
+                {% for cat in categories_menu %}
+                <option value="{{ cat.slug }}" {% if form.categorie.value == cat.slug %}selected{% endif %}>
+                  {{ cat.nom }}
+                </option>
+                  {% for sous in cat.sous_categories.all %}
+                  {% if sous.est_active %}
+                  <option value="{{ sous.slug }}" {% if form.categorie.value == sous.slug %}selected{% endif %}>
+                    &nbsp;&nbsp;↳ {{ sous.nom }}
+                  </option>
+                  {% endif %}
+                  {% endfor %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Marque -->
+            {% if form.marque.field.queryset.exists %}
+            <div class="filter-group">
+              <label class="filter-label"><i class="bi bi-award"></i> Marque</label>
+              <select name="marque" class="filter-select">
+                <option value="">Toutes les marques</option>
+                {% for m in form.marque.field.queryset %}
+                <option value="{{ m.slug }}" {% if form.marque.value == m.slug %}selected{% endif %}>{{ m.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+
+            <!-- Prix -->
+            <div class="filter-group">
+              <label class="filter-label"><i class="bi bi-cash-coin"></i> Prix (FCFA)</label>
+              <div class="filter-price-row">
+                <input type="number" name="prix_min" class="filter-input" placeholder="Min" min="0"
+                       value="{{ form.prix_min.value|default:'' }}">
+                <input type="number" name="prix_max" class="filter-input" placeholder="Max" min="0"
+                       value="{{ form.prix_max.value|default:'' }}">
+              </div>
+              {% if form.prix_max.errors %}
+              <div style="font-size:.7rem;color:var(--ember);margin-top:.3rem">{{ form.prix_max.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- État -->
+            <div class="filter-group">
+              <label class="filter-label"><i class="bi bi-stars"></i> État</label>
+              <select name="etat" class="filter-select">
+                <option value="">Tous les états</option>
+                {% for val, lbl in form.etat.field.choices %}
+                {% if val %}
+                <option value="{{ val }}" {% if form.etat.value == val %}selected{% endif %}>{{ lbl }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Type produit -->
+            <div class="filter-group">
+              <label class="filter-label"><i class="bi bi-box-seam"></i> Type</label>
+              <select name="type_produit" class="filter-select">
+                <option value="">Tous les types</option>
+                {% for val, lbl in form.type_produit.field.choices %}
+                {% if val %}
+                <option value="{{ val }}" {% if form.type_produit.value == val %}selected{% endif %}>{{ lbl }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Checkboxes -->
+            <div class="filter-group">
+              <label class="filter-check-row">
+                <input type="checkbox" name="en_stock" value="true" {% if form.en_stock.value %}checked{% endif %}>
+                <span class="filter-check-label">En stock uniquement</span>
+              </label>
+              <label class="filter-check-row">
+                <input type="checkbox" name="vedette" value="true" {% if form.vedette.value %}checked{% endif %}>
+                <span class="filter-check-label"><i class="bi bi-star-fill" style="color:var(--saffron);font-size:.75rem"></i> Produits vedettes</span>
+              </label>
+              <label class="filter-check-row">
+                <input type="checkbox" name="yopishop" value="true" {% if form.yopishop.value %}checked{% endif %}>
+                <span class="filter-check-label"><i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.75rem"></i> YopiShop Officiel</span>
+              </label>
+            </div>
+
+            <!-- Tri (conservé en hidden si présent) -->
+            {% if form.tri.value %}
+            <input type="hidden" name="tri" value="{{ form.tri.value }}">
+            {% endif %}
+
+            <button type="submit" class="btn-apply-filters">
+              <i class="bi bi-funnel-fill"></i> Appliquer les filtres
+            </button>
+            <a href="{% url 'apps_core:catalogue' %}{% if vendeur_filtre %}?vendeur={{ vendeur_filtre }}{% endif %}" class="btn-reset-filters">
+              Réinitialiser
+            </a>
+          </form>
+
+        </aside>
+      </div>
+
+      <!-- ══════════ CONTENU PRINCIPAL ══════════ -->
+      <div class="col-lg-9">
+
+        <!-- En-tête -->
+        <div class="cat-header fi">
+          <div>
+            <h1 class="cat-title">
+              {% if vendeur_filtre == 'yopishop' %}
+                <i class="bi bi-patch-check-fill" style="color:var(--indigo)"></i> Produits YopiShop Officiel
+              {% elif vendeur_filtre %}
+                Produits de @{{ vendeur_filtre }}
+              {% elif form.q.value %}
+                Résultats pour « {{ form.q.value }} »
+              {% else %}
+                Tous les produits
+              {% endif %}
+            </h1>
+            <div class="cat-count">
+              <strong>{{ nb_resultats }}</strong> produit{{ nb_resultats|pluralize }} trouvé{{ nb_resultats|pluralize }}
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn-filters-mobile" onclick="toggleFilters()">
+              <i class="bi bi-funnel"></i> Filtres
+            </button>
+
+            <!-- Tri -->
+            <form method="get" id="sortForm" style="display:flex">
+              {% for key, val in request.GET.items %}
+                {% if key != 'tri' and key != 'page' %}
+                <input type="hidden" name="{{ key }}" value="{{ val }}">
+                {% endif %}
+              {% endfor %}
+              <select name="tri" class="sort-select" onchange="document.getElementById('sortForm').submit()">
+                {% for val, lbl in form.tri.field.choices %}
+                <option value="{{ val }}" {% if form.tri.value == val or not form.tri.value and val == 'recent' %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </div>
+        </div>
+
+        <!-- Filtres actifs -->
+        {% if form.q.value or form.categorie.value or form.marque.value or form.prix_min.value or form.prix_max.value or form.etat.value or form.type_produit.value or form.en_stock.value or form.vedette.value or form.yopishop.value %}
+        <div class="active-filters fi">
+          {% if form.q.value %}<span class="active-filter-chip"><i class="bi bi-search"></i> {{ form.q.value }}</span>{% endif %}
+          {% if form.categorie.value %}<span class="active-filter-chip"><i class="bi bi-tag"></i> {{ form.categorie.value }}</span>{% endif %}
+          {% if form.marque.value %}<span class="active-filter-chip"><i class="bi bi-award"></i> {{ form.marque.value }}</span>{% endif %}
+          {% if form.prix_min.value or form.prix_max.value %}
+          <span class="active-filter-chip"><i class="bi bi-cash-coin"></i> {{ form.prix_min.value|default:"0" }} – {{ form.prix_max.value|default:"∞" }} FCFA</span>
+          {% endif %}
+          {% if form.etat.value %}<span class="active-filter-chip"><i class="bi bi-stars"></i> {{ form.etat.value }}</span>{% endif %}
+          {% if form.en_stock.value %}<span class="active-filter-chip"><i class="bi bi-check-circle"></i> En stock</span>{% endif %}
+          {% if form.vedette.value %}<span class="active-filter-chip"><i class="bi bi-star-fill"></i> Vedettes</span>{% endif %}
+          {% if form.yopishop.value %}<span class="active-filter-chip"><i class="bi bi-patch-check-fill"></i> YopiShop</span>{% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Grille produits -->
+        {% if produits %}
+        <div class="cat-grid fi">
+          {% for p in produits %}
+          <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard text-decoration-none">
+            <div class="pcard-img">
+              {% if p.image_principale %}
+              <img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+              {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)">
+                <i class="bi bi-image" style="font-size:2rem"></i>
+              </div>
+              {% endif %}
+
+              {% if p.est_produit_yopishop %}
+              <div class="pcard-badge pb-vip"><i class="bi bi-patch-check-fill me-1"></i>Officiel</div>
+              {% elif p.est_vedette %}
+              <div class="pcard-badge pb-top"><i class="bi bi-star-fill me-1"></i>Vedette</div>
+              {% endif %}
+
+              {% if p.prix_promotionnel < p.prix %}
+              <div class="pcard-badge pb-off" style="{% if p.est_produit_yopishop or p.est_vedette %}top:2.2rem{% endif %}">Promo</div>
+              {% endif %}
+
+              {% if not p.est_en_stock %}
+              <div style="position:absolute;inset:0;background:rgba(10,11,26,.6);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(1px)">
+                <span style="background:var(--ember);color:#fff;font-size:.72rem;font-weight:700;padding:.3rem .9rem;border-radius:99px">Rupture de stock</span>
+              </div>
+              {% endif %}
+
+              <button class="pcard-fav {% if p.id in favoris_ids %}active{% endif %}" data-id="{{ p.id }}" onclick="return false">
+                <i class="bi bi-heart{% if p.id in favoris_ids %}-fill{% endif %}" {% if p.id in favoris_ids %}style="color:var(--ember)"{% endif %}></i>
+              </button>
+            </div>
+            <div class="pcard-body">
+              <div class="pcard-name">{{ p.titre }}</div>
+              <div class="pcard-vendor">
+                <i class="bi bi-shop"></i>
+                {{ p.vendeur.boutique.nom|default:p.vendeur.username }}
+                {% if p.est_produit_yopishop %}<span class="yopi-badge-mini">Officiel</span>{% endif %}
+              </div>
+              <div class="pcard-price">
+                <span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>
+                {% if p.prix_promotionnel < p.prix %}<span class="po">{{ p.prix|floatformat:0 }}</span>{% endif %}
+              </div>
+            </div>
+            <div class="pcard-foot">
+               <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false" {% if not p.est_en_stock %}disabled{% endif %}><i class="bi bi-bag-plus"></i> Ajouter</button>
+              {% if p.note_moyenne > 0 %}
+              <div class="pcard-stars"><i class="bi bi-star-fill"></i> {{ p.note_moyenne|floatformat:1 }}</div>
+              {% endif %}
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if produits.has_other_pages %}
+        <div class="yopi-pager">
+          {% if produits.has_previous %}
+          <a href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ produits.previous_page_number }}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+          {% endif %}
+          {% for num in produits.paginator.page_range %}
+            {% if produits.number == num %}
+            <span class="current">{{ num }}</span>
+            {% elif num > produits.number|add:'-3' and num < produits.number|add:'3' %}
+            <a href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+            {% endif %}
+          {% endfor %}
+          {% if produits.has_next %}
+          <a href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ produits.next_page_number }}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-cat fi">
+          <i class="bi bi-search"></i>
+          <div class="empty-cat-title">Aucun produit trouvé</div>
+          <div class="empty-cat-sub">Essayez de modifier vos filtres ou votre recherche.</div>
+          <a href="{% url 'apps_core:catalogue' %}" class="btn-gold mt-3" style="font-size:.82rem;display:inline-block">
+            <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
+          </a>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+window.YOPI_URLS = {
+  ajouterPanier: "{% url 'apps_marketplace:ajouter_au_panier' '00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', '{id}'),
+};
+</script>
+{% block extra_js %}
+<script>
+"use strict";
+/* ── Scroll-to-top ── */
+const goTop = document.getElementById('goTop');
+if (goTop) {
+  window.addEventListener('scroll', () => goTop.classList.toggle('vis', scrollY > 400));
+}
+
+/* ── Toggle filtres mobile ── */
+function toggleFilters(){
+  document.getElementById('filtersSidebar').classList.toggle('open');
+  document.getElementById('filtersBackdrop').classList.toggle('open');
+}
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+
+/* ── Favoris ── */
+document.querySelectorAll('.pcard-fav').forEach(btn=>{
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    try{
+      const r = await fetch(`/favoris/toggle/${this.dataset.id}/`,{method:'POST',headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}});
+      const d = await r.json();
+      if(d.success){
+        const ic=this.querySelector('i');
+        ic.className=d.ajoute?'bi bi-heart-fill':'bi bi-heart';
+        this.style.color=d.ajoute?'var(--ember)':'';
+        if(d.ajoute) ic.style.color='var(--ember)'; else ic.style.color='';
+      }
+    }catch{}
+  });
+});
+
+/* ── Ajouter au panier ── */
+document.addEventListener('click', async function(e) {
+
+  const btn = e.target.closest('.pcard-cart');
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  const produitId = btn.dataset.id;
+  if (!produitId) {
+    console.error('Produit ID manquant sur le bouton', btn);
+    return;
+  }
+
+  // ✅ Construction de l'URL correcte
+  const url = window.YOPI_URLS.ajouterPanier.replace('{id}', produitId);
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></span>';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken':      document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type':     'application/x-www-form-urlencoded',
+      },
+      body: 'quantite=1',
+    });
+
+    // ✅ Vérifier HTTP avant de parser JSON
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error(`HTTP ${response.status}`, errData.message || '');
+      btn.innerHTML     = `<i class="bi bi-x-lg"></i> ${errData.message || 'Stock épuisé'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      btn.innerHTML         = '<i class="bi bi-check-lg"></i> Ajouté !';
+      btn.style.background  = 'var(--jade)';
+      btn.style.color       = '#0A0B1A';
+      btn.style.borderColor = 'var(--jade)';
+
+      // ✅ Mise à jour du badge panier dans la navbar
+      // Cible le lien panier spécifiquement via l'icône .bi-bag
+      const panierNavIcon = document.querySelector('.nav-acts .nav-icon .bi-bag')?.closest('.nav-icon');
+      if (panierNavIcon) {
+        let bc = panierNavIcon.querySelector('.bc');
+        if (bc) {
+          bc.textContent = data.nb_articles;
+        } else if (data.nb_articles > 0) {
+          bc             = document.createElement('span');
+          bc.className   = 'bc';
+          bc.textContent = data.nb_articles;
+          panierNavIcon.appendChild(bc);
+        }
+      }
+
+      // Événement custom pour d'autres composants éventuels
+      document.dispatchEvent(new CustomEvent('panier:maj', { detail: data }));
+
+    } else {
+      btn.innerHTML         = `<i class="bi bi-x-lg"></i> ${data.message || 'Erreur'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+    }
+
+  } catch (error) {
+    console.error('Panier fetch error:', error);
+    btn.innerHTML         = '<i class="bi bi-x-lg"></i> Erreur réseau';
+    btn.style.background  = 'var(--ember)';
+    btn.style.color       = '#fff';
+    btn.style.borderColor = 'var(--ember)';
+
+  } finally {
+    setTimeout(() => {
+      btn.innerHTML         = originalHtml;
+      btn.disabled          = false;
+      btn.style.background  = '';
+      btn.style.color       = '';
+      btn.style.borderColor = '';
+    }, 2200);
+  }
+});
+</script>
+{% endblock %}
+
+{% endblock %}

@@ -1,0 +1,673 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mon tableau de bord — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ TICKER ═══════ -->
+<div class="ticker">
+  <div class="ticker-track">
+    <div class="ticker-item"><i class="bi bi-stars"></i>Bienvenue sur YopiShop — Le commerce de confiance</div>
+    <div class="ticker-item"><i class="bi bi-truck"></i>Livraison partout au Cameroun</div>
+    <div class="ticker-item"><i class="bi bi-shield-check"></i>Paiements 100 % sécurisés</div>
+    <div class="ticker-item"><i class="bi bi-headset"></i>Support client 7j/7</div>
+    <div class="ticker-item"><i class="bi bi-stars"></i>Bienvenue sur YopiShop — Le commerce de confiance</div>
+    <div class="ticker-item"><i class="bi bi-truck"></i>Livraison partout au Cameroun</div>
+    <div class="ticker-item"><i class="bi bi-shield-check"></i>Paiements 100 % sécurisés</div>
+    <div class="ticker-item"><i class="bi bi-headset"></i>Support client 7j/7</div>
+  </div>
+</div>
+
+<!-- ═══════ NAVBAR ═══════ -->
+<nav class="ynav">
+  <div class="container">
+    <div class="ynav-inner">
+
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_core:accueil' %}" class="yopi-logo">
+          Yopi<span style="-webkit-text-fill-color:unset;color:var(--saffron)">Shop</span>
+        </a>
+      </div>
+
+      <div class="search-wrap">
+        <i class="bi bi-search si"></i>
+        <form method="get" action="/recherche/" style="display:contents">
+          <input type="text" name="q" class="search-input" placeholder="Produits, boutiques, enchères…">
+          <button type="submit" class="search-submit"><i class="bi bi-arrow-right"></i></button>
+        </form>
+      </div>
+
+      <div class="nav-acts">
+        <a href="/favoris/" class="nav-icon" title="Favoris"><i class="bi bi-heart"></i></a>
+        <a href="/panier/" class="nav-icon" title="Panier">
+          <i class="bi bi-bag"></i>
+          {% if request.session.nb_panier %}<span class="bc">{{ request.session.nb_panier }}</span>{% endif %}
+        </a>
+        <!-- Notifications -->
+        <div class="dropdown">
+          <a class="nav-icon dropdown-toggle" data-bs-toggle="dropdown" title="Notifications">
+            <i class="bi bi-bell"></i>
+            {% if nb_notifs_non_lues %}<span class="bc">{{ nb_notifs_non_lues }}</span>{% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end py-0" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:300px;max-height:360px;overflow-y:auto">
+            <li class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between" style="border-color:var(--border)!important">
+              <span style="font-size:.82rem;font-weight:700;color:var(--text)">Notifications</span>
+              {% if nb_notifs_non_lues %}<span class="chip chip-ember" style="font-size:.6rem;padding:.2rem .6rem">{{ nb_notifs_non_lues }} nouvelles</span>{% endif %}
+            </li>
+            {% for notif in notifications %}
+            <li>
+              <a href="{{ notif.lien|default:'#' }}" class="dropdown-item d-flex align-items-start gap-2 py-2 px-3" style="color:var(--text-2);font-size:.8rem;white-space:normal">
+                <div class="notif-dot {% if not notif.est_lu %}notif-dot-active{% endif %}"></div>
+                <div>
+                  <div style="font-weight:{% if not notif.est_lu %}600{% else %}400{% endif %}">{{ notif.message|truncatechars:60 }}</div>
+                  <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">{{ notif.date_creation|timesince }} ago</div>
+                </div>
+              </a>
+            </li>
+            {% empty %}
+            <li class="px-3 py-3 text-center" style="font-size:.82rem;color:var(--muted)">
+              <i class="bi bi-bell-slash d-block mb-1" style="font-size:1.4rem"></i>Aucune notification
+            </li>
+            {% endfor %}
+            <li class="border-top" style="border-color:var(--border)!important">
+              <a href="/notifications/" class="dropdown-item py-2 text-center" style="color:var(--saffron);font-size:.8rem;font-weight:600">Voir tout</a>
+            </li>
+          </ul>
+        </div>
+        <!-- Avatar -->
+        <div class="dropdown">
+          <a class="nav-icon dropdown-toggle" data-bs-toggle="dropdown" style="cursor:pointer">
+            {% if user.avatar %}
+            <img src="{{ user.avatar.url }}" alt="avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+            {% else %}
+            <i class="bi bi-person-circle"></i>
+            {% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end py-2" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:190px">
+            <li class="px-3 py-2 border-bottom mb-1" style="border-color:var(--border)!important">
+              <div style="font-size:.82rem;font-weight:600;color:var(--text)">{{ user.get_full_name|default:user.username }}</div>
+              <div style="font-size:.7rem;color:var(--muted)">{{ user.email }}</div>
+            </li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:profil' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-person" style="color:var(--saffron)"></i>Mon profil</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="/commandes/" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-box" style="color:var(--indigo)"></i>Mes commandes</a></li>
+            {% if user.peut_vendre %}<li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="/dashboard/" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-shop" style="color:var(--jade)"></i>Tableau de bord</a></li>{% endif %}
+            <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger" href="{% url 'apps_core:deconnexion' %}" style="font-size:.82rem"><i class="bi bi-box-arrow-right"></i>Déconnexion</a></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════ DASHBOARD PAGE ═══════ -->
+<div class="db-page">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="db-breadcrumb fi">
+      <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);font-size:.8rem"><i class="bi bi-house"></i> Accueil</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;color:var(--muted)"></i>
+      <span style="font-size:.8rem;color:var(--saffron)">Mon compte</span>
+    </nav>
+
+    <!-- Welcome banner -->
+    <div class="db-welcome fi">
+      <div class="db-welcome-left">
+        <div class="db-avatar">
+          {% if profil.avatar %}
+          <img src="{{ profil.avatar.url }}" alt="{{ user.username }}">
+          {% else %}
+          <span>{{ user.first_name|first|upper|default:user.username|first|upper }}</span>
+          {% endif %}
+          <div class="db-avatar-status"></div>
+        </div>
+        <div>
+          <div class="db-welcome-hey">Bonjour 👋</div>
+          <div class="db-welcome-name">{{ user.get_full_name|default:user.username }}</div>
+          <div class="db-welcome-email">
+            <i class="bi bi-envelope" style="color:var(--saffron)"></i>
+            {{ user.email }}
+          </div>
+        </div>
+      </div>
+      <div class="db-welcome-actions d-flex gap-2 flex-wrap">
+        <a href="{% url 'apps_core:modifier_profil' %}" class="btn-ghost" style="font-size:.8rem">
+          <i class="bi bi-pencil"></i> Modifier le profil
+        </a>
+        {% if user.peut_vendre %}
+        <a href="{% url 'apps_core:profil_vendeur_public' username=request.user.username %}" class="btn-gold" style="font-size:.8rem">
+          <i class="bi bi-shop"></i> Espace vendeur
+        </a>
+        {% else %}
+        <a href="{% url 'apps_core:devenir_vendeur' %}" class="btn-gold" style="font-size:.8rem">
+          <i class="bi bi-shop"></i> Devenir vendeur
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ═══ STAT CARDS ═══ -->
+    <div class="row g-3 mb-4">
+      <!-- Commandes total -->
+      <div class="col-6 col-md-3 fi fi-d1">
+        <div class="db-stat-card">
+          <div class="db-stat-icon" style="background:var(--saffron-d)">
+            <i class="bi bi-bag-check" style="color:var(--saffron)"></i>
+          </div>
+          <div class="db-stat-val">{{ nb_commandes_total }}</div>
+          <div class="db-stat-lbl">Commandes total</div>
+          <a href="{% url 'app_marketplace:mes_commandes' %}" class="db-stat-link">Voir tout <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+      <!-- En cours -->
+      <div class="col-6 col-md-3 fi fi-d1">
+        <div class="db-stat-card">
+          <div class="db-stat-icon" style="background:var(--indigo-d)">
+            <i class="bi bi-truck" style="color:var(--indigo)"></i>
+          </div>
+          <div class="db-stat-val" style="color:var(--indigo)">{{ nb_commandes_encours }}</div>
+          <div class="db-stat-lbl">En cours de livraison</div>
+          <a href="/commandes/?statut=encours" class="db-stat-link">Suivre <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+      <!-- Wallet -->
+      <div class="col-6 col-md-3 fi fi-d2">
+        <div class="db-stat-card">
+          <div class="db-stat-icon" style="background:var(--jade-d)">
+            <i class="bi bi-wallet2" style="color:var(--jade)"></i>
+          </div>
+          <div class="db-stat-val" style="color:var(--jade)">
+            {{ profil.solde_wallet|floatformat:0|default:"0" }}
+            <span style="font-size:.75rem;font-weight:400;color:var(--muted)">F</span>
+          </div>
+          <div class="db-stat-lbl">Solde wallet</div>
+          <a href="{% url 'apps_core:wallet' %}" class="db-stat-link">Recharger <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+      <!-- Favoris -->
+      <div class="col-6 col-md-3 fi fi-d2">
+        <div class="db-stat-card">
+          <div class="db-stat-icon" style="background:var(--ember-d)">
+            <i class="bi bi-heart" style="color:var(--ember)"></i>
+          </div>
+          <div class="db-stat-val" style="color:var(--ember)">{{ profil.nb_favoris|default:"0" }}</div>
+          <div class="db-stat-lbl">Produits favoris</div>
+          <a href="{% url 'apps_core:favoris' %}" class="db-stat-link">Voir <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MAIN GRID ═══ -->
+    <div class="row g-4">
+
+      <!-- COL GAUCHE -->
+      <div class="col-12 col-lg-8">
+
+        <!-- Commandes récentes -->
+        <div class="db-block fi mb-4">
+          <div class="db-block-head">
+            <div>
+              <div class="eyebrow">Historique</div>
+              <h2 class="db-block-title">Commandes récentes</h2>
+            </div>
+            <a href="{% url 'app_marketplace:mes_commandes' %}" class="btn-ghost" style="font-size:.78rem">Tout voir <i class="bi bi-arrow-right"></i></a>
+          </div>
+
+          {% if commandes_recentes %}
+          <div class="db-table-wrap">
+            <table class="db-table">
+              <thead>
+                <tr>
+                  <th>Commande</th>
+                  <th>Date</th>
+                  <th>Montant</th>
+                  <th>Statut</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cmd in commandes_recentes %}
+                <tr>
+                  <td>
+                    <div style="font-size:.83rem;font-weight:600;color:var(--text)">#{{ cmd.numero|default:cmd.id }}</div>
+                    <div style="font-size:.72rem;color:var(--muted)">{{ cmd.nb_articles|default:1 }} article{{ cmd.nb_articles|pluralize }}</div>
+                  </td>
+                  <td style="font-size:.8rem;color:var(--muted)">{{ cmd.date_creation|date:"d M Y" }}</td>
+                  <td>
+                    <span style="font-family:var(--fm);font-size:.88rem;font-weight:700;color:var(--saffron)">
+                      {{ cmd.montant_total|floatformat:0 }} F
+                    </span>
+                  </td>
+                  <td>
+                    <span class="db-status db-status-{{ cmd.statut }}">
+                      {% if cmd.statut == 'livree' %}<i class="bi bi-check-circle-fill"></i> Livrée
+                      {% elif cmd.statut == 'expediee' %}<i class="bi bi-truck"></i> Expédiée
+                      {% elif cmd.statut == 'en_traitement' %}<i class="bi bi-gear"></i> En traitement
+                      {% elif cmd.statut == 'confirmee' %}<i class="bi bi-check"></i> Confirmée
+                      {% elif cmd.statut == 'en_attente' %}<i class="bi bi-clock"></i> En attente
+                      {% elif cmd.statut == 'annulee' %}<i class="bi bi-x-circle"></i> Annulée
+                      {% else %}{{ cmd.get_statut_display }}
+                      {% endif %}
+                    </span>
+                  </td>
+                  <td>
+                    <a href="{% url 'app_marketplace:commande_detail' cmd.id %}" class="db-table-action">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="db-empty">
+            <i class="bi bi-bag-x"></i>
+            <div class="db-empty-title">Aucune commande</div>
+            <p class="db-empty-sub">Vous n'avez pas encore passé de commande.</p>
+            <a href="{% url 'apps_core:catalogue' %}" class="btn-gold" style="font-size:.82rem">
+              <i class="bi bi-bag-plus"></i> Commencer mes achats
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Transactions wallet -->
+        <div class="db-block fi">
+          <div class="db-block-head">
+            <div>
+              <div class="eyebrow">Finances</div>
+              <h2 class="db-block-title">Transactions wallet</h2>
+            </div>
+            <a href="{% url 'apps_core:wallet' %}" class="btn-ghost" style="font-size:.78rem">Tout voir <i class="bi bi-arrow-right"></i></a>
+          </div>
+
+          {% if transactions_recentes %}
+          <div class="d-flex flex-column gap-2">
+            {% for tx in transactions_recentes %}
+            <div class="db-tx-row">
+              <div class="db-tx-icon db-tx-{{ tx.type }}">
+                {% if tx.type == 'credit' %}<i class="bi bi-arrow-down-circle-fill"></i>
+                {% elif tx.type == 'debit' %}<i class="bi bi-arrow-up-circle-fill"></i>
+                {% else %}<i class="bi bi-arrow-left-right"></i>{% endif %}
+              </div>
+              <div class="flex-grow-1">
+                <div style="font-size:.83rem;font-weight:600;color:var(--text)">{{ tx.description|default:"Transaction" }}</div>
+                <div style="font-size:.72rem;color:var(--muted)">{{ tx.date_creation|date:"d M Y à H:i" }}</div>
+              </div>
+              <div class="db-tx-amount db-tx-{{ tx.type }}">
+                {% if tx.type == 'credit' %}+{% else %}-{% endif %}{{ tx.montant|floatformat:0 }} F
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="db-empty">
+            <i class="bi bi-wallet2"></i>
+            <div class="db-empty-title">Aucune transaction</div>
+            <p class="db-empty-sub">Votre wallet est vide pour l'instant.</p>
+            <a href="{% url 'apps_core:wallet' %}" class="btn-gold" style="font-size:.82rem">
+              <i class="bi bi-plus-circle"></i> Recharger mon wallet
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+      <!-- /COL GAUCHE -->
+
+      <!-- COL DROITE -->
+      <div class="col-12 col-lg-4">
+
+        <!-- Profil rapide -->
+        <div class="db-block fi mb-4">
+          <div class="db-block-head">
+            <div>
+              <div class="eyebrow">Compte</div>
+              <h2 class="db-block-title">Mon profil</h2>
+            </div>
+            <a href="{% url 'apps_core:modifier_profil' %}" class="btn-ghost" style="font-size:.78rem"><i class="bi bi-pencil"></i></a>
+          </div>
+          <div class="d-flex flex-column gap-2">
+            <div class="db-info-row">
+              <i class="bi bi-person" style="color:var(--saffron)"></i>
+              <div>
+                <div style="font-size:.72rem;color:var(--muted)">Nom complet</div>
+                <div style="font-size:.83rem;font-weight:600;color:var(--text)">{{ user.get_full_name|default:"—" }}</div>
+              </div>
+            </div>
+            <div class="db-info-row">
+              <i class="bi bi-envelope" style="color:var(--indigo)"></i>
+              <div>
+                <div style="font-size:.72rem;color:var(--muted)">Email</div>
+                <div style="font-size:.83rem;font-weight:600;color:var(--text)">{{ user.email }}</div>
+              </div>
+            </div>
+            <div class="db-info-row">
+              <i class="bi bi-telephone" style="color:var(--jade)"></i>
+              <div>
+                <div style="font-size:.72rem;color:var(--muted)">Téléphone</div>
+                <div style="font-size:.83rem;font-weight:600;color:var(--text)">{{ profil.utilisateur.telephone|default:"Non renseigné" }}</div>
+              </div>
+            </div>
+            <div class="db-info-row">
+              <i class="bi bi-geo-alt" style="color:var(--ember)"></i>
+              <div>
+                <div style="font-size:.72rem;color:var(--muted)">Ville</div>
+                <div style="font-size:.83rem;font-weight:600;color:var(--text)">{{ profil.utilisateur.ville|default:"Non renseignée" }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Complétion profil -->
+          {% if profil.pourcentage_completion %}
+          <div class="db-progress-wrap">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <span style="font-size:.75rem;color:var(--muted)">Profil complété</span>
+              <span style="font-size:.75rem;font-weight:700;color:var(--saffron)">{{ profil.pourcentage_completion }}%</span>
+            </div>
+            <div class="db-progress-bar">
+              <div class="db-progress-fill" style="width:{{ profil.pourcentage_completion }}%"></div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Menu rapide -->
+        <div class="db-block fi mb-4">
+          <div class="eyebrow mb-3">Navigation rapide</div>
+          <div class="d-flex flex-column gap-1">
+            <a href="{% url 'app_marketplace:mes_commandes' %}" class="db-menu-item">
+              <div class="db-menu-icon" style="background:var(--saffron-d)"><i class="bi bi-bag" style="color:var(--saffron)"></i></div>
+              <span>Mes commandes</span>
+              <i class="bi bi-chevron-right ms-auto" style="color:var(--muted);font-size:.7rem"></i>
+            </a>
+            <a href="{% url 'apps_core:favoris' %}" class="db-menu-item">
+              <div class="db-menu-icon" style="background:var(--ember-d)"><i class="bi bi-heart" style="color:var(--ember)"></i></div>
+              <span>Mes favoris</span>
+              <i class="bi bi-chevron-right ms-auto" style="color:var(--muted);font-size:.7rem"></i>
+            </a>
+            <a href="{% url 'apps_core:wallet' %}" class="db-menu-item">
+              <div class="db-menu-icon" style="background:var(--jade-d)"><i class="bi bi-wallet2" style="color:var(--jade)"></i></div>
+              <span>Mon wallet</span>
+              <i class="bi bi-chevron-right ms-auto" style="color:var(--muted);font-size:.7rem"></i>
+            </a>
+            <a href="/adresses/" class="db-menu-item">
+              <div class="db-menu-icon" style="background:var(--indigo-d)"><i class="bi bi-geo-alt" style="color:var(--indigo)"></i></div>
+              <span>Mes adresses</span>
+              <i class="bi bi-chevron-right ms-auto" style="color:var(--muted);font-size:.7rem"></i>
+            </a>
+            <a href="/avis/" class="db-menu-item">
+              <div class="db-menu-icon" style="background:var(--saffron-d)"><i class="bi bi-star" style="color:var(--saffron)"></i></div>
+              <span>Mes avis</span>
+              <i class="bi bi-chevron-right ms-auto" style="color:var(--muted);font-size:.7rem"></i>
+            </a>
+            <a href="{% url 'apps_core:changer_mot_de_passe' %}" class="db-menu-item">
+              <div class="db-menu-icon" style="background:var(--ember-d)"><i class="bi bi-shield-check" style="color:var(--ember)"></i></div>
+              <span>Sécurité</span>
+              <i class="bi bi-chevron-right ms-auto" style="color:var(--muted);font-size:.7rem"></i>
+            </a>
+            <hr style="border-color:var(--border);margin:.25rem 0">
+            <a href="{% url 'apps_core:deconnexion' %}" class="db-menu-item" style="color:var(--ember)">
+              <div class="db-menu-icon" style="background:var(--ember-d)"><i class="bi bi-box-arrow-right" style="color:var(--ember)"></i></div>
+              <span>Déconnexion</span>
+              <i class="bi bi-chevron-right ms-auto" style="color:var(--ember);font-size:.7rem"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        {% if notifications %}
+        <div class="db-block fi">
+          <div class="db-block-head">
+            <div>
+              <div class="eyebrow">Alertes</div>
+              <h2 class="db-block-title">Notifications</h2>
+            </div>
+            <a href="/notifications/" class="btn-ghost" style="font-size:.78rem">Tout voir</a>
+          </div>
+          <div class="d-flex flex-column gap-2">
+            {% for notif in notifications %}
+            <a href="{{ notif.lien|default:'#' }}" class="db-notif-row text-decoration-none">
+              <div class="notif-dot {% if not notif.est_lu %}notif-dot-active{% endif %}"></div>
+              <div class="flex-grow-1">
+                <div style="font-size:.8rem;color:var(--text);font-weight:{% if not notif.est_lu %}600{% else %}400{% endif %}">{{ notif.message|truncatechars:55 }}</div>
+                <div style="font-size:.7rem;color:var(--muted);margin-top:.12rem">{{ notif.date_creation|timesince }}</div>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+      <!-- /COL DROITE -->
+
+    </div>
+    <!-- /row -->
+
+  </div>
+</div>
+
+<!-- ═══════ STYLES DASHBOARD ═══════ -->
+<style>
+/* PAGE */
+.db-page{padding:2rem 0 4rem;background:var(--bg);min-height:calc(100vh - 88px)}
+
+/* Breadcrumb */
+.db-breadcrumb{
+  display:flex;align-items:center;gap:.5rem;
+  margin-bottom:1.5rem;
+}
+
+/* Welcome banner */
+.db-welcome{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:1rem;position:relative;overflow:hidden;
+}
+.db-welcome::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--grad-a);
+}
+.db-welcome::after{
+  content:'';position:absolute;right:-5%;top:-40%;
+  width:260px;height:260px;border-radius:50%;
+  background:radial-gradient(circle,var(--saffron-d) 0%,transparent 70%);
+  pointer-events:none;
+}
+.db-welcome-left{display:flex;align-items:center;gap:1.1rem}
+.db-avatar{
+  position:relative;width:62px;height:62px;border-radius:50%;
+  border:2.5px solid var(--saffron);overflow:visible;flex-shrink:0;
+}
+.db-avatar img,.db-avatar span{
+  width:100%;height:100%;border-radius:50%;object-fit:cover;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--saffron-d);font-size:1.4rem;font-weight:700;color:var(--saffron);
+}
+.db-avatar-status{
+  position:absolute;bottom:1px;right:1px;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--jade);border:2px solid var(--card);
+}
+.db-welcome-hey{font-size:.78rem;color:var(--muted);margin-bottom:.1rem}
+.db-welcome-name{font-family:var(--fg);font-size:1.25rem;font-weight:700;color:var(--text);line-height:1.2}
+.db-welcome-email{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.35rem;margin-top:.2rem}
+
+/* Stat cards */
+.db-stat-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:1.25rem;text-align:center;
+  transition:transform var(--tr),box-shadow var(--tr),border-color var(--tr);
+}
+.db-stat-card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--border-h)}
+.db-stat-icon{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto .75rem;font-size:1.2rem;
+}
+.db-stat-val{
+  font-family:var(--fm);font-size:1.75rem;font-weight:700;
+  color:var(--saffron);line-height:1;margin-bottom:.25rem;
+}
+.db-stat-lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+.db-stat-link{font-size:.75rem;color:var(--saffron);font-weight:600;display:inline-flex;align-items:center;gap:.3rem;transition:opacity var(--tr)}
+.db-stat-link:hover{opacity:.75}
+
+/* Block */
+.db-block{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:1.4rem;
+}
+.db-block-head{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:1.2rem;gap:.5rem;
+}
+.db-block-title{
+  font-family:var(--fg);font-size:1.05rem;font-weight:700;
+  color:var(--text);margin:.3rem 0 0;
+}
+
+/* Table */
+.db-table-wrap{overflow-x:auto;scrollbar-width:none}
+.db-table-wrap::-webkit-scrollbar{display:none}
+.db-table{width:100%;border-collapse:collapse}
+.db-table th{
+  font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);padding:.55rem .75rem;border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+.db-table td{
+  padding:.65rem .75rem;border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+.db-table tr:last-child td{border-bottom:none}
+.db-table tr:hover td{background:rgba(255,255,255,.02)}
+
+/* Status badges */
+.db-status{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.68rem;font-weight:700;padding:.22rem .65rem;
+  border-radius:99px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;
+}
+.db-status-livree{background:var(--jade-d);color:var(--jade)}
+.db-status-expediee{background:var(--indigo-d);color:var(--indigo)}
+.db-status-en_traitement,.db-status-confirmee{background:var(--saffron-d);color:var(--saffron)}
+.db-status-en_attente{background:rgba(255,255,255,.07);color:var(--muted)}
+.db-status-annulee{background:var(--ember-d);color:var(--ember)}
+
+.db-table-action{
+  width:30px;height:30px;border-radius:8px;
+  background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:.82rem;
+  transition:border-color var(--tr),color var(--tr);
+}
+.db-table-action:hover{border-color:var(--saffron);color:var(--saffron)}
+
+/* Wallet transactions */
+.db-tx-row{
+  display:flex;align-items:center;gap:.85rem;
+  padding:.6rem .75rem;border-radius:var(--r);
+  background:var(--surface);border:1px solid var(--border);
+  transition:border-color var(--tr);
+}
+.db-tx-row:hover{border-color:var(--border-h)}
+.db-tx-icon{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+}
+.db-tx-credit .db-tx-icon{background:var(--jade-d);color:var(--jade)}
+.db-tx-debit .db-tx-icon{background:var(--ember-d);color:var(--ember)}
+.db-tx-amount{font-family:var(--fm);font-size:.9rem;font-weight:700;white-space:nowrap}
+.db-tx-amount.db-tx-credit{color:var(--jade)}
+.db-tx-amount.db-tx-debit{color:var(--ember)}
+
+/* Profile info rows */
+.db-info-row{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.55rem .75rem;border-radius:var(--r);
+  background:var(--surface);border:1px solid var(--border);
+}
+.db-info-row i{font-size:1rem;flex-shrink:0;width:20px;text-align:center}
+
+/* Progress bar */
+.db-progress-wrap{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
+.db-progress-bar{
+  height:6px;background:var(--surface);border-radius:99px;overflow:hidden;
+}
+.db-progress-fill{
+  height:100%;background:var(--grad-a);border-radius:99px;
+  transition:width .8s ease;
+}
+
+/* Menu rapide */
+.db-menu-item{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.6rem .75rem;border-radius:var(--r);
+  color:var(--text-2);font-size:.83rem;font-weight:500;
+  text-decoration:none;
+  transition:background var(--tr),color var(--tr);cursor:pointer;
+}
+.db-menu-item:hover{background:var(--surface);color:var(--text)}
+.db-menu-icon{
+  width:32px;height:32px;border-radius:9px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:.88rem;
+}
+
+/* Notifications */
+.notif-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--border-h);flex-shrink:0;margin-top:4px;
+}
+.notif-dot-active{background:var(--saffron)}
+.db-notif-row{
+  display:flex;align-items:flex-start;gap:.75rem;
+  padding:.6rem .75rem;border-radius:var(--r);
+  background:var(--surface);border:1px solid var(--border);
+  transition:border-color var(--tr);
+}
+.db-notif-row:hover{border-color:var(--border-h)}
+
+/* Empty state */
+.db-empty{
+  text-align:center;padding:2.5rem 1rem;
+  display:flex;flex-direction:column;align-items:center;gap:.6rem;
+}
+.db-empty i{font-size:2.5rem;color:var(--muted);opacity:.5}
+.db-empty-title{font-size:.95rem;font-weight:600;color:var(--text)}
+.db-empty-sub{font-size:.82rem;color:var(--muted);margin:0}
+
+/* Chip live */
+.chip{display:inline-flex;align-items:center;gap:.3rem;font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.25rem .7rem;border-radius:99px}
+.chip-ember{background:var(--ember);color:#fff}
+</style>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+}, {threshold:.06});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Scroll-to-top */
+const goTop = document.getElementById('goTop');
+if(goTop) window.addEventListener('scroll', () => goTop.classList.toggle('vis', scrollY > 400));
+
+/* Dropdown hover */
+document.querySelectorAll('.dropdown-item').forEach(item => {
+  item.addEventListener('mouseenter', function(){ this.style.background='var(--saffron-d)'; this.style.color='var(--saffron)' });
+  item.addEventListener('mouseleave', function(){ this.style.background=''; this.style.color='' });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

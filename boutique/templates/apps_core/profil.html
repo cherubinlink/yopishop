@@ -1,0 +1,863 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mon profil — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<style>
+/* ── Layout profil ─────────────────────────────────────────── */
+.profil-wrap{padding:2.5rem 0 4rem;min-height:80vh}
+.profil-hero{position:relative;margin-bottom:4.5rem}
+.profil-banner{
+  height:200px;border-radius:var(--r) var(--r) 0 0;
+  background:linear-gradient(120deg,#0e1038 0%,#1a1050 40%,#0e2444 100%);
+  overflow:hidden;position:relative;
+}
+.profil-banner::after{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 80% at 80% 50%,rgba(108,99,255,.22) 0%,transparent 65%),
+    radial-gradient(ellipse 35% 50% at 5% 80%,rgba(246,169,43,.13) 0%,transparent 55%);
+}
+.profil-banner-img{width:100%;height:100%;object-fit:cover;display:block}
+.profil-banner-edit{
+  position:absolute;top:.8rem;right:.8rem;z-index:2;
+  background:rgba(0,0,0,.45);border:1px solid var(--border);
+  color:#fff;font-size:.78rem;font-weight:600;
+  padding:.35rem .85rem;border-radius:50px;
+  cursor:pointer;display:flex;align-items:center;gap:.4rem;
+  transition:background .2s;text-decoration:none;
+}
+.profil-banner-edit:hover{background:rgba(0,0,0,.7);color:#fff}
+.profil-avatar-wrap{position:absolute;left:1.8rem;bottom:-3.5rem}
+.profil-avatar{
+  width:104px;height:104px;border-radius:50%;border:4px solid var(--bg);
+  object-fit:cover;display:block;background:var(--surface);
+}
+.profil-avatar-ph{
+  width:104px;height:104px;border-radius:50%;border:4px solid var(--bg);
+  background:linear-gradient(135deg,var(--saffron-d),var(--indigo-d));
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.5rem;font-weight:700;color:var(--saffron);
+}
+.profil-avatar-btn{
+  position:absolute;bottom:4px;right:4px;width:28px;height:28px;border-radius:50%;
+  background:var(--saffron);border:2px solid var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  color:#0A0B1A;font-size:.75rem;cursor:pointer;transition:opacity .2s;
+}
+.profil-avatar-btn:hover{opacity:.85}
+.profil-info-bar{
+  background:var(--card);border:1px solid var(--border);border-top:none;
+  border-radius:0 0 var(--r) var(--r);
+  padding:1rem 1.8rem 1.2rem calc(1.8rem + 104px + 1rem);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  flex-wrap:wrap;gap:.75rem;min-height:84px;
+}
+.profil-name{font-size:1.3rem;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1}
+.profil-username{font-size:.82rem;color:var(--muted);margin-top:.15rem;display:flex;align-items:center;gap:.4rem}
+.profil-username i{font-size:.78rem}
+.profil-badges{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
+.profil-tabs{
+  display:flex;gap:.15rem;border-bottom:2px solid var(--border);
+  margin-bottom:2rem;overflow-x:auto;scrollbar-width:none;
+}
+.profil-tabs::-webkit-scrollbar{display:none}
+.ptab{
+  display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.1rem;
+  font-size:.82rem;font-weight:600;color:var(--muted);
+  border-bottom:2.5px solid transparent;margin-bottom:-2px;
+  cursor:pointer;text-decoration:none;transition:color .2s,border-color .2s;white-space:nowrap;
+}
+.ptab:hover{color:var(--text)}
+.ptab.on{color:var(--saffron);border-bottom-color:var(--saffron)}
+.ptab i{font-size:.85rem}
+.profil-grid{display:grid;grid-template-columns:260px 1fr;gap:1.5rem;align-items:start}
+@media(max-width:991px){.profil-grid{grid-template-columns:1fr}.profil-sidebar{display:none}}
+.pside-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.pside-head{padding:.7rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pside-head-title{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pside-body{padding:.5rem 0}
+.pside-link{
+  display:flex;align-items:center;gap:.7rem;padding:.52rem 1rem;
+  font-size:.83rem;color:var(--text-2);text-decoration:none;cursor:pointer;
+  transition:background .15s,color .15s;border-left:2.5px solid transparent;
+}
+.pside-link:hover{background:var(--saffron-d);color:var(--saffron)}
+.pside-link.on{background:var(--saffron-d);color:var(--saffron);border-left-color:var(--saffron)}
+.pside-link i{font-size:.9rem;width:16px;text-align:center;flex-shrink:0}
+.pside-link .psl-count{margin-left:auto;font-size:.68rem;font-weight:700;background:var(--border);color:var(--muted);padding:1px 7px;border-radius:50px}
+.ycard{background:var(--card);border:1px solid var(--border);border-radius:var(--r)}
+.pstat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
+@media(max-width:575px){.pstat-grid{grid-template-columns:repeat(2,1fr)}}
+.pstat-item{background:var(--card);padding:1.1rem .8rem;text-align:center}
+.pstat-n{font-family:var(--fm);font-size:1.4rem;font-weight:800;line-height:1;margin-bottom:.2rem}
+.pstat-l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.psec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+.psec-title{font-size:.95rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.5rem}
+.psec-title i{color:var(--saffron)}
+.bio-text{font-size:.85rem;color:var(--text-2);line-height:1.65;padding:1rem;border-radius:var(--r);background:var(--surface);border:1px solid var(--border)}
+.bio-empty{font-size:.82rem;color:var(--muted);font-style:italic;padding:.8rem}
+.info-row{display:flex;align-items:center;gap:.85rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-ico{width:32px;height:32px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.info-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.1rem}
+.info-val{font-size:.84rem;color:var(--text);font-weight:500}
+.mini-cmd{display:flex;align-items:center;gap:.9rem;padding:.8rem;border-radius:var(--r);background:var(--card);border:1px solid var(--border);transition:border-color .2s;text-decoration:none}
+.mini-cmd:hover{border-color:var(--saffron)}
+.mini-cmd-img{width:52px;height:52px;border-radius:8px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1.2rem;overflow:hidden}
+.mini-cmd-img img{width:100%;height:100%;object-fit:cover}
+.mini-cmd-name{font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:.2rem}
+.mini-cmd-meta{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:.4rem}
+.mini-cmd-price{font-family:var(--fm);font-size:.9rem;font-weight:700;color:var(--saffron);margin-left:auto;flex-shrink:0}
+.status-badge{font-size:.62rem;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:50px;text-transform:uppercase}
+.sb-paid{background:var(--jade-d);color:var(--jade)}
+.sb-pending{background:var(--saffron-d);color:var(--saffron)}
+.sb-shipped{background:var(--indigo-d);color:var(--indigo)}
+.sb-cancel{background:rgba(255,90,71,.13);color:var(--ember)}
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:.9rem;align-items:flex-start;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-ico{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;margin-top:.1rem}
+.tl-content{flex:1;min-width:0}
+.tl-msg{font-size:.82rem;color:var(--text-2);line-height:1.4}
+.tl-msg strong{color:var(--text)}
+.tl-time{font-size:.68rem;color:var(--muted);margin-top:.2rem}
+.pform-label{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;display:block}
+.pform-input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fg);font-size:.86rem;padding:.6rem .9rem;transition:border-color .2s;outline:none}
+.pform-input:focus{border-color:var(--saffron)}
+.pform-input::placeholder{color:var(--muted)}
+textarea.pform-input{resize:vertical;min-height:90px}
+select.pform-input option{background:var(--card)}
+.pform-hint{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+.pform-error{font-size:.72rem;color:var(--ember);margin-top:.3rem}
+.danger-zone{border:1px solid rgba(255,90,71,.2);background:rgba(255,90,71,.05);border-radius:var(--r);padding:1.2rem}
+.danger-title{font-size:.82rem;font-weight:700;color:var(--ember);margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem}
+.danger-desc{font-size:.78rem;color:var(--muted);margin-bottom:.8rem}
+.empty-state{text-align:center;padding:3rem 1rem}
+.empty-state i{font-size:2.5rem;color:var(--muted);opacity:.5;display:block;margin-bottom:.8rem}
+.empty-state-title{font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.3rem}
+.empty-state-sub{font-size:.8rem;color:var(--muted)}
+
+/* ── NOUVEAU : Quick actions bar ── */
+.quick-actions{
+  display:flex;gap:.5rem;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:.75rem 1rem;
+  margin-bottom:1.5rem;align-items:center;
+}
+.quick-action-btn{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.38rem .9rem;border-radius:99px;font-size:.78rem;font-weight:600;
+  border:1.5px solid var(--border);color:var(--text-2);
+  text-decoration:none;transition:border-color var(--tr),color var(--tr),background var(--tr);
+  white-space:nowrap;
+}
+.quick-action-btn:hover{border-color:var(--saffron);color:var(--saffron);background:var(--saffron-g,rgba(247,183,49,.04))}
+.quick-action-btn.qa-adresse{color:var(--indigo)}
+.quick-action-btn.qa-adresse:hover{border-color:var(--indigo);background:var(--indigo-d)}
+.quick-action-btn.qa-prefs{color:var(--jade)}
+.quick-action-btn.qa-prefs:hover{border-color:var(--jade);background:var(--jade-d)}
+.quick-action-btn.qa-mdp{color:var(--ember)}
+.quick-action-btn.qa-mdp:hover{border-color:var(--ember);background:var(--ember-d)}
+.quick-action-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+
+@media(max-width:600px){
+  .profil-info-bar{padding:4.5rem 1rem 1rem}
+  .profil-avatar-wrap{left:1rem;bottom:-3rem}
+  .profil-avatar,.profil-avatar-ph{width:80px;height:80px;font-size:2rem}
+  .profil-banner{height:130px}
+}
+</style>
+
+<div class="profil-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3 fi">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Mon profil</span>
+      </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+      {{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem;line-height:1">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- Hero profil -->
+    <div class="profil-hero fi">
+      <div class="profil-banner">
+        {% if profil.image_banniere %}
+        <img src="{{ profil.image_banniere.url }}" alt="Bannière" class="profil-banner-img">
+        {% endif %}
+        <a href="{% url 'apps_core:modifier_profil' %}" class="profil-banner-edit">
+          <i class="bi bi-camera"></i> Modifier
+        </a>
+      </div>
+      <div class="profil-avatar-wrap">
+        {% if user.avatar %}
+        <img src="{{ user.avatar.url }}" alt="{{ user.get_full_name|default:user.username }}" class="profil-avatar">
+        {% else %}
+        <div class="profil-avatar-ph">{{ user.get_full_name|first|upper|default:user.username|first|upper }}</div>
+        {% endif %}
+        <a href="{% url 'apps_core:modifier_profil' %}" class="profil-avatar-btn" title="Changer l'avatar">
+          <i class="bi bi-camera-fill"></i>
+        </a>
+      </div>
+      <div class="profil-info-bar">
+        <div>
+          <div class="profil-name">{{ user.get_full_name|default:user.username }}</div>
+          <div class="profil-username">
+            <i class="bi bi-at"></i>{{ user.username }}
+            {% if profil.ville %}&nbsp;<i class="bi bi-geo-alt"></i> {{ profil.ville }}{% endif %}
+          </div>
+          <div class="profil-badges">
+            {% if user.is_staff %}
+            <span class="chip" style="background:var(--ember);color:#fff;font-size:.6rem"><i class="bi bi-shield-fill me-1"></i>Admin</span>
+            {% endif %}
+            {% if user.peut_vendre %}
+            <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.6rem;border:1px solid rgba(246,169,43,.2)"><i class="bi bi-shop me-1"></i>Vendeur</span>
+            {% endif %}
+            {% if profil.est_verifie %}
+            <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.6rem;border:1px solid rgba(108,99,255,.2)"><i class="bi bi-patch-check-fill me-1"></i>Vérifié</span>
+            {% endif %}
+            <span class="chip" style="font-size:.6rem;background:var(--surface);color:var(--muted);border:1px solid var(--border)">
+              <i class="bi bi-calendar3 me-1"></i>Membre depuis {{ user.date_joined|date:"M Y" }}
+            </span>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'apps_core:modifier_profil' %}" class="btn-ghost" style="font-size:.8rem;padding:.42rem 1rem">
+            <i class="bi bi-pencil"></i> Modifier le profil
+          </a>
+          {% if user.peut_vendre %}
+          <a href="{% url 'apps_core:tableau_de_bord' %}" class="btn-gold" style="font-size:.8rem;padding:.42rem 1rem">
+            <i class="bi bi-shop"></i> Tableau de bord
+          </a>
+          <a href="{% url 'apps_core:profil_vendeur_public' username=request.user.username %}"
+            class="btn-ghost"style="font-size:.8rem;padding:.42rem 1rem;color:var(--indigo);border-color:var(--indigo)">
+              <i class="bi bi-person-badge-fill"></i> Profil vendeur
+          </a>
+          {% else %}
+          <a href="{% url 'apps_core:devenir_vendeur' %}"
+            class="btn-ghost" style="font-size:.8rem;padding:.42rem 1rem;color:var(--jade);border-color:var(--jade)">
+            <i class="bi bi-shop"></i> Devenir vendeur
+          </a>
+          {% endif %}
+          
+          <a href="{% url 'apps_core:wallet' %}"
+            class="btn-ghost" style="font-size:.8rem;padding:.42rem 1rem;color:var(--saffron);border-color:var(--saffron)">
+            <i class="bi bi-wallet2"></i> Walletyopipay
+          </a>
+          
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="pstat-grid mb-4 fi">
+      <div class="pstat-item">
+        <div class="pstat-n" style="color:var(--saffron)">{{ profil.nb_commandes|default:"0" }}</div>
+        <div class="pstat-l">Commandes</div>
+      </div>
+      <div class="pstat-item">
+        <div class="pstat-n" style="color:var(--ember)">{{ profil.nb_favoris|default:"0" }}</div>
+        <div class="pstat-l">Favoris</div>
+      </div>
+      <div class="pstat-item">
+        <div class="pstat-n" style="color:var(--indigo)">{{ profil.nb_avis|default:"0" }}</div>
+        <div class="pstat-l">Avis donnés</div>
+      </div>
+      <div class="pstat-item">
+        <div class="pstat-n" style="color:var(--jade)">{{ profil.points_fidelite|default:"0" }}</div>
+        <div class="pstat-l">Points fidélité</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         BARRE D'ACTIONS RAPIDES (NOUVEAU)
+    ══════════════════════════════════════════════ -->
+    <div class="quick-actions fi">
+      <span style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Actions rapides</span>
+      <div class="quick-action-sep"></div>
+
+      <!-- Modifier profil -->
+      <a href="{% url 'apps_core:modifier_profil' %}" class="quick-action-btn">
+        <i class="bi bi-person-fill"></i> Profil
+      </a>
+
+      <!-- Modifier adresse — NOUVEAU -->
+      <a href="{% url 'apps_core:modifier_adresse' %}" class="quick-action-btn qa-adresse">
+        <i class="bi bi-geo-alt-fill"></i> Adresse
+      </a>
+
+      <!-- Modifier préférences — NOUVEAU -->
+      <a href="{% url 'apps_core:modifier_preferences' %}" class="quick-action-btn qa-prefs">
+        <i class="bi bi-sliders"></i> Préférences
+      </a>
+
+      <div class="quick-action-sep"></div>
+
+      <!-- Changer mot de passe — NOUVEAU -->
+      <a href="{% url 'apps_core:changer_mot_de_passe' %}" class="quick-action-btn qa-mdp">
+        <i class="bi bi-key-fill"></i> Mot de passe
+      </a>
+
+      {% if user.peut_vendre %}
+      <div class="quick-action-sep"></div>
+      <a href="{% url 'apps_core:modifier_sous_domaine' %}" class="quick-action-btn" style="color:var(--saffron)">
+        <i class="bi bi-globe2"></i> Sous-domaine
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Onglets -->
+    <div class="profil-tabs fi" id="profilTabs">
+      <a class="ptab on" href="#" data-tab="apercu"><i class="bi bi-person-lines-fill"></i> Aperçu</a>
+      <a class="ptab" href="#" data-tab="commandes"><i class="bi bi-bag-check"></i> Commandes</a>
+      <a class="ptab" href="#" data-tab="favoris"><i class="bi bi-heart"></i> Favoris</a>
+      <a class="ptab" href="#" data-tab="avis"><i class="bi bi-star"></i> Mes avis</a>
+      <!-- NOUVEAU : onglet Adresse & Préférences -->
+      <a class="ptab" href="#" data-tab="adresse"><i class="bi bi-geo-alt"></i> Adresse</a>
+      <a class="ptab" href="#" data-tab="preferences"><i class="bi bi-sliders"></i> Préférences</a>
+      <a class="ptab" href="#" data-tab="securite"><i class="bi bi-shield-lock"></i> Sécurité</a>
+      {% if user.peut_vendre %}
+      <a class="ptab" href="{% url 'apps_core:tableau_de_bord' %}"><i class="bi bi-graph-up"></i> Espace vendeur</a>
+      {% endif %}
+    </div>
+
+    <!-- Grille sidebar + contenu -->
+    <div class="profil-grid">
+
+      <!-- ── SIDEBAR ── -->
+      <aside class="profil-sidebar fi">
+        <div class="pside-card">
+          <div class="pside-head"><span class="pside-head-title">Navigation</span></div>
+          <nav class="pside-body">
+            <a href="#" class="pside-link on" data-tab="apercu"><i class="bi bi-person-lines-fill"></i> Aperçu général</a>
+            <a href="#" class="pside-link" data-tab="commandes"><i class="bi bi-bag-check"></i> Mes commandes <span class="psl-count">{{ profil.nb_commandes|default:"0" }}</span></a>
+            <a href="#" class="pside-link" data-tab="favoris"><i class="bi bi-heart"></i> Mes favoris <span class="psl-count">{{ profil.nb_favoris|default:"0" }}</span></a>
+            <a href="#" class="pside-link" data-tab="avis"><i class="bi bi-star"></i> Mes avis</a>
+            <!-- NOUVEAU dans sidebar -->
+            <a href="#" class="pside-link" data-tab="adresse"><i class="bi bi-geo-alt"></i> Mon adresse</a>
+            <a href="#" class="pside-link" data-tab="preferences"><i class="bi bi-sliders"></i> Préférences</a>
+            <a href="#" class="pside-link" data-tab="securite"><i class="bi bi-shield-lock"></i> Sécurité</a>
+            <hr style="border-color:var(--border);margin:.3rem .75rem">
+            <a href="{% url 'apps_core:modifier_profil' %}" class="pside-link"><i class="bi bi-pencil-square"></i> Modifier le profil</a>
+           
+          </nav>
+        </div>
+
+        <!-- Contact -->
+        <div class="pside-card">
+          <div class="pside-head"><span class="pside-head-title">Contact</span></div>
+          <div style="padding:.5rem 1rem">
+            <div class="info-row">
+              <div class="info-ico" style="background:var(--saffron-d)"><i class="bi bi-envelope-fill" style="color:var(--saffron)"></i></div>
+              <div><div class="info-lbl">Email</div><div class="info-val">{{ user.email|default:"—" }}</div></div>
+            </div>
+            {% if user.telephone %}
+            <div class="info-row">
+              <div class="info-ico" style="background:var(--indigo-d)"><i class="bi bi-phone-fill" style="color:var(--indigo)"></i></div>
+              <div><div class="info-lbl">Téléphone</div><div class="info-val">{{ user.telephone }}</div></div>
+            </div>
+            {% endif %}
+            {% if profil.ville %}
+            <div class="info-row">
+              <div class="info-ico" style="background:var(--jade-d)"><i class="bi bi-geo-alt-fill" style="color:var(--jade)"></i></div>
+              <div><div class="info-lbl">Ville</div><div class="info-val">{{ profil.ville }}</div></div>
+            </div>
+            {% endif %}
+            <!-- NOUVEAU : Adresse courte -->
+            {% if user.adresse %}
+            <div class="info-row">
+              <div class="info-ico" style="background:var(--surface)"><i class="bi bi-house" style="color:var(--muted)"></i></div>
+              <div><div class="info-lbl">Adresse</div><div class="info-val" style="font-size:.78rem">{{ user.adresse|truncatechars:30 }}</div></div>
+            </div>
+            {% endif %}
+          </div>
+          <!-- Lien modifier adresse -->
+          <div style="padding:.5rem 1rem .75rem;border-top:1px solid var(--border)">
+            <a href="{% url 'apps_core:modifier_adresse' %}" style="font-size:.76rem;color:var(--indigo);display:inline-flex;align-items:center;gap:.35rem;font-weight:600">
+              <i class="bi bi-pencil"></i> Modifier l'adresse
+            </a>
+          </div>
+         
+        </div>
+
+        <!-- Points fidélité -->
+        <div class="pside-card">
+          <div class="pside-head">
+            <span class="pside-head-title">Fidélité</span>
+            <span class="chip" style="font-size:.6rem;background:var(--saffron-d);color:var(--saffron)"><i class="bi bi-star-fill"></i> YopiPoints</span>
+          </div>
+          <div style="padding:1rem">
+            <div style="font-family:var(--fm);font-size:2rem;font-weight:800;color:var(--saffron);line-height:1">{{ profil.points_fidelite|default:"0" }}</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">points accumulés</div>
+            <div style="margin-top:.9rem;background:var(--border);border-radius:50px;height:6px;overflow:hidden">
+              <div style="height:100%;width:{% widthratio profil.points_fidelite|default:0 1000 100 %}%;background:linear-gradient(90deg,var(--saffron),var(--ember));border-radius:50px;transition:width 1s ease"></div>
+            </div>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem">{{ profil.points_fidelite|default:0 }} / 1000 pts pour le niveau Platine</div>
+          </div>
+        </div>
+
+        <!-- NOUVEAU : Préférences rapides dans la sidebar -->
+        <div class="pside-card">
+          <div class="pside-head">
+            <span class="pside-head-title">Préférences</span>
+            <a href="{% url 'apps_core:modifier_preferences' %}" style="font-size:.7rem;color:var(--saffron)"><i class="bi bi-pencil"></i></a>
+          </div>
+          <div style="padding:.6rem 1rem">
+            <div class="info-row" style="padding:.4rem 0">
+              <div class="info-ico" style="background:var(--jade-d)"><i class="bi bi-globe2" style="color:var(--jade)"></i></div>
+              <div><div class="info-lbl">Langue</div><div class="info-val">
+                {% if profil.langue_preference == 'fr' %}Français
+                {% elif profil.langue_preference == 'en' %}English
+                {% else %}{{ profil.langue_preference }}{% endif %}
+              </div></div>
+            </div>
+            <div class="info-row" style="padding:.4rem 0">
+              <div class="info-ico" style="background:var(--saffron-d)"><i class="bi bi-currency-exchange" style="color:var(--saffron)"></i></div>
+              <div><div class="info-lbl">Devise</div><div class="info-val">
+                {% if profil.devise_preference == 'XAF' %}FCFA — Franc CFA
+                {% elif profil.devise_preference == 'USD' %}USD — Dollar
+                {% elif profil.devise_preference == 'EUR' %}EUR — Euro
+                {% else %}{{ profil.devise_preference }}{% endif %}
+              </div></div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ── CONTENU PRINCIPAL ── -->
+      <main>
+
+        {# ═══════ APERÇU ═══════ #}
+        <div class="tab-pane active" id="tab-apercu">
+          <div class="ycard mb-3 fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head">
+                <div class="psec-title"><i class="bi bi-person-badge"></i> À propos</div>
+                <a href="{% url 'apps_core:modifier_profil' %}" class="btn-ghost" style="font-size:.76rem;padding:.3rem .8rem"><i class="bi bi-pencil"></i> Modifier</a>
+              </div>
+              {% if user.bio %}
+              <p class="bio-text">{{ user.bio }}</p>
+              {% else %}
+              <div class="bio-empty">Aucune biographie renseignée. <a href="{% url 'apps_core:modifier_profil' %}" style="color:var(--saffron)">Ajouter une bio →</a></div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="ycard mb-3 fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head">
+                <div class="psec-title"><i class="bi bi-info-circle"></i> Informations</div>
+                <a href="{% url 'apps_core:modifier_profil' %}" class="btn-ghost" style="font-size:.76rem;padding:.3rem .8rem"><i class="bi bi-pencil"></i> Modifier</a>
+              </div>
+              <div class="info-row">
+                <div class="info-ico" style="background:var(--saffron-d)"><i class="bi bi-envelope-fill" style="color:var(--saffron)"></i></div>
+                <div><div class="info-lbl">Adresse e-mail</div><div class="info-val">{{ user.email|default:"Non renseignée" }}</div></div>
+                {% if user.email_verifie %}<span class="chip ms-auto" style="font-size:.6rem;background:var(--jade-d);color:var(--jade);flex-shrink:0"><i class="bi bi-check-circle-fill"></i> Vérifié</span>{% endif %}
+              </div>
+              <div class="info-row">
+                <div class="info-ico" style="background:var(--indigo-d)"><i class="bi bi-phone-fill" style="color:var(--indigo)"></i></div>
+                <div><div class="info-lbl">Téléphone</div><div class="info-val">{{ user.telephone|default:"Non renseigné" }}</div></div>
+              </div>
+              <div class="info-row">
+                <div class="info-ico" style="background:var(--jade-d)"><i class="bi bi-geo-alt-fill" style="color:var(--jade)"></i></div>
+                <div><div class="info-lbl">Ville</div><div class="info-val">{{ profil.utilisateur.ville|default:"Non renseignée" }}</div></div>
+              </div>
+              {% if user.date_naissance %}
+              <div class="info-row">
+                <div class="info-ico" style="background:var(--ember-d)"><i class="bi bi-calendar-heart" style="color:var(--ember)"></i></div>
+                <div><div class="info-lbl">Date de naissance</div><div class="info-val">{{ user.date_naissance|date:"d F Y" }}</div></div>
+              </div>
+              {% endif %}
+              <div class="info-row">
+                <div class="info-ico" style="background:var(--surface)"><i class="bi bi-calendar3" style="color:var(--muted)"></i></div>
+                <div><div class="info-lbl">Membre depuis</div><div class="info-val">{{ user.date_joined|date:"d F Y" }}</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ycard fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head"><div class="psec-title"><i class="bi bi-activity"></i> Activité récente</div></div>
+              <div class="timeline">
+                {% if profil.activites_recentes %}
+                {% for act in profil.activites_recentes %}
+                <div class="tl-item">
+                  <div class="tl-ico" style="background:{% if act.type == 'commande' %}var(--saffron-d){% elif act.type == 'enchere' %}var(--ember-d){% elif act.type == 'avis' %}var(--indigo-d){% else %}var(--surface){% endif %}">
+                    <i class="bi {% if act.type == 'commande' %}bi-bag-check{% elif act.type == 'enchere' %}bi-hammer{% elif act.type == 'avis' %}bi-star{% else %}bi-bell{% endif %}" style="color:{% if act.type == 'commande' %}var(--saffron){% elif act.type == 'enchere' %}var(--ember){% elif act.type == 'avis' %}var(--indigo){% else %}var(--muted){% endif %}"></i>
+                  </div>
+                  <div class="tl-content">
+                    <div class="tl-msg">{{ act.message|safe }}</div>
+                    <div class="tl-time">{{ act.date|timesince }} · {{ act.date|date:"d M Y" }}</div>
+                  </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="tl-item">
+                  <div class="tl-ico" style="background:var(--saffron-d)"><i class="bi bi-person-check" style="color:var(--saffron)"></i></div>
+                  <div class="tl-content">
+                    <div class="tl-msg">Compte créé avec succès sur <strong>YopiShop</strong></div>
+                    <div class="tl-time">{{ user.date_joined|date:"d M Y" }}</div>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# ═══════ COMMANDES ═══════ #}
+        <div class="tab-pane" id="tab-commandes" style="display:none">
+          <div class="ycard fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head">
+                <div class="psec-title"><i class="bi bi-bag-check"></i> Mes commandes</div>
+                <a href="{% url 'apps_marketplace:mes_commandes' %}" class="btn-ghost" style="font-size:.76rem;padding:.3rem .8rem">Voir tout <i class="bi bi-arrow-right"></i></a>
+              </div>
+              {% if profil.utilisateur.commandes_recentes %}
+              <div class="d-flex flex-column gap-2">
+                {% for cmd in profil.utilisateur.commandes_recentes %}
+                <a href="{% url 'apps_marketplace:commande_detail' cmd.id %}" class="mini-cmd">
+                  <div class="mini-cmd-img">
+                    {% if cmd.produit_principal.image_principale %}<img src="{{ cmd.produit_principal.image_principale }}" alt="">
+                    {% else %}<i class="bi bi-box"></i>{% endif %}
+                  </div>
+                  <div style="flex:1;min-width:0">
+                    <div class="mini-cmd-name">{{ cmd.produit_principal.titre|default:"Commande"|truncatechars:35 }}</div>
+                    <div class="mini-cmd-meta"><i class="bi bi-calendar3"></i>{{ cmd.date_creation|date:"d M Y" }} &bull; {{ cmd.nb_articles }} article{{ cmd.nb_articles|pluralize }}</div>
+                    <div class="mt-1">
+                      <span class="status-badge {% if cmd.statut == 'paye' %}sb-paid{% elif cmd.statut == 'en_attente' %}sb-pending{% elif cmd.statut == 'expedie' %}sb-shipped{% elif cmd.statut == 'annule' %}sb-cancel{% else %}sb-pending{% endif %}">
+                        {% if cmd.statut == 'paye' %}✓ Payée{% elif cmd.statut == 'en_attente' %}⏳ En attente{% elif cmd.statut == 'expedie' %}🚚 Expédiée{% elif cmd.statut == 'annule' %}✕ Annulée{% else %}{{ cmd.statut }}{% endif %}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="mini-cmd-price">{{ cmd.total|floatformat:0 }} F</div>
+                </a>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="empty-state">
+                <i class="bi bi-bag"></i>
+                <div class="empty-state-title">Aucune commande pour l'instant</div>
+                <div class="empty-state-sub">Vos achats apparaîtront ici.</div>
+                <a href="/catalogue/" class="btn-gold mt-3" style="font-size:.82rem"><i class="bi bi-bag-plus"></i> Commencer mes achats</a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# ═══════ FAVORIS ═══════ #}
+        <div class="tab-pane" id="tab-favoris" style="display:none">
+          <div class="ycard fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head">
+                <div class="psec-title"><i class="bi bi-heart"></i> Mes favoris</div>
+                <a href="/favoris/" class="btn-ghost" style="font-size:.76rem;padding:.3rem .8rem">Voir tout <i class="bi bi-arrow-right"></i></a>
+              </div>
+              {% if profil.produits_favoris %}
+              <div class="row row-cols-2 row-cols-sm-3 g-2">
+                {% for p in profil.produits_favoris %}
+                <div class="col">
+                  <a href="/produits/{{ p.id }}/" class="pcard text-decoration-none" style="height:100%">
+                    <div class="pcard-img">
+                      {% if p.image_principale %}<img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+                      {% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:1.8rem"></i></div>{% endif %}
+                      <button class="pcard-fav" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-heart-fill" style="color:var(--ember)"></i></button>
+                    </div>
+                    <div class="pcard-body">
+                      <div class="pcard-name">{{ p.titre|truncatechars:40 }}</div>
+                      <div class="pcard-price"><span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>{% if p.prix_promotionnel < p.prix %}<span class="po">{{ p.prix|floatformat:0 }}</span>{% endif %}</div>
+                    </div>
+                    <div class="pcard-foot">
+                      <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-bag-plus"></i> Ajouter</button>
+                    </div>
+                  </a>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="empty-state">
+                <i class="bi bi-heart"></i>
+                <div class="empty-state-title">Aucun favori enregistré</div>
+                <div class="empty-state-sub">Cliquez sur ♡ sur un produit pour l'ajouter ici.</div>
+                <a href="/catalogue/" class="btn-gold mt-3" style="font-size:.82rem"><i class="bi bi-search"></i> Explorer les produits</a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# ═══════ AVIS ═══════ #}
+        <div class="tab-pane" id="tab-avis" style="display:none">
+          <div class="ycard fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head"><div class="psec-title"><i class="bi bi-star"></i> Mes avis</div></div>
+              {% if profil.avis_donnes %}
+              <div class="d-flex flex-column gap-2">
+                {% for avis in profil.avis_donnes %}
+                <div class="ycard" style="padding:.9rem">
+                  <div class="d-flex align-items-start gap-3">
+                    {% if avis.produit.image_principale %}<img src="{{ avis.produit.image_principale }}" alt="" style="width:46px;height:46px;border-radius:8px;object-fit:cover;flex-shrink:0">
+                    {% else %}<div style="width:46px;height:46px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-image" style="color:var(--muted)"></i></div>{% endif %}
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:.25rem">{{ avis.produit.titre|truncatechars:45 }}</div>
+                      <div style="display:flex;gap:.2rem;margin-bottom:.35rem">
+                        {% for i in "12345" %}<i class="bi bi-star{% if forloop.counter <= avis.note %}-fill{% endif %}" style="color:var(--saffron);font-size:.78rem"></i>{% endfor %}
+                        <span style="font-size:.7rem;color:var(--muted);margin-left:.3rem">{{ avis.date|date:"d M Y" }}</span>
+                      </div>
+                      <div style="font-size:.8rem;color:var(--text-2);line-height:1.5">{{ avis.commentaire|truncatechars:120 }}</div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="empty-state">
+                <i class="bi bi-chat-square-dots"></i>
+                <div class="empty-state-title">Aucun avis publié</div>
+                <div class="empty-state-sub">Vos avis sur les produits achetés apparaîtront ici.</div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# ═══════ ADRESSE (NOUVEAU ONGLET) ═══════ #}
+        <div class="tab-pane" id="tab-adresse" style="display:none">
+          <div class="ycard fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head">
+                <div class="psec-title"><i class="bi bi-geo-alt-fill"></i> Mon adresse</div>
+                <a href="{% url 'apps_core:modifier_adresse' %}" class="btn-ghost" style="font-size:.76rem;padding:.3rem .8rem">
+                  <i class="bi bi-pencil"></i> Modifier
+                </a>
+              </div>
+
+              {% if user.adresse or user.ville %}
+              <!-- Aperçu adresse -->
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem 1.25rem;display:flex;align-items:flex-start;gap:.85rem;margin-bottom:1rem">
+                <div style="width:40px;height:40px;border-radius:10px;background:var(--indigo-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <i class="bi bi-house-fill" style="color:var(--indigo);font-size:1rem"></i>
+                </div>
+                <div>
+                  <div style="font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:.3rem">Adresse de livraison principale</div>
+                  {% if user.adresse %}<div style="font-size:.83rem;color:var(--text-2)">{{ user.adresse }}</div>{% endif %}
+                  <div style="font-size:.8rem;color:var(--muted);margin-top:.15rem">
+                    {% if user.ville %}{{ user.ville }}{% endif %}{% if user.code_postal %}, {{ user.code_postal }}{% endif %}
+                    {% if user.pays %} — {{ user.pays }}{% endif %}
+                  </div>
+                </div>
+              </div>
+              {% else %}
+              <div class="empty-state" style="padding:2rem 1rem">
+                <i class="bi bi-geo-alt" style="font-size:2.2rem"></i>
+                <div class="empty-state-title">Aucune adresse enregistrée</div>
+                <div class="empty-state-sub">Ajoutez votre adresse pour accélérer vos commandes.</div>
+              </div>
+              {% endif %}
+
+              <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'apps_core:modifier_adresse' %}" class="btn-gold" style="font-size:.82rem">
+                  <i class="bi bi-geo-alt"></i> {% if user.adresse %}Modifier l'adresse{% else %}Ajouter une adresse{% endif %}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# ═══════ PRÉFÉRENCES (NOUVEAU ONGLET) ═══════ #}
+        <div class="tab-pane" id="tab-preferences" style="display:none">
+          <div class="ycard fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head">
+                <div class="psec-title"><i class="bi bi-sliders"></i> Mes préférences</div>
+                <a href="{% url 'apps_core:modifier_preferences' %}" class="btn-ghost" style="font-size:.76rem;padding:.3rem .8rem">
+                  <i class="bi bi-pencil"></i> Modifier
+                </a>
+              </div>
+
+              <!-- Langue & Devise -->
+              <div style="margin-bottom:1.25rem">
+                <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Langue & Région</div>
+                <div class="d-flex gap-2 flex-wrap">
+                  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.6rem 1rem;display:flex;align-items:center;gap:.6rem">
+                    <i class="bi bi-translate" style="color:var(--jade)"></i>
+                    <div><div style="font-size:.7rem;color:var(--muted)">Langue</div><div style="font-size:.83rem;font-weight:600;color:var(--text)"> {% if profil.langue_preference == 'fr' %}Français
+                      {% elif profil.langue_preference == 'en' %}English
+                      {% else %}{{ profil.langue_preference }}{% endif %}</div></div>
+                  </div>
+                  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.6rem 1rem;display:flex;align-items:center;gap:.6rem">
+                    <i class="bi bi-currency-exchange" style="color:var(--saffron)"></i>
+                    <div><div style="font-size:.7rem;color:var(--muted)">Devise</div><div style="font-size:.83rem;font-weight:600;color:var(--text)"> {% if profil.devise_preference == 'XAF' %}FCFA — Franc CFA
+                      {% elif profil.devise_preference == 'USD' %}USD — Dollar
+                      {% elif profil.devise_preference == 'EUR' %}EUR — Euro
+                      {% else %}{{ profil.devise_preference }}{% endif %}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notifications résumé -->
+              <div style="margin-bottom:1.25rem">
+                <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Notifications activées</div>
+                <div class="d-flex gap-2 flex-wrap">
+                  {% if profil.notifications_email %}<span class="chip"style="background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.2)"><i class="bi bi-envelope"></i> Email</span>{% endif %}
+                  {% if profil.notifications_sms %}<span class="chip"style="background:var(--indigo-d);color:var(--indigo);border:1px solid rgba(99,102,241,.2)"><i class="bi bi-phone"></i> SMS</span>{% endif %}
+                  {% if profil.notifications_push %}<span class="chip"style="background:var(--jade-d);color:var(--jade);border:1px solid rgba(16,212,160,.2)"><i class="bi bi-bell"></i> Push</span>{% endif %}
+                  {% if profil.notif_promo %}<span class="chip" style="background:var(--ember-d);color:var(--ember);border:1px solid rgba(255,90,71,.2)"><i class="bi bi-percent"></i> Promos</span>{% endif %}
+                  {% if not profil.notifications_email and not profil.notifications_sms and not profil.notifications_push %}
+                  <span style="font-size:.8rem;color:var(--muted);font-style:italic">Aucune notification activée</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <a href="{% url 'apps_core:modifier_preferences' %}" class="btn-gold" style="font-size:.82rem">
+                <i class="bi bi-sliders"></i> Modifier les préférences
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# ═══════ SÉCURITÉ ═══════ #}
+        <div class="tab-pane" id="tab-securite" style="display:none">
+
+          <div class="ycard mb-3 fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head"><div class="psec-title"><i class="bi bi-key"></i> Mot de passe</div></div>
+              <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Utilisez un mot de passe fort d'au moins 8 caractères, mêlant lettres, chiffres et symboles.</p>
+              <form method="post" action="{% url 'apps_core:changer_mot_de_passe' %}" class="d-flex flex-column gap-3">
+                {% csrf_token %}
+                <div>
+                  <label class="pform-label">Mot de passe actuel</label>
+                  <input type="password" name="old_password" class="pform-input" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <div>
+                  <label class="pform-label">Nouveau mot de passe</label>
+                  <input type="password" name="new_password1" class="pform-input" placeholder="••••••••" autocomplete="new-password">
+                </div>
+                <div>
+                  <label class="pform-label">Confirmer le nouveau mot de passe</label>
+                  <input type="password" name="new_password2" class="pform-input" placeholder="••••••••" autocomplete="new-password">
+                </div>
+                <div>
+                  <button type="submit" class="btn-gold" style="font-size:.82rem">
+                    <i class="bi bi-lock"></i> Mettre à jour le mot de passe
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="ycard mb-3 fi">
+            <div style="padding:1rem 1.2rem">
+              <div class="psec-head"><div class="psec-title"><i class="bi bi-display"></i> Sessions actives</div></div>
+              <div class="info-row">
+                <div class="info-ico" style="background:var(--saffron-d)"><i class="bi bi-laptop" style="color:var(--saffron)"></i></div>
+                <div><div class="info-val">Session actuelle</div><div class="info-lbl" style="font-size:.7rem">Dernière activité : {{ user.last_login|date:"d M Y à H:i"|default:"Inconnue" }}</div></div>
+                <span class="chip ms-auto" style="font-size:.6rem;background:var(--jade-d);color:var(--jade);flex-shrink:0">● Active</span>
+              </div>
+              {% if user.derniere_connexion_ip %}
+              <div class="info-row">
+                <div class="info-ico" style="background:var(--surface)"><i class="bi bi-router" style="color:var(--muted)"></i></div>
+                <div><div class="info-lbl">Dernière IP</div><div class="info-val">{{ user.derniere_connexion_ip }}</div></div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="danger-zone fi">
+            <div class="danger-title"><i class="bi bi-exclamation-triangle-fill"></i> Zone de danger</div>
+            <div class="danger-desc">La suppression de votre compte est définitive. Toutes vos données seront perdues : commandes, favoris, avis et historique.</div>
+            <button class="btn-ghost" style="font-size:.8rem;border-color:var(--ember);color:var(--ember)"
+                    onclick="return confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')">
+              <i class="bi bi-trash3"></i> Supprimer mon compte
+            </button>
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+(function(){
+  const tabs   = document.querySelectorAll('.ptab[data-tab]');
+  const panes  = document.querySelectorAll('.tab-pane');
+  const slinks = document.querySelectorAll('.pside-link[data-tab]');
+  function activateTab(id){
+    tabs.forEach(t  => t.classList.toggle('on', t.dataset.tab === id));
+    slinks.forEach(s => s.classList.toggle('on', s.dataset.tab === id));
+    panes.forEach(p  => {
+      const show = p.id === 'tab-' + id;
+      p.style.display = show ? 'block' : 'none';
+      if(show) p.classList.add('fi','vis');
+    });
+  }
+  [...tabs, ...slinks].forEach(el => {
+    el.addEventListener('click', function(e){
+      e.preventDefault();
+      activateTab(this.dataset.tab);
+      history.replaceState(null,'','#'+this.dataset.tab);
+    });
+  });
+  const hash = location.hash.replace('#','');
+  if(hash && document.querySelector(`.ptab[data-tab="${hash}"]`)) activateTab(hash);
+})();
+
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+document.querySelectorAll('.pcard-fav').forEach(btn => {
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    try{
+      const r = await fetch(`/favoris/toggle/${this.dataset.id}/`,{method:'POST',headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}});
+      const d = await r.json();
+      if(d.success){const ic=this.querySelector('i');ic.className=d.ajoute?'bi bi-heart-fill':'bi bi-heart';this.style.color=d.ajoute?'var(--ember)':'';this.style.borderColor=d.ajoute?'var(--ember)':'';}
+    }catch{}
+  });
+});
+
+document.querySelectorAll('.pcard-cart').forEach(btn => {
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    const id=this.dataset.id,orig=this.innerHTML;
+    this.innerHTML='<span class="spinner-border spinner-border-sm" style="width:13px;height:13px"></span>';this.disabled=true;
+    try{
+      const r=await fetch(`/panier/ajouter/${id}/`,{method:'POST',headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}});
+      const d=await r.json();
+      if(d.success){this.innerHTML='<i class="bi bi-check-lg"></i> Ajouté !';this.style.cssText='background:var(--jade);color:#0A0B1A;border-color:var(--jade)';const bc=document.querySelector('.nav-icon .bc');if(bc)bc.textContent=d.nb_articles;setTimeout(()=>{this.innerHTML=orig;this.style.cssText='';this.disabled=false},2000);}
+      else{this.innerHTML=orig;this.disabled=false;}
+    }catch{this.innerHTML=orig;this.disabled=false;}
+  });
+});
+
+document.querySelectorAll('.dropdown-item').forEach(item=>{
+  item.addEventListener('mouseenter',function(){this.style.background='var(--saffron-d)';this.style.color='var(--saffron)'});
+  item.addEventListener('mouseleave',function(){this.style.background='';this.style.color=''});
+});
+</script>
+{% endblock %}
+{% endblock %}

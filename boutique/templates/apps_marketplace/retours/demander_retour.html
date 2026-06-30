@@ -1,0 +1,237 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Demander un retour — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1">
+      <a href="{% url 'apps_marketplace:commande_detail' commande.pk %}" class="cpill">
+        <i class="bi bi-arrow-left me-1"></i>Commande {{ commande.numero_commande }}
+      </a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-arrow-return-left me-1" style="color:var(--saffron)"></i>Demande de retour
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys">
+  <div class="container">
+    <div class="row g-4 justify-content-center">
+      <div class="col-12 col-lg-8">
+
+        <!-- Titre -->
+        <div class="mb-4 fi">
+          <div class="eyebrow mb-2">📦 Retour produit</div>
+          <h1 class="sec-title" style="font-size:clamp(1.5rem,3vw,2rem)">
+            Demander un <span class="ac">retour</span>
+          </h1>
+        </div>
+
+        <!-- Messages -->
+        {% for message in messages %}
+        <div class="ycard mb-3 fi" style="border-left:3px solid {% if message.tags == 'error' %}var(--ember){% else %}var(--jade){% endif %}">
+          <div style="font-size:.85rem;color:{% if message.tags == 'error' %}var(--ember){% else %}var(--jade){% endif %}">
+            <i class="bi bi-{% if message.tags == 'error' %}exclamation-triangle{% else %}check-circle{% endif %} me-2"></i>{{ message }}
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Produit concerné -->
+        <div class="ycard mb-4 fi" style="border:1px solid var(--border)">
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.8rem">
+            <i class="bi bi-box me-1" style="color:var(--saffron)"></i>Produit concerné
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:64px;height:64px;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--border);flex-shrink:0">
+              {% if article.produit.image_principale %}
+              <img src="{{ article.produit.image_principale }}" alt="{{ article.produit.titre }}"
+                   style="width:100%;height:100%;object-fit:cover">
+              {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-image" style="color:var(--muted);font-size:1.5rem"></i>
+              </div>
+              {% endif %}
+            </div>
+            <div>
+              <div style="font-size:.9rem;font-weight:700;color:var(--text)">{{ article.produit.titre }}</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">
+                <i class="bi bi-receipt me-1"></i>Commande {{ commande.numero_commande }}
+                &nbsp;·&nbsp;
+                <i class="bi bi-box me-1"></i>Quantité commandée : {{ article.quantite }}
+              </div>
+              <div style="font-size:.8rem;font-weight:700;color:var(--saffron);margin-top:.2rem">
+                {{ article.prix_unitaire|floatformat:0 }} FCFA / unité
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Formulaire -->
+        <form method="post" id="retourForm">
+          {% csrf_token %}
+
+          <div class="ycard mb-4 fi">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1.2rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)">
+              <i class="bi bi-info-circle me-1" style="color:var(--saffron)"></i>Informations du retour
+            </div>
+
+            <!-- Raison -->
+            <div class="mb-4">
+              <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.6rem">
+                Raison du retour <span style="color:var(--ember)">*</span>
+              </label>
+              <div class="d-flex flex-wrap gap-2" id="raisonButtons">
+                {% for val, label in raisons %}
+                <input type="radio" name="raison" id="raison_{{ val }}" value="{{ val }}"
+                       style="display:none" required>
+                <label for="raison_{{ val }}" class="raison-label"
+                       style="border:1.5px solid var(--border);border-radius:10px;padding:.55rem 1rem;
+                              font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;
+                              background:var(--surface);transition:all .2s;display:flex;align-items:center;gap:.4rem">
+                  {% if val == 'produit_endommage' %}<i class="bi bi-exclamation-triangle" style="color:var(--ember)"></i>
+                  {% elif val == 'produit_defectueux' %}<i class="bi bi-tools" style="color:var(--ember)"></i>
+                  {% elif val == 'mauvaise_description' %}<i class="bi bi-file-x" style="color:var(--saffron)"></i>
+                  {% elif val == 'non_conforme' %}<i class="bi bi-x-circle" style="color:var(--saffron)"></i>
+                  {% elif val == 'mauvaise_taille' %}<i class="bi bi-arrows-fullscreen" style="color:var(--indigo)"></i>
+                  {% elif val == 'pas_necessaire' %}<i class="bi bi-dash-circle" style="color:var(--muted)"></i>
+                  {% else %}<i class="bi bi-three-dots" style="color:var(--muted)"></i>
+                  {% endif %}
+                  {{ label }}
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Quantité -->
+            <div class="mb-4">
+              <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                Quantité à retourner <span style="color:var(--ember)">*</span>
+              </label>
+              <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-1"
+                     style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--surface)">
+                  <button type="button" id="qteDecBtn"
+                          style="width:36px;height:36px;background:none;border:none;cursor:pointer;font-size:1rem;color:var(--text-2)">
+                    <i class="bi bi-dash"></i>
+                  </button>
+                  <input type="number" name="quantite" id="qteInput"
+                         value="1" min="1" max="{{ article.quantite }}"
+                         style="width:50px;text-align:center;background:transparent;border:none;color:var(--text);font-weight:700;font-size:.9rem;outline:none">
+                  <button type="button" id="qteIncBtn"
+                          style="width:36px;height:36px;background:none;border:none;cursor:pointer;font-size:1rem;color:var(--text-2)">
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
+                <span style="font-size:.78rem;color:var(--muted)">
+                  Max : {{ article.quantite }} article{{ article.quantite|pluralize }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                Description détaillée <span style="color:var(--ember)">*</span>
+              </label>
+              <textarea name="description" id="descriptionField" rows="4" required
+                        placeholder="Décrivez le problème en détail (minimum 20 caractères)..."
+                        style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;
+                               color:var(--text);padding:.65rem .9rem;font-size:.85rem;outline:none;
+                               resize:vertical;transition:border-color .2s;min-height:120px"
+                        onfocus="this.style.borderColor='var(--saffron)'"
+                        onblur="this.style.borderColor='var(--border)'"
+                        oninput="updateCharCount(this)"></textarea>
+              <div class="d-flex justify-content-between mt-1">
+                <span style="font-size:.72rem;color:var(--muted)">Minimum 20 caractères</span>
+                <span id="charCount" style="font-size:.72rem;color:var(--muted)">0 / 20 min</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Info délai -->
+          <div class="ycard mb-4 fi" style="background:var(--saffron-d);border:1px solid rgba(246,169,43,.2)">
+            <div style="font-size:.78rem;font-weight:600;color:var(--saffron);margin-bottom:.3rem">
+              <i class="bi bi-info-circle-fill me-1"></i>Politique de retour
+            </div>
+            <ul style="font-size:.78rem;color:var(--text-2);margin:0;padding-left:1.2rem;line-height:1.8">
+              <li>Les retours sont acceptés dans les <strong>7 jours</strong> suivant la livraison</li>
+              <li>Le produit doit être dans son emballage d'origine</li>
+              <li>Notre équipe traitera votre demande sous <strong>48h</strong></li>
+              <li>Le remboursement sera crédité sur votre YopiPay</li>
+            </ul>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex align-items-center justify-content-between gap-3 fi">
+            <a href="{% url 'apps_marketplace:commande_detail' commande.pk %}" class="btn-ghost">
+              <i class="bi bi-x-circle me-1"></i>Annuler
+            </a>
+            <button type="submit" class="btn-gold" id="btnSubmit" disabled style="min-width:200px">
+              <i class="bi bi-send me-1"></i>Soumettre la demande
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Sélection raison */
+document.querySelectorAll('.raison-label').forEach(lbl => {
+  lbl.addEventListener('click', function() {
+    document.querySelectorAll('.raison-label').forEach(l => {
+      l.style.borderColor = 'var(--border)';
+      l.style.color       = 'var(--muted)';
+      l.style.background  = 'var(--surface)';
+    });
+    this.style.borderColor = 'var(--saffron)';
+    this.style.color       = 'var(--saffron)';
+    this.style.background  = 'var(--saffron-d)';
+    checkFormValidity();
+  });
+});
+
+/* Compteur caractères */
+function updateCharCount(el) {
+  const n   = el.value.length;
+  const span = document.getElementById('charCount');
+  span.textContent = `${n} caractère${n > 1 ? 's' : ''}`;
+  span.style.color = n >= 20 ? 'var(--jade)' : 'var(--ember)';
+  checkFormValidity();
+}
+
+function checkFormValidity() {
+  const raisonOk = !!document.querySelector('[name="raison"]:checked');
+  const descOk   = document.getElementById('descriptionField').value.trim().length >= 20;
+  document.getElementById('btnSubmit').disabled = !(raisonOk && descOk);
+}
+
+/* Quantité +/- */
+const qteInput  = document.getElementById('qteInput');
+const maxQte    = {{ article.quantite }};
+document.getElementById('qteIncBtn').addEventListener('click', () => {
+  if (parseInt(qteInput.value) < maxQte) qteInput.value = parseInt(qteInput.value) + 1;
+});
+document.getElementById('qteDecBtn').addEventListener('click', () => {
+  if (parseInt(qteInput.value) > 1) qteInput.value = parseInt(qteInput.value) - 1;
+});
+</script>
+{% endblock %}
+{% endblock %}

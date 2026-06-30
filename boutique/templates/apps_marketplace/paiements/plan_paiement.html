@@ -1,0 +1,172 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:720px">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'app_marketplace:mes_commandes' %}" style="color:var(--saffron);text-decoration:none">Mes commandes</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'app_marketplace:commande_detail' commande.pk %}" style="color:var(--saffron);text-decoration:none">{{ commande.numero_commande }}</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Plan de paiement</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.5rem;font-weight:800;color:var(--text);margin:0">
+        Plan de paiement fractionné
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        Commande <strong style="color:var(--text)">{{ commande.numero_commande }}</strong>
+        &bull; {{ plan.nombre_tranches }}x mensuel
+      </p>
+    </div>
+    {% if request.user.is_staff %}
+    <span style="font-size:.72rem;color:var(--jade);display:flex;align-items:center;gap:.3rem">
+      <i class="bi bi-shield-check"></i>Vue admin
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- ── Résumé financier ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.1rem;font-weight:900;font-family:var(--fm);color:var(--text)">{{ plan.montant_total|floatformat:0 }}</div>
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Total (FCFA)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.1rem;font-weight:900;font-family:var(--fm);color:var(--jade)">{{ plan.montant_paye|floatformat:0 }}</div>
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Payé (FCFA)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.1rem;font-weight:900;font-family:var(--fm);color:{% if plan.montant_restant > 0 %}var(--saffron){% else %}var(--jade){% endif %}">{{ plan.montant_restant|floatformat:0 }}</div>
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Restant (FCFA)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.1rem;font-weight:900;font-family:var(--fm);color:var(--indigo)">{{ plan.montant_par_tranche|floatformat:0 }}</div>
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">/ tranche (FCFA)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barre de progression globale -->
+  {% with pct=plan.montant_paye|floatformat:0 %}
+  <div class="ycard p-4 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span style="font-size:.82rem;font-weight:700;color:var(--text)">Progression du remboursement</span>
+      {% if plan.est_complet %}
+      <span class="chip" style="font-size:.72rem;padding:.25rem .7rem;background:rgba(16,185,129,.15);color:var(--jade)">
+        <i class="bi bi-check-circle-fill me-1"></i>Complété
+      </span>
+      {% else %}
+      <span style="font-size:.78rem;color:var(--muted)">
+        {% with nb_payes=tranches|length %}{{ plan.nombre_tranches }}{% endwith %} tranches au total
+      </span>
+      {% endif %}
+    </div>
+    {% if plan.montant_total > 0 %}
+    {% widthratio plan.montant_paye plan.montant_total 100 as pct_int %}
+    <div style="height:10px;background:var(--surface);border-radius:99px;overflow:hidden">
+      <div style="height:100%;width:{{ pct_int }}%;background:linear-gradient(90deg,var(--jade),var(--indigo));border-radius:99px;transition:width .5s"></div>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">{{ pct_int }}% remboursé</div>
+    {% endif %}
+    {% if plan.taux_interet %}
+    <div style="font-size:.74rem;color:var(--ember);margin-top:.4rem">
+      <i class="bi bi-info-circle me-1"></i>Taux d'intérêt appliqué : {{ plan.taux_interet }}%
+    </div>
+    {% endif %}
+  </div>
+  {% endwith %}
+
+  <!-- ── Timeline des tranches ── -->
+  <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+    <div class="px-4 py-3" style="border-bottom:1px solid var(--border);background:var(--surface)">
+      <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+        <i class="bi bi-calendar3 me-2" style="color:var(--indigo)"></i>Échéancier des tranches
+      </div>
+    </div>
+
+    {% for tranche in tranches %}
+    <div class="d-flex align-items-center gap-3 px-4 py-3 {% if not forloop.last %}border-bottom{% endif %}"
+      style="border-color:var(--border);{% if tranche.est_en_retard %}background:rgba(239,68,68,.04){% endif %}">
+
+      <!-- Numéro + icône statut -->
+      <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+        background:{% if tranche.statut == 'payee' %}rgba(16,185,129,.15){% elif tranche.est_en_retard %}rgba(239,68,68,.15){% else %}var(--surface){% endif %};
+        border:2px solid {% if tranche.statut == 'payee' %}rgba(16,185,129,.4){% elif tranche.est_en_retard %}rgba(239,68,68,.4){% else %}var(--border){% endif %}">
+        {% if tranche.statut == 'payee' %}
+          <i class="bi bi-check-lg" style="color:var(--jade);font-size:.9rem"></i>
+        {% elif tranche.est_en_retard %}
+          <i class="bi bi-exclamation-lg" style="color:var(--ember);font-size:.9rem"></i>
+        {% else %}
+          <span style="font-size:.75rem;font-weight:700;color:var(--muted)">{{ tranche.numero_tranche }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Infos tranche -->
+      <div class="flex-grow-1">
+        <div style="font-size:.84rem;font-weight:600;color:var(--text)">
+          Tranche {{ tranche.numero_tranche }}/{{ plan.nombre_tranches }}
+        </div>
+        <div style="font-size:.74rem;color:var(--muted)">
+          Échéance : {{ tranche.date_echeance|date:"d M Y" }}
+          {% if tranche.date_paiement %}
+          &bull; <span style="color:var(--jade)">Payée le {{ tranche.date_paiement|date:"d M Y" }}</span>
+          {% elif tranche.est_en_retard %}
+          &bull; <span style="color:var(--ember)">En retard</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Montant + statut -->
+      <div class="text-end flex-shrink-0">
+        <div style="font-size:.92rem;font-weight:800;color:var(--text);font-family:var(--fm)">{{ tranche.montant|floatformat:0 }} F</div>
+        <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;
+          background:{% if tranche.statut == 'payee' %}rgba(16,185,129,.15){% elif tranche.statut == 'en_retard' %}rgba(239,68,68,.15){% elif tranche.statut == 'annulee' %}rgba(100,100,100,.15){% else %}rgba(246,169,43,.15){% endif %};
+          color:{% if tranche.statut == 'payee' %}var(--jade){% elif tranche.statut == 'en_retard' %}var(--ember){% elif tranche.statut == 'annulee' %}var(--muted){% else %}var(--saffron){% endif %}">
+          {{ tranche.get_statut_display }}
+        </span>
+      </div>
+
+      <!-- Bouton payer (si en attente et c'est l'acheteur) -->
+      {% if tranche.statut == 'en_attente' and commande.utilisateur == request.user %}
+      <div class="flex-shrink-0">
+        <a href="{% url 'app_marketplace:initier_paiement' commande.pk %}?tranche={{ tranche.pk }}"
+          class="btn-gold" style="font-size:.74rem;padding:.3rem .8rem;white-space:nowrap;width:auto">
+          <i class="bi bi-credit-card"></i> Payer
+        </a>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Actions ── -->
+  <div class="d-flex gap-3 flex-wrap mt-4">
+    <a href="{% url 'app_marketplace:commande_detail' commande.pk %}" class="btn-ghost" style="font-size:.82rem">
+      <i class="bi bi-arrow-left"></i> Retour à la commande
+    </a>
+    {% if not plan.est_complet and commande.utilisateur == request.user %}
+    <a href="{% url 'app_marketplace:initier_paiement' commande.pk %}" class="btn-gold" style="font-size:.82rem">
+      <i class="bi bi-credit-card"></i> Payer une tranche
+    </a>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

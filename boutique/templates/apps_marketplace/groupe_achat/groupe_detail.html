@@ -1,0 +1,406 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+.gd-wrap { padding: 2rem 0 4rem; min-height: 80vh; }
+
+.gd-gallery-img {
+  aspect-ratio: 1/1; border-radius: var(--r); overflow: hidden;
+  background: var(--card); border: 1px solid var(--border);
+}
+.gd-gallery-img img { width: 100%; height: 100%; object-fit: cover; }
+
+.gd-badge-row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+.gd-badge { font-size: .72rem; font-weight: 700; padding: .25rem .75rem; border-radius: 99px; display: flex; align-items: center; gap: .35rem; }
+.gb-groupe { background: var(--jade-d); color: var(--jade); border: 1px solid rgba(0,200,150,.25); }
+.gb-discount { background: var(--ember-d); color: var(--ember); border: 1px solid rgba(255,90,71,.25); }
+
+.gd-title { font-family: var(--fg); font-size: 1.5rem; font-weight: 800; color: var(--text); margin: 1rem 0 .5rem; line-height: 1.25; }
+.gd-vendor { font-size: .82rem; color: var(--muted); margin-bottom: 1.2rem; }
+.gd-vendor a { color: var(--saffron); text-decoration: none; }
+
+/* Carte prix + progression */
+.gd-price-card {
+  background: var(--card); border: 1.5px solid rgba(0,200,150,.25);
+  border-radius: var(--r); padding: 1.3rem 1.4rem; margin-bottom: 1.25rem;
+}
+.gd-price-row { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; margin-bottom: .3rem; }
+.gd-price-groupe { font-family: var(--fm); font-size: 2rem; font-weight: 900; color: var(--jade); line-height: 1; }
+.gd-price-normal { font-size: 1.1rem; color: var(--muted); text-decoration: line-through; }
+.gd-price-discount { font-size: .78rem; font-weight: 700; background: var(--ember); color: #fff; padding: .2rem .65rem; border-radius: 8px; }
+.gd-price-sub { font-size: .78rem; color: var(--muted); margin-bottom: 1rem; }
+.gd-price-sub.locked { color: var(--saffron); }
+
+.gd-progress-track { height: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; margin-bottom: .55rem; }
+.gd-progress-fill { height: 100%; background: linear-gradient(90deg, var(--jade), #00e0a8); border-radius: 99px; transition: width 1s ease; }
+.gd-progress-nums { display: flex; justify-content: space-between; font-size: .82rem; color: var(--text-2); margin-bottom: 1.1rem; }
+.gd-progress-nums strong { color: var(--jade); }
+
+/* Timer */
+.gd-timer-row {
+  display: flex; align-items: center; gap: .6rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px; padding: .65rem 1rem; margin-bottom: 1.1rem;
+}
+.gd-timer-label { font-size: .76rem; color: var(--muted); }
+.gd-timer-val { font-family: var(--fm); font-size: 1rem; font-weight: 800; color: var(--ember); margin-left: auto; }
+
+/* Boutons rejoindre/quitter */
+.btn-rejoindre {
+  width: 100%; background: linear-gradient(90deg, var(--jade), #00e0a8);
+  color: #0A0B1A; border: none; border-radius: 12px; padding: .85rem;
+  font-size: .92rem; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  transition: opacity .2s, transform .2s;
+}
+.btn-rejoindre:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+.btn-rejoindre:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-quitter {
+  width: 100%; background: var(--ember-d); color: var(--ember);
+  border: 1.5px solid rgba(255,90,71,.3); border-radius: 12px; padding: .7rem;
+  font-size: .85rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: .5rem; margin-top: .6rem;
+}
+.btn-quitter:hover { background: var(--ember); color: #fff; }
+
+.gd-deja-participant {
+  background: var(--jade-d); border: 1px solid rgba(0,200,150,.25);
+  border-radius: 10px; padding: .85rem 1.1rem; font-size: .85rem; color: var(--jade);
+  display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem;
+}
+
+/* Quantité selector */
+.gd-qty-row { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.gd-qty-control { display: flex; align-items: center; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.gd-qty-btn { width: 36px; height: 36px; border: none; background: transparent; color: var(--text); font-size: 1.05rem; cursor: pointer; }
+.gd-qty-btn:hover { background: var(--jade-d); color: var(--jade); }
+.gd-qty-input { width: 46px; text-align: center; border: none; background: transparent; color: var(--text); font-family: var(--fm); font-size: .9rem; outline: none; }
+
+/* Comment ça marche */
+.gd-howitworks { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem 1.2rem; margin-top: 1.25rem; }
+.gd-hiw-title { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .7rem; }
+.gd-hiw-step { display: flex; gap: .65rem; align-items: flex-start; margin-bottom: .65rem; }
+.gd-hiw-step:last-child { margin-bottom: 0; }
+.gd-hiw-num { width: 22px; height: 22px; border-radius: 50%; background: var(--jade-d); color: var(--jade); display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 700; flex-shrink: 0; }
+.gd-hiw-text { font-size: .8rem; color: var(--text-2); line-height: 1.5; }
+
+/* Participants */
+.gd-participants { margin-top: 1.75rem; }
+.gd-section-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+.gd-section-title i { color: var(--jade); }
+.gd-participant-row {
+  display: flex; align-items: center; gap: .7rem; padding: .65rem 0; border-bottom: 1px solid var(--border);
+}
+.gd-participant-row:last-child { border-bottom: none; }
+.gd-p-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--indigo-d); color: var(--indigo); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; }
+.gd-p-name { font-size: .84rem; font-weight: 600; color: var(--text); }
+.gd-p-date { font-size: .72rem; color: var(--muted); }
+.gd-p-qty { margin-left: auto; font-size: .76rem; color: var(--muted); }
+
+/* Empty */
+.gd-empty-participants { text-align: center; padding: 1.5rem 1rem; color: var(--muted); font-size: .82rem; }
+</style>
+
+<div class="gd-wrap">
+  <div class="container">
+
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"><i class="bi bi-house-fill"></i> Accueil</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'apps_marketplace:groupes_actifs' %}" style="color:var(--muted);text-decoration:none">Achats groupés</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">{{ groupe.produit.titre|truncatechars:35 }}</span>
+      </div>
+    </nav>
+
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}var(--jade-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i> {{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+
+    <div class="row g-4">
+
+      <!-- Image produit -->
+      <div class="col-lg-5">
+        <div class="fi">
+          <div class="gd-gallery-img">
+            {% if groupe.produit.image_principale %}
+            <img src="{{ groupe.produit.image_principale }}" alt="{{ groupe.produit.titre }}">
+            {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image" style="font-size:3rem"></i></div>
+            {% endif %}
+          </div>
+          <div class="gd-badge-row">
+            <span class="gd-badge gb-groupe"><i class="bi bi-people-fill"></i> Achat groupé</span>
+            <!-- ✅ pourcentage_reduction est une méthode → appel avec () -->
+            <span class="gd-badge gb-discount"><i class="bi bi-percent"></i> -{{ groupe.pourcentage_reduction|floatformat:0 }}%</span>
+            {% if groupe.statut == 'complet' %}
+            <span class="gd-badge" style="background:var(--jade);color:#0A0B1A"><i class="bi bi-check-circle-fill"></i> Objectif atteint</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Détails + actions -->
+      <div class="col-lg-7">
+        <div class="fi">
+          <h1 class="gd-title">{{ groupe.produit.titre }}</h1>
+          <div class="gd-vendor">
+            <i class="bi bi-shop"></i> Vendu par
+            <a href="{% url 'apps_core:profil_vendeur_public' groupe.createur.username %}">{{ groupe.createur.boutique.nom|default:groupe.createur.username }}</a>
+          </div>
+
+          <!-- Carte prix -->
+          <div class="gd-price-card">
+            <div class="gd-price-row">
+              <!-- ✅ prix_actuel est une méthode → appel avec () -->
+              <span class="gd-price-groupe">{{ groupe.prix_groupe|floatformat:0 }} FCFA</span>
+              <span class="gd-price-normal">{{ groupe.prix_normal|floatformat:0 }} FCFA</span>
+              <span class="gd-price-discount">-{{ groupe.pourcentage_reduction|floatformat:0 }}%</span>
+            </div>
+            <!-- ✅ est_complet est une méthode → appel avec () -->
+            <div class="gd-price-sub {% if not deja_participant and groupe.statut == 'ouvert' %}locked{% endif %}" id="gdPriceSub">
+              {% if groupe.est_complet %}
+              <i class="bi bi-unlock-fill"></i> Prix groupé débloqué !
+              {% else %}
+              <i class="bi bi-lock-fill"></i> Prix débloqué dès {{ groupe.nb_participants_min }} participants
+              {% endif %}
+            </div>
+
+            <div class="gd-progress-track">
+              <div class="gd-progress-fill" id="gdProgressFill" style="width:{{ progression }}%"></div>
+            </div>
+            <div class="gd-progress-nums">
+              <span><strong id="gdNbConfirmes">{{ nb_confirmes }}</strong> / {{ groupe.nb_participants_min }} participants</span>
+              <span id="gdProgressPct">{{ progression }}%</span>
+            </div>
+
+            <!-- Timer -->
+            <div class="gd-timer-row">
+              <i class="bi bi-clock-history" style="color:var(--ember)"></i>
+              <span class="gd-timer-label">{% if est_expire %}Groupe expiré{% else %}Temps restant{% endif %}</span>
+              <span class="gd-timer-val" id="gdTimerVal" data-fin="{{ groupe.date_expiration|date:'c' }}">--:--:--</span>
+            </div>
+
+            <!-- Actions -->
+            {% if request.user.is_authenticated %}
+              {% if deja_participant %}
+              <div class="gd-deja-participant">
+                <i class="bi bi-check-circle-fill"></i>
+                Vous participez avec {{ ma_participation.quantite }} article{{ ma_participation.quantite|pluralize }}.
+              </div>
+              {% if groupe.statut == 'ouvert' %}
+              
+              <button class="btn-quitter" id="btnQuitter"
+                data-url="{% url 'apps_marketplace:ajax_quitter_groupe' groupe.pk %}">
+                <i class="bi bi-x-circle"></i> Quitter le groupe
+              </button>
+              {% endif %}
+              {% elif groupe.statut == 'ouvert' and not est_expire and groupe.createur != request.user %}
+              <div class="gd-qty-row">
+                <span style="font-size:.82rem;color:var(--text-2)">Quantité</span>
+                <div class="gd-qty-control">
+                  <button class="gd-qty-btn" type="button" onclick="changeQty(-1)">−</button>
+                  <input type="number" id="gdQty" class="gd-qty-input" value="{{ groupe.quantite_par_participant }}" min="1">
+                  <button class="gd-qty-btn" type="button" onclick="changeQty(1)">+</button>
+                </div>
+              </div>
+              
+              <button class="btn-rejoindre" id="btnRejoindre"
+                data-url="{% url 'apps_marketplace:ajax_rejoindre_groupe' groupe.pk %}">
+                <i class="bi bi-people-fill"></i> Rejoindre ce groupe
+              </button>
+              {% elif groupe.createur == request.user %}
+              <div style="font-size:.8rem;color:var(--muted);text-align:center;padding:.5rem">
+                <i class="bi bi-info-circle"></i> Vous êtes le créateur de ce groupe.
+              </div>
+              {% else %}
+              <button class="btn-rejoindre" disabled>
+                <i class="bi bi-x-circle"></i> {% if est_expire %}Groupe expiré{% else %}Indisponible{% endif %}
+              </button>
+              {% endif %}
+            {% else %}
+            <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" class="btn-rejoindre" style="text-decoration:none">
+              <i class="bi bi-box-arrow-in-right"></i> Connectez-vous pour rejoindre
+            </a>
+            {% endif %}
+          </div>
+
+          <!-- Comment ça marche -->
+          <div class="gd-howitworks">
+            <div class="gd-hiw-title"><i class="bi bi-info-circle"></i> Comment ça marche</div>
+            <div class="gd-hiw-step">
+              <div class="gd-hiw-num">1</div>
+              <div class="gd-hiw-text">Rejoignez le groupe en réservant votre quantité.</div>
+            </div>
+            <div class="gd-hiw-step">
+              <div class="gd-hiw-num">2</div>
+              <div class="gd-hiw-text">Dès que {{ groupe.nb_participants_min }} participants ont rejoint, le prix réduit est débloqué pour tous.</div>
+            </div>
+            <div class="gd-hiw-step">
+              <div class="gd-hiw-num">3</div>
+              <div class="gd-hiw-text">Votre commande est automatiquement créée au prix groupé.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Liste des participants -->
+    <div class="gd-participants fi">
+      <div class="gd-section-title"><i class="bi bi-people"></i> Participants ({{ nb_confirmes }})</div>
+      {% if participants_confirmes %}
+      <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.5rem 1.2rem">
+        {% for p in participants_confirmes %}
+        <div class="gd-participant-row">
+          <div class="gd-p-avatar">{{ p.utilisateur.username|first|upper }}</div>
+          <div>
+            <div class="gd-p-name">{{ p.utilisateur.username }}</div>
+            <div class="gd-p-date">A rejoint {{ p.date_adhesion|timesince }}</div>
+          </div>
+          <div class="gd-p-qty">x{{ p.quantite }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="gd-empty-participants">Soyez le premier à rejoindre ce groupe !</div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+function changeQty(delta){
+  const inp = document.getElementById('gdQty');
+  if(!inp) return;
+  let v = parseInt(inp.value) + delta;
+  inp.value = Math.max(1, v);
+}
+
+function fmt(ms){
+  if(ms<=0) return 'Terminé';
+  const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), s=Math.floor(ms%60000/1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function runTimer(){
+  const el = document.getElementById('gdTimerVal');
+  if(!el) return;
+  const fin = new Date(el.dataset.fin);
+  if(!isNaN(fin)) el.textContent = fmt(fin - new Date());
+}
+setInterval(runTimer, 1000); runTimer();
+
+/* ── Rejoindre le groupe ── */
+document.getElementById('btnRejoindre')?.addEventListener('click', async function(){
+  const url = this.dataset.url;
+  const qty = document.getElementById('gdQty')?.value || 1;
+
+  if (!url) {
+    console.error('URL rejoindre manquante sur le bouton');
+    alert('Erreur de configuration. Rechargez la page.');
+    return;
+  }
+
+  this.disabled = true;
+  this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Inscription...';
+
+  try{
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': CSRF,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: `quantite=${qty}`
+    });
+
+    // ✅ Vérifier le code HTTP avant de parser — évite l'échec silencieux
+    if (!r.ok) {
+      console.error(`HTTP ${r.status} sur ${url}`);
+      let msg = `Erreur ${r.status}`;
+      try {
+        const errData = await r.json();
+        msg = errData.message || msg;
+      } catch {}
+      alert(msg);
+      this.disabled = false;
+      this.innerHTML = '<i class="bi bi-people-fill"></i> Rejoindre ce groupe';
+      return;
+    }
+
+    const d = await r.json();
+
+    if (d.success) {
+      location.reload();
+    } else {
+      alert(d.message || 'Impossible de rejoindre le groupe.');
+      this.disabled = false;
+      this.innerHTML = '<i class="bi bi-people-fill"></i> Rejoindre ce groupe';
+    }
+
+  } catch (err) {
+    console.error('Erreur réseau rejoindre groupe:', err);
+    alert('Erreur réseau, veuillez réessayer.');
+    this.disabled = false;
+    this.innerHTML = '<i class="bi bi-people-fill"></i> Rejoindre ce groupe';
+  }
+});
+
+/* ── Quitter le groupe ── */
+document.getElementById('btnQuitter')?.addEventListener('click', async function(){
+  if (!confirm('Quitter ce groupe d\'achat ?')) return;
+
+  const url = this.dataset.url;
+  if (!url) {
+    console.error('URL quitter manquante sur le bouton');
+    alert('Erreur de configuration. Rechargez la page.');
+    return;
+  }
+
+  this.disabled = true;
+
+  try{
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+    });
+
+    if (!r.ok) {
+      console.error(`HTTP ${r.status} sur ${url}`);
+      alert(`Erreur ${r.status}`);
+      this.disabled = false;
+      return;
+    }
+
+    const d = await r.json();
+    if (d.success) {
+      location.reload();
+    } else {
+      alert(d.message || 'Impossible de quitter le groupe.');
+      this.disabled = false;
+    }
+
+  } catch (err) {
+    console.error('Erreur réseau quitter groupe:', err);
+    alert('Erreur réseau, veuillez réessayer.');
+    this.disabled = false;
+  }
+});
+
+const io = new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}})},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

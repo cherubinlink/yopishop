@@ -1,0 +1,359 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Payer ma commande — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1">
+      <a href="{% url 'apps_marketplace:commande_detail' commande.pk %}" class="cpill">
+        <i class="bi bi-arrow-left me-1"></i>Commande {{ commande.numero_commande }}
+      </a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-lock-fill me-1" style="color:var(--saffron)"></i>Paiement sécurisé
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys">
+  <div class="container">
+    <div class="row g-4 justify-content-center">
+      <div class="col-12 col-lg-8">
+
+        <!-- ─── Récapitulatif commande ─── -->
+        <div class="ycard mb-4 fi" style="border:1px solid rgba(246,169,43,.3);background:var(--saffron-d)">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">À payer</div>
+              <div style="font-family:var(--fm);font-size:2.2rem;font-weight:900;color:var(--saffron);line-height:1">
+                {{ commande.montant_total|floatformat:0 }} <span style="font-size:1rem">FCFA</span>
+              </div>
+              <div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">
+                Commande <strong style="color:var(--text)">{{ commande.numero_commande }}</strong>
+                · {{ commande.articles.count }} article{{ commande.articles.count|pluralize }}
+              </div>
+            </div>
+            <div class="text-end">
+              {% if est_yopishop %}
+              <span class="chip chip-jade">
+                <i class="bi bi-patch-check-fill me-1"></i>YopiShop Officiel
+              </span>
+              {% endif %}
+              <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">
+                <i class="bi bi-shield-check" style="color:var(--jade)"></i> Paiement sécurisé
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- ─── Paiements déjà soumis ─── -->
+        {% if paiements_existants %}
+        <div class="ycard mb-4 fi">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-clock-history" style="color:var(--muted)"></i>
+            <span style="font-size:.88rem;font-weight:700;color:var(--text)">Paiements soumis</span>
+          </div>
+          {% for p in paiements_existants %}
+          <div class="d-flex align-items-center justify-content-between py-2 {% if not forloop.last %}border-bottom{% endif %}"
+               style="border-color:var(--border)!important">
+            <div>
+              <div style="font-size:.8rem;font-weight:600;color:var(--text)">
+                {{ p.montant|floatformat:0 }} FCFA — {{ p.get_methode_display|default:p.methode }}
+              </div>
+              <div style="font-size:.7rem;color:var(--muted)">{{ p.date_creation|date:"d M Y à H:i" }}</div>
+            </div>
+            {% if p.statut == 'complete' %}
+            <span class="chip chip-jade" style="font-size:.65rem"><i class="bi bi-check-circle-fill me-1"></i>Validé</span>
+            {% elif p.statut == 'rejete' %}
+            <span class="chip chip-ember" style="font-size:.65rem"><i class="bi bi-x-circle-fill me-1"></i>Rejeté</span>
+            {% else %}
+            <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.65rem"><i class="bi bi-hourglass-split me-1"></i>En vérif.</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+
+        <!-- ─── Plan BNPL ─── -->
+        {% if plan_paiement %}
+        <div class="ycard mb-4 fi" style="border:1px solid var(--indigo)">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-calendar-range" style="color:var(--indigo)"></i>
+            <span style="font-size:.88rem;font-weight:700;color:var(--text)">Plan de paiement fractionné</span>
+            <span class="chip ms-auto" style="background:var(--indigo-d);color:var(--indigo);font-size:.65rem">
+              {{ plan_paiement.nombre_tranches }}x
+            </span>
+          </div>
+          <div class="row g-2">
+            {% for tranche in tranches %}
+            <div class="col-12">
+              <div class="d-flex align-items-center justify-content-between p-2"
+                   style="background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+                <div>
+                  <span style="font-size:.8rem;font-weight:600;color:var(--text)">
+                    Tranche {{ tranche.numero_tranche }}
+                  </span>
+                  <span style="font-size:.72rem;color:var(--muted);margin-left:.5rem">
+                    — {{ tranche.date_echeance|date:"d M Y" }}
+                  </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span style="font-size:.85rem;font-weight:700;color:var(--indigo)">{{ tranche.montant|floatformat:0 }} F</span>
+                  {% if tranche.statut == 'payee' %}
+                  <span class="chip chip-jade" style="font-size:.6rem;padding:.1rem .4rem"><i class="bi bi-check"></i></span>
+                  {% elif tranche.statut == 'en_attente' %}
+                  <button type="button" class="btn-selectionner-tranche"
+                          data-tranche-id="{{ tranche.pk }}"
+                          data-montant="{{ tranche.montant }}"
+                          style="font-size:.72rem;padding:.2rem .6rem;background:var(--indigo-d);color:var(--indigo);border:1px solid var(--indigo);border-radius:6px;cursor:pointer">
+                    Payer
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+
+        <!-- ─── Numéros de versement ─── -->
+        {% if numeros_versement %}
+        <div class="ycard mb-4 fi">
+          <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-phone" style="color:var(--jade)"></i>
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">Envoyez votre paiement à</span>
+          </div>
+
+          <div class="d-flex flex-column gap-3">
+            {% for nv in numeros_versement %}
+            <div class="d-flex align-items-center gap-3 p-3"
+                 style="background:var(--surface);border:1px solid var(--border);border-radius:10px">
+              <!-- Logo / Icône opérateur -->
+              <div style="width:48px;height:48px;border-radius:12px;background:var(--card);
+                          display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;
+                          border:1px solid var(--border)">
+                {% if nv.operateur.logo %}
+                <img src="{{ nv.operateur.logo.url }}" alt="{{ nv.operateur.nom }}" style="width:100%;height:100%;object-fit:contain;padding:4px">
+                {% else %}
+                {% if nv.operateur.code == 'OM' %}<span style="font-size:1.4rem">🟠</span>
+                {% elif nv.operateur.code == 'MTN' %}<span style="font-size:1.4rem">🟡</span>
+                {% elif nv.operateur.code == 'WAVE' %}<span style="font-size:1.4rem">🌊</span>
+                {% else %}<i class="bi bi-phone" style="color:var(--muted)"></i>{% endif %}
+                {% endif %}
+              </div>
+
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ nv.operateur.nom }}</div>
+                <div style="font-size:.78rem;color:var(--muted)">{{ nv.pays.nom }}</div>
+                {% if nv.nom_compte %}
+                <div style="font-size:.74rem;color:var(--muted)">{{ nv.nom_compte }}</div>
+                {% endif %}
+                {% if nv.description %}
+                <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">{{ nv.description }}</div>
+                {% endif %}
+              </div>
+
+              <div class="text-end">
+                <div style="font-size:1rem;font-weight:800;color:var(--saffron);letter-spacing:.05em">
+                  {{ nv.numero }}
+                </div>
+                <button class="cpill mt-1 btn-copier-numero"
+                        data-numero="{{ nv.numero }}"
+                        style="font-size:.65rem;padding:.15rem .55rem;border:none;cursor:pointer">
+                  <i class="bi bi-copy me-1"></i>Copier
+                </button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="mt-3 p-3" style="background:var(--saffron-d);border-radius:8px">
+            <div style="font-size:.78rem;color:var(--saffron);font-weight:600;margin-bottom:.3rem">
+              <i class="bi bi-info-circle me-1"></i>Comment procéder ?
+            </div>
+            <ol style="font-size:.75rem;color:var(--text-2);margin:0;padding-left:1.2rem">
+              <li>Envoyez <strong>{{ commande.montant_total|floatformat:0 }} FCFA</strong> au numéro ci-dessus</li>
+              <li>Prenez une capture d'écran de la confirmation</li>
+              <li>Soumettez la preuve ci-dessous</li>
+            </ol>
+          </div>
+        </div>
+        {% endif %}
+
+
+        <!-- ─── Formulaire preuve ─── -->
+        <div class="ycard fi">
+          <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--border)">
+            <i class="bi bi-upload" style="color:var(--saffron)"></i>
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">Soumettre ma preuve de paiement</span>
+          </div>
+
+          <form method="post"
+                action="{% url 'apps_marketplace:soumettre_preuve_paiement' commande.pk %}"
+                enctype="multipart/form-data"
+                id="formPreuve">
+            {% csrf_token %}
+
+            <!-- Tranche sélectionnée (si BNPL) -->
+            <input type="hidden" name="tranche_id" id="tranche_id_hidden" value="">
+
+            <div class="row g-3">
+              <!-- Méthode -->
+              <div class="col-12">
+                <label style="font-size:.8rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                  Méthode de paiement <span style="color:var(--ember)">*</span>
+                </label>
+                <div class="d-flex flex-wrap gap-2" id="methodeButtons">
+                  {% for val, label in methodes %}
+                  <input type="radio" name="methode" id="m_{{ val }}" value="{{ val }}"
+                         style="display:none" {% if forloop.first %}checked{% endif %}>
+                  <label for="m_{{ val }}" class="methode-label cpill"
+                         style="cursor:pointer;border:2px solid var(--border);padding:.5rem 1rem;font-size:.8rem"
+                         onclick="selectMethode(this)">
+                    {% if val == 'orange_money' %}🟠
+                    {% elif val == 'mtn_momo' %}🟡
+                    {% elif val == 'wave' %}🌊
+                    {% elif val == 'yopipay' %}💛
+                    {% endif %}
+                    {{ label }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Numéro expéditeur -->
+              <div class="col-md-6">
+                <label style="font-size:.8rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                  Votre numéro d'envoi
+                </label>
+                <input type="text" name="numero_expediteur"
+                       placeholder="+237 6XX XXX XXX"
+                       style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.55rem .9rem;font-size:.85rem;outline:none;transition:border-color .2s"
+                       onfocus="this.style.borderColor='var(--saffron)'"
+                       onblur="this.style.borderColor='var(--border)'">
+              </div>
+
+              <!-- Upload preuve -->
+              <div class="col-md-6">
+                <label style="font-size:.8rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                  Capture d'écran / Reçu
+                </label>
+                <div style="position:relative">
+                  <input type="file" name="preuve_paiement" id="preuve_paiement"
+                         accept="image/*,.pdf"
+                         style="position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2">
+                  <label for="preuve_paiement" id="preuveLabel"
+                         style="display:flex;align-items:center;justify-content:center;gap:.5rem;
+                                border:1.5px dashed var(--border);border-radius:8px;padding:.65rem 1rem;
+                                font-size:.82rem;color:var(--muted);cursor:pointer;background:var(--surface);
+                                transition:border-color .2s,color .2s">
+                    <i class="bi bi-cloud-upload"></i>Choisir un fichier
+                  </label>
+                </div>
+                <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem">JPG, PNG ou PDF · max 5 Mo</div>
+              </div>
+
+              <!-- Message -->
+              <div class="col-12">
+                <label style="font-size:.8rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                  Message (optionnel)
+                </label>
+                <textarea name="message_client" rows="2"
+                          placeholder="Précisions sur votre paiement…"
+                          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.55rem .9rem;font-size:.85rem;outline:none;resize:vertical;transition:border-color .2s"
+                          onfocus="this.style.borderColor='var(--saffron)'"
+                          onblur="this.style.borderColor='var(--border)'"></textarea>
+              </div>
+
+              <!-- Bouton submit -->
+              <div class="col-12">
+                <button type="submit" class="btn-gold w-100" style="font-size:.92rem" id="btnSubmit">
+                  <i class="bi bi-send me-1"></i>Soumettre ma preuve de paiement
+                </button>
+                <div style="font-size:.72rem;color:var(--muted);text-align:center;margin-top:.5rem">
+                  <i class="bi bi-shield-check me-1" style="color:var(--jade)"></i>
+                  Notre équipe vérifiera votre paiement sous 24h.
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* Sélection méthode */
+function selectMethode(el) {
+  document.querySelectorAll('.methode-label').forEach(l => {
+    l.style.borderColor = 'var(--border)';
+    l.style.color = '';
+    l.style.background = '';
+  });
+  el.style.borderColor = 'var(--saffron)';
+  el.style.color = 'var(--saffron)';
+  el.style.background = 'var(--saffron-d)';
+}
+/* Init premier bouton */
+const firstMethode = document.querySelector('.methode-label');
+if (firstMethode) selectMethode(firstMethode);
+
+/* Copier numéro */
+document.querySelectorAll('.btn-copier-numero').forEach(btn => {
+  btn.addEventListener('click', function() {
+    navigator.clipboard.writeText(this.dataset.numero).then(() => {
+      const orig = this.innerHTML;
+      this.innerHTML = '<i class="bi bi-check me-1"></i>Copié !';
+      this.style.color = 'var(--jade)';
+      setTimeout(() => { this.innerHTML = orig; this.style.color = ''; }, 2000);
+    });
+  });
+});
+
+/* Sélectionner tranche BNPL */
+document.querySelectorAll('.btn-selectionner-tranche').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('tranche_id_hidden').value = this.dataset.trancheId;
+    document.querySelectorAll('.btn-selectionner-tranche').forEach(b => {
+      b.style.background = 'var(--indigo-d)';
+      b.style.fontWeight = '';
+    });
+    this.style.background = 'var(--indigo)';
+    this.style.color = '#fff';
+    this.style.fontWeight = '700';
+    document.getElementById('btnSubmit').textContent = `💳 Payer la tranche ${this.closest('[data-tranche-id]')?.dataset?.trancheId ? '' : ''} — ${parseInt(this.dataset.montant).toLocaleString('fr')} FCFA`;
+  });
+});
+
+/* Preview fichier */
+document.getElementById('preuve_paiement')?.addEventListener('change', function() {
+  const lbl = document.getElementById('preuveLabel');
+  if (this.files[0]) {
+    lbl.innerHTML = `<i class="bi bi-check-circle me-1" style="color:var(--jade)"></i>${this.files[0].name}`;
+    lbl.style.borderColor = 'var(--jade)';
+    lbl.style.color = 'var(--jade)';
+  }
+});
+</script>
+{% endblock %}
+
+{% endblock %}

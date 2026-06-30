@@ -1,0 +1,250 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Gestion KYC</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Gestion KYC
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        {{ documents.paginator.count }} document{{ documents.paginator.count|pluralize }}
+        &bull; Filtre : <strong style="color:var(--text)">{{ statut|title }}</strong>
+      </p>
+    </div>
+    <!-- Stats rapides -->
+    <div class="d-flex gap-2 flex-wrap">
+      <div class="ycard px-3 py-2 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);min-width:80px">
+        <div style="font-size:1.1rem;font-weight:800;color:var(--saffron)">{{ documents.paginator.count }}</div>
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtres par statut ── -->
+  <div class="d-flex gap-2 flex-wrap mb-4">
+    {% for s, label, color in statuts_disponibles|default:"" %}{% endfor %}
+    <a href="?statut=en_attente" class="cpill {% if statut == 'en_attente' %}on{% endif %}" style="{% if statut == 'en_attente' %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      <i class="bi bi-hourglass-split"></i> En attente
+    </a>
+    <a href="?statut=valide" class="cpill {% if statut == 'valide' %}on{% endif %}" style="{% if statut == 'valide' %}background:rgba(16,185,129,.15);border-color:var(--jade);color:var(--jade){% endif %}">
+      <i class="bi bi-check-circle-fill"></i> Validés
+    </a>
+    <a href="?statut=refuse" class="cpill {% if statut == 'refuse' %}on{% endif %}" style="{% if statut == 'refuse' %}background:rgba(239,68,68,.12);border-color:var(--ember);color:var(--ember){% endif %}">
+      <i class="bi bi-x-circle-fill"></i> Refusés
+    </a>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};color:var(--text)">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Table documents ── -->
+  {% if documents %}
+  <div style="display:grid;gap:.75rem">
+    {% for doc in documents %}
+    <div class="ycard p-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)" id="kyc-{{ doc.pk }}">
+      <div class="row align-items-center g-3">
+
+        <!-- Col 1 : boutique + doc -->
+        <div class="col-12 col-md-5">
+          <div class="d-flex align-items-center gap-3">
+            <!-- Logo boutique -->
+            <div style="width:44px;height:44px;border-radius:10px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+              {% if doc.boutique.logo %}
+                <img src="{{ doc.boutique.logo.url }}" alt="" style="width:100%;height:100%;object-fit:cover">
+              {% else %}
+                <i class="bi bi-shop" style="color:var(--saffron)"></i>
+              {% endif %}
+            </div>
+            <div class="min-width-0">
+              <div style="font-size:.86rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{ doc.boutique.nom }}
+              </div>
+              <div style="font-size:.72rem;color:var(--muted)">{{ doc.boutique.vendeur.email }}</div>
+              <div style="font-size:.74rem;color:var(--text-2);margin-top:.2rem">
+                <i class="bi bi-file-earmark me-1"></i>{{ doc.get_type_document_display }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Col 2 : date + description -->
+        <div class="col-12 col-md-3">
+          <div style="font-size:.74rem;color:var(--muted)">
+            <i class="bi bi-calendar3 me-1"></i>{{ doc.date_envoi|date:"d M Y à H:i" }}
+          </div>
+          {% if doc.description %}
+          <div style="font-size:.74rem;color:var(--text-2);margin-top:.2rem">{{ doc.description|truncatechars:50 }}</div>
+          {% endif %}
+          <!-- Aperçu fichier -->
+          <a href="{{ doc.fichier.url }}" target="_blank"
+            style="font-size:.74rem;color:var(--saffron);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;margin-top:.3rem">
+            <i class="bi bi-eye"></i> Voir le document
+          </a>
+        </div>
+
+        <!-- Col 3 : statut + actions -->
+        <div class="col-12 col-md-4">
+          <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap">
+
+            <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;
+              background:{% if doc.statut == 'valide' %}rgba(16,185,129,.15){% elif doc.statut == 'refuse' %}rgba(239,68,68,.15){% else %}rgba(246,169,43,.15){% endif %};
+              color:{% if doc.statut == 'valide' %}var(--jade){% elif doc.statut == 'refuse' %}var(--ember){% else %}var(--saffron){% endif %}">
+              {% if doc.statut == 'valide' %}<i class="bi bi-check-circle-fill me-1"></i>Validé
+              {% elif doc.statut == 'refuse' %}<i class="bi bi-x-circle-fill me-1"></i>Refusé
+              {% else %}<i class="bi bi-hourglass me-1"></i>En attente
+              {% endif %}
+            </span>
+
+            {% if doc.statut == 'en_attente' %}
+            <!-- Boutons valider / refuser -->
+            <button class="btn-ghost btn-kyc-action"
+              style="font-size:.72rem;padding:.28rem .6rem;width:auto;background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:var(--jade)"
+              data-pk="{{ doc.pk }}" data-action="valider"
+              onclick="ouvrirModalKyc({{ doc.pk }}, 'valider')">
+              <i class="bi bi-check-lg"></i> Valider
+            </button>
+            <button class="btn-ghost btn-kyc-action"
+              style="font-size:.72rem;padding:.28rem .6rem;width:auto;color:var(--ember);border-color:rgba(239,68,68,.3)"
+              data-pk="{{ doc.pk }}" data-action="refuser"
+              onclick="ouvrirModalKyc({{ doc.pk }}, 'refuser')">
+              <i class="bi bi-x-lg"></i> Refuser
+            </button>
+            {% else %}
+            {% if doc.commentaire_admin %}
+            <div style="font-size:.72rem;color:var(--muted);max-width:180px;text-align:right">
+              <i class="bi bi-chat-left-text me-1"></i>{{ doc.commentaire_admin|truncatechars:40 }}
+            </div>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if documents.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+    {% if documents.has_previous %}
+    <a href="?statut={{ statut }}&page={{ documents.previous_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto">
+      <i class="bi bi-chevron-left"></i>
+    </a>
+    {% endif %}
+    {% for p in documents.paginator.page_range %}
+      {% if p == documents.number %}
+      <span class="btn-gold" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center">{{ p }}</span>
+      {% elif p >= documents.number|add:"-2" and p <= documents.number|add:"2" %}
+      <a href="?statut={{ statut }}&page={{ p }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center;width:auto">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if documents.has_next %}
+    <a href="?statut={{ statut }}&page={{ documents.next_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto">
+      <i class="bi bi-chevron-right"></i>
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-file-earmark-check" style="font-size:1.8rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun document {{ statut|lower }}</div>
+    <div style="font-size:.82rem;color:var(--muted)">Les documents soumis par les vendeurs apparaîtront ici.</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Modal KYC ── -->
+<div id="kyc-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;max-width:420px;width:90%;margin:auto">
+    <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:1rem" id="modal-titre">Décision KYC</div>
+
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+        Commentaire (optionnel pour validation, requis pour refus)
+      </label>
+      <textarea id="modal-commentaire" rows="3"
+        style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding:.6rem .8rem;resize:vertical"
+        placeholder="Message visible par le vendeur…"></textarea>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+      <button class="btn-ghost" onclick="fermerModalKyc()" style="font-size:.82rem;width:auto">Annuler</button>
+      <button id="modal-confirm" class="btn-gold" style="font-size:.82rem;width:auto">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+let currentPk = null, currentAction = null;
+
+function ouvrirModalKyc(pk, action) {
+  currentPk = pk; currentAction = action;
+  const modal = document.getElementById('kyc-modal');
+  const titre = document.getElementById('modal-titre');
+  const btn   = document.getElementById('modal-confirm');
+  titre.textContent = action === 'valider' ? '✓ Valider ce document' : '✗ Refuser ce document';
+  btn.style.background = action === 'valider' ? 'linear-gradient(90deg,var(--jade),#059669)' : 'linear-gradient(90deg,var(--ember),#dc2626)';
+  document.getElementById('modal-commentaire').value = '';
+  modal.style.display = 'flex';
+}
+
+function fermerModalKyc() {
+  document.getElementById('kyc-modal').style.display = 'none';
+}
+
+document.getElementById('modal-confirm').addEventListener('click', async function () {
+  const commentaire = document.getElementById('modal-commentaire').value;
+  if (currentAction === 'refuser' && !commentaire.trim()) {
+    alert('Un commentaire est requis pour refuser un document.');
+    return;
+  }
+  const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  try {
+    const formData = new FormData();
+    formData.append('action', currentAction);
+    formData.append('commentaire', commentaire);
+    const r = await fetch(`/boutiques/kyc/${currentPk}/valider/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+      body: formData
+    });
+    const d = await r.json();
+    if (d.success) {
+      fermerModalKyc();
+      location.reload();
+    } else {
+      alert(d.message || 'Une erreur est survenue.');
+    }
+  } catch (e) { console.error(e); }
+});
+
+document.getElementById('kyc-modal').addEventListener('click', function (e) {
+  if (e.target === this) fermerModalKyc();
+});
+</script>
+{% endblock %}

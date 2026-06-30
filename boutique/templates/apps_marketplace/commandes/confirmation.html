@@ -1,0 +1,150 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:680px">
+
+  <!-- ── Succès ── -->
+  <div class="text-center mb-4">
+    <div style="width:80px;height:80px;border-radius:50%;background:rgba(16,185,129,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;border:3px solid rgba(16,185,129,.3)">
+      <i class="bi bi-check-circle-fill" style="font-size:2.2rem;color:var(--jade)"></i>
+    </div>
+    <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;color:var(--text);margin:0 0 .4rem">
+      Commande confirmée ! 🎉
+    </h1>
+    <p style="color:var(--muted);font-size:.85rem;margin:0">
+      Votre commande <strong style="color:var(--saffron)">{{ commande.numero_commande }}</strong> a été créée avec succès.
+    </p>
+  </div>
+
+  <!-- ── Récapitulatif commande ── -->
+  <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+
+    <!-- Header statut -->
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">N° de commande</div>
+        <div style="font-size:1rem;font-weight:800;color:var(--text);font-family:var(--fm)">{{ commande.numero_commande }}</div>
+      </div>
+      <span class="chip" style="font-size:.75rem;padding:.3rem .8rem;background:rgba(246,169,43,.15);color:var(--saffron)">
+        <i class="bi bi-hourglass-split me-1"></i>{{ commande.get_statut_display }}
+      </span>
+    </div>
+
+    <!-- Articles -->
+    <div style="border-top:1px solid var(--border);padding-top:.8rem;margin-bottom:.8rem">
+      {% for art in commande.articles.all %}
+      <div class="d-flex align-items-center gap-3 py-2" style="border-bottom:1px solid var(--border)">
+        <div style="width:48px;height:48px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0">
+          {% if art.produit.image_principale %}
+            <img src="{{ art.produit.image_principale }}" alt="{{ art.produit.titre }}" style="width:100%;height:100%;object-fit:cover">
+          {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted)"></i></div>
+          {% endif %}
+        </div>
+        <div class="flex-grow-1 min-width-0">
+          <div style="font-size:.84rem;font-weight:600;color:var(--text)">{{ art.produit.titre }}</div>
+          {% if art.variante %}<div style="font-size:.72rem;color:var(--muted)">{{ art.variante.nom }}</div>{% endif %}
+          <div style="font-size:.72rem;color:var(--muted)">{{ art.prix_unitaire|floatformat:0 }} FCFA × {{ art.quantite }}</div>
+        </div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);flex-shrink:0">{{ art.prix_total|floatformat:0 }} F</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Totaux -->
+    <div class="d-grid gap-1 mb-2">
+      <div class="d-flex justify-content-between">
+        <span style="font-size:.8rem;color:var(--text-2)">Sous-total</span>
+        <span style="font-size:.8rem;color:var(--text)">{{ commande.sous_total|floatformat:0 }} FCFA</span>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span style="font-size:.8rem;color:var(--text-2)">Frais de livraison</span>
+        <span style="font-size:.8rem;color:var(--text)">{{ commande.frais_livraison|floatformat:0 }} FCFA</span>
+      </div>
+      {% if commande.montant_reduction %}
+      <div class="d-flex justify-content-between">
+        <span style="font-size:.8rem;color:var(--jade)"><i class="bi bi-tag me-1"></i>Réduction</span>
+        <span style="font-size:.8rem;color:var(--jade)">-{{ commande.montant_reduction|floatformat:0 }} FCFA</span>
+      </div>
+      {% endif %}
+    </div>
+    <div style="border-top:2px solid var(--border);padding-top:.6rem" class="d-flex justify-content-between align-items-center">
+      <span style="font-size:.92rem;font-weight:700;color:var(--text)">Total payé</span>
+      <span style="font-size:1.2rem;font-weight:900;color:var(--saffron);font-family:var(--fm)">{{ commande.montant_total|floatformat:0 }} FCFA</span>
+    </div>
+  </div>
+
+  <!-- ── Infos livraison ── -->
+  <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+      <i class="bi bi-geo-alt me-1" style="color:var(--jade)"></i>Livraison
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-sm-6">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Adresse</div>
+        <div style="font-size:.82rem;color:var(--text)">{{ commande.adresse_livraison }}</div>
+        {% if commande.ville_livraison %}
+        <div style="font-size:.78rem;color:var(--text-2)">{{ commande.ville_livraison.nom }}{% if commande.quartier_livraison %}, {{ commande.quartier_livraison.nom }}{% endif %}</div>
+        {% endif %}
+      </div>
+      {% if commande.instructions_livraison %}
+      <div class="col-12 col-sm-6">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Instructions</div>
+        <div style="font-size:.82rem;color:var(--text-2)">{{ commande.instructions_livraison }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Prochaines étapes ── -->
+  <div class="ycard p-4 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+      <i class="bi bi-list-check me-1" style="color:var(--indigo)"></i>Prochaines étapes
+    </div>
+    <div style="display:grid;gap:.8rem">
+      {% for step, icon, color, desc in steps|default:"" %}{% endfor %}
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(246,169,43,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="bi bi-bell" style="color:var(--saffron);font-size:.8rem"></i>
+        </div>
+        <div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--text)">Confirmation par email</div>
+          <div style="font-size:.74rem;color:var(--muted)">Un email récapitulatif sera envoyé à {{ request.user.email }}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="bi bi-bag-check" style="color:var(--jade);font-size:.8rem"></i>
+        </div>
+        <div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--text)">Traitement par le vendeur</div>
+          <div style="font-size:.74rem;color:var(--muted)">Le vendeur va préparer votre commande sous 24-48h</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="bi bi-truck" style="color:var(--indigo);font-size:.8rem"></i>
+        </div>
+        <div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--text)">Expédition &amp; livraison</div>
+          <div style="font-size:.74rem;color:var(--muted)">Vous serez notifié dès l'expédition avec un numéro de suivi</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Actions ── -->
+  <div class="d-flex gap-3 flex-wrap justify-content-center">
+    <a href="{% url 'apps_marketplace:mes_commandes' %}" class="btn-gold" style="font-size:.85rem">
+      <i class="bi bi-box"></i> Voir mes commandes
+    </a>
+    <a href="{% url 'apps_core:catalogue' %}" class="btn-ghost" style="font-size:.85rem">
+      <i class="bi bi-bag-heart"></i> Continuer les achats
+    </a>
+  </div>
+
+</div>
+{% endblock %}

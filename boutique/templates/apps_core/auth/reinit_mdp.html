@@ -1,0 +1,111 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Réinitialiser mon mot de passe — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.auth-page{padding:2.5rem 0 4rem;min-height:80vh;background:var(--bg);position:relative;overflow:hidden}
+.auth-glow{position:absolute;inset:0;pointer-events:none;z-index:0}
+.auth-glow span{position:absolute;border-radius:50%;filter:blur(110px);opacity:.18}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:2.25rem;position:relative;z-index:1;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--saffron),var(--indigo));border-radius:var(--rl) var(--rl) 0 0}
+.ef-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem}
+.ef-label i{color:var(--saffron)}
+.ef-input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--fd);font-size:.87rem;padding:.65rem 1rem;outline:none;transition:border-color var(--tr),box-shadow var(--tr)}
+.ef-input:focus{border-color:var(--saffron);box-shadow:0 0 0 3px var(--saffron-d)}
+.ef-input::placeholder{color:var(--muted)}
+.ef-input.err{border-color:var(--ember)}
+.ef-error{font-size:.73rem;color:var(--ember);margin-top:.35rem;display:flex;align-items:center;gap:.35rem}
+.auth-submit{width:100%;background:var(--grad-a);color:#0A0B1A;font-family:var(--fd);font-weight:700;font-size:.9rem;border:none;border-radius:var(--r);padding:.75rem 1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:transform var(--tr),box-shadow var(--tr);box-shadow:0 4px 20px rgba(247,183,49,.3)}
+.auth-submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(247,183,49,.45)}
+</style>
+
+<div class="auth-page">
+  <div class="auth-glow">
+    <span style="width:500px;height:500px;background:var(--indigo);top:-15%;left:-10%"></span>
+    <span style="width:380px;height:380px;background:var(--saffron);bottom:10%;right:-8%"></span>
+  </div>
+  <div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height:calc(100vh - 120px)">
+      <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+
+        <!-- Card -->
+        <div class="auth-card fi">
+
+          <!-- Header -->
+          <div class="text-center mb-4">
+            <div style="width:58px;height:58px;border-radius:16px;background:var(--saffron-d);border:1px solid rgba(247,183,49,.25);display:flex;align-items:center;justify-content:center;margin:0 auto .9rem;font-size:1.5rem;color:var(--saffron)">
+              <i class="bi bi-shield-lock-fill"></i>
+            </div>
+            <div style="font-family:var(--fg);font-size:1.5rem;font-weight:700;color:var(--text);margin-bottom:.3rem">Mot de passe oublié ?</div>
+            <div style="font-size:.84rem;color:var(--muted)">Entrez votre e-mail et nous vous enverrons un lien de réinitialisation</div>
+          </div>
+
+          <!-- Info box -->
+          <div style="background:var(--indigo-d);border:1px solid rgba(99,102,241,.2);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:1.4rem;display:flex;align-items:flex-start;gap:.75rem">
+            <i class="bi bi-info-circle-fill" style="color:var(--indigo);flex-shrink:0;margin-top:.1rem"></i>
+            <div style="font-size:.8rem;color:var(--text-2);line-height:1.55">
+              Un lien de réinitialisation sera envoyé à votre adresse e-mail. Vérifiez votre boîte de réception ainsi que vos spams.
+            </div>
+          </div>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-4">
+              <label class="ef-label" for="{{ form.email.id_for_label }}">
+                <i class="bi bi-envelope-fill"></i> Adresse e-mail
+              </label>
+              <input
+                type="email"
+                name="{{ form.email.html_name }}"
+                id="{{ form.email.id_for_label }}"
+                class="ef-input {% if form.email.errors %}err{% endif %}"
+                placeholder="votre@email.com"
+                value="{{ form.email.value|default:'' }}"
+                autocomplete="email"
+                autofocus
+              >
+              {% if form.email.errors %}
+              <div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.email.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <button type="submit" class="auth-submit">
+              <i class="bi bi-send-fill"></i> Envoyer le lien de réinitialisation
+            </button>
+
+          </form>
+
+          <!-- Liens bas de page -->
+          <div style="margin-top:1.4rem;padding-top:1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+            <a href="/compte/connexion/" style="font-size:.8rem;color:var(--saffron);font-weight:600;display:flex;align-items:center;gap:.35rem">
+              <i class="bi bi-arrow-left"></i> Retour à la connexion
+            </a>
+            <a href="/inscription/" style="font-size:.8rem;color:var(--muted)">
+              Créer un compte <i class="bi bi-arrow-right"></i>
+            </a>
+          </div>
+
+        </div>
+
+        <!-- Aide supplémentaire -->
+        <div class="text-center mt-3 fi" style="font-size:.78rem;color:var(--muted)">
+          Toujours bloqué ? <a href="/contact/" style="color:var(--saffron)">Contacter le support</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

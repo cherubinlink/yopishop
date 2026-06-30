@@ -1,0 +1,278 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+.gf-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+
+.gf-hero {
+  background: linear-gradient(135deg, #0e1038 0%, #1a1050 45%, #0e2444 100%);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 2rem; margin-bottom: 1.75rem; position: relative; overflow: hidden;
+}
+.gf-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 55% 70% at 85% 30%, rgba(0,200,150,.2) 0%, transparent 60%);
+  pointer-events: none;
+}
+.gf-eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--jade); margin-bottom: .5rem; }
+.gf-title { font-family: var(--fg); font-size: 1.5rem; font-weight: 800; color: var(--text); }
+
+.gf-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.4rem 1.5rem; margin-bottom: 1.25rem; }
+.gf-section-title { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; gap: .45rem; }
+.gf-section-title i { color: var(--jade); }
+
+.gf-field { margin-bottom: 1rem; }
+.gf-label { font-size: .72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: .4rem; }
+.gf-label .req { color: var(--ember); margin-left: .2rem; }
+.gf-label .opt { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: .3rem; }
+.gf-input, .gf-select { width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--fd); font-size: .86rem; padding: .6rem .9rem; outline: none; transition: border-color .2s; }
+.gf-input:focus, .gf-select:focus { border-color: var(--jade); }
+.gf-select option { background: var(--card); }
+.gf-hint { font-size: .7rem; color: var(--muted); margin-top: .3rem; }
+.gf-error { font-size: .72rem; color: var(--ember); margin-top: .3rem; }
+
+.gf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 575px) { .gf-grid { grid-template-columns: 1fr; } }
+
+/* Produit sélectionné — aperçu */
+.gf-product-preview {
+  display: flex; align-items: center; gap: .9rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: .8rem 1rem; margin-top: .6rem; display: none;
+}
+.gf-product-preview.show { display: flex; }
+.gf-product-img { width: 52px; height: 52px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: var(--card); }
+.gf-product-img img { width: 100%; height: 100%; object-fit: cover; }
+.gf-product-name { font-size: .85rem; font-weight: 600; color: var(--text); }
+.gf-product-price { font-size: .78rem; color: var(--saffron); font-family: var(--fm); }
+
+/* Empty state — pas de produits */
+.gf-empty {
+  text-align: center; padding: 2.5rem 1rem;
+  border: 1.5px dashed var(--border); border-radius: var(--r);
+}
+.gf-empty i { font-size: 2.5rem; color: var(--muted); opacity: .4; display: block; margin-bottom: 1rem; }
+
+/* Aperçu calcul réduction */
+.gf-calc-preview {
+  background: var(--jade-d); border: 1px solid rgba(0,200,150,.25);
+  border-radius: 10px; padding: 1rem 1.2rem; margin-top: 1rem;
+}
+.gf-calc-row { display: flex; justify-content: space-between; font-size: .82rem; margin-bottom: .3rem; }
+.gf-calc-row .lbl { color: var(--muted); }
+.gf-calc-row .val { color: var(--text); font-weight: 600; }
+.gf-calc-discount { color: var(--jade); font-weight: 800; font-size: 1.1rem; }
+
+.btn-submit-gf {
+  width: 100%; background: linear-gradient(90deg, var(--jade), #00e0a8);
+  color: #0A0B1A; border: none; border-radius: 12px; padding: .85rem;
+  font-size: .9rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  transition: opacity .2s, transform .2s;
+}
+.btn-submit-gf:hover { opacity: .9; transform: translateY(-1px); }
+
+.gf-note {
+  background: var(--saffron-d); border: 1px solid rgba(247,183,49,.2);
+  border-radius: 8px; padding: .8rem 1rem; font-size: .78rem; color: var(--saffron);
+  display: flex; align-items: flex-start; gap: .55rem; margin-bottom: 1.25rem;
+}
+</style>
+
+<div class="gf-wrap">
+  <div class="container" style="max-width:680px">
+
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"><i class="bi bi-house-fill"></i> Accueil</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'app_marketplace:mes_groupes_achat' %}" style="color:var(--muted);text-decoration:none">Mes achats groupés</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">{% if mode == 'creation' %}Créer{% else %}Modifier{% endif %}</span>
+      </div>
+    </nav>
+
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:var(--ember-d);border:1px solid rgba(255,90,71,.25);border-radius:var(--r);padding:.85rem 1.1rem;font-size:.84rem;color:var(--ember)">
+      <i class="bi bi-exclamation-circle-fill"></i> {{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+
+    <div class="gf-hero fi">
+      <div class="gf-eyebrow"><i class="bi bi-people-fill"></i> {% if mode == 'creation' %}Nouveau{% else %}Édition{% endif %}</div>
+      <div class="gf-title">{{ page_titre }}</div>
+    </div>
+
+    <!-- Note règle métier -->
+    {% if mode == 'creation' %}
+    <div class="gf-note fi">
+      <i class="bi bi-info-circle-fill" style="flex-shrink:0;margin-top:.1rem"></i>
+      <div>Vous ne pouvez créer un achat groupé que sur <strong>vos propres produits</strong> ayant l'option « Autoriser l'achat groupé » activée.</div>
+    </div>
+    {% endif %}
+
+    {% if mode == 'creation' and not mes_produits %}
+    <div class="gf-empty fi">
+      <i class="bi bi-box-seam"></i>
+      <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucun produit éligible</div>
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">
+        Activez l'option « Autoriser l'achat groupé » sur l'un de vos produits actifs pour commencer.
+      </div>
+      <a href="{% url 'apps_core:mes_produits' %}" class="btn-gold" style="font-size:.82rem;display:inline-flex">
+        <i class="bi bi-box"></i> Voir mes produits
+      </a>
+    </div>
+
+    {% else %}
+    <form method="POST" id="formGroupe">
+      {% csrf_token %}
+
+      {% if mode == 'creation' %}
+      <!-- Sélection produit -->
+      <div class="gf-section fi">
+        <div class="gf-section-title"><i class="bi bi-box-seam"></i> Produit concerné</div>
+        <div class="gf-field">
+          <label class="gf-label" for="selectProduit">Choisir parmi mes produits <span class="req">*</span></label>
+          <select name="produit" id="selectProduit" class="gf-select" required onchange="majApercuProduit()">
+            <option value="">— Sélectionner un produit —</option>
+            {% for p in mes_produits %}
+            <option value="{{ p.pk }}" data-prix="{{ p.prix }}" data-img="{{ p.image_principale|default:'' }}" data-nom="{{ p.titre }}">
+              {{ p.titre }} — {{ p.prix|floatformat:0 }} FCFA
+            </option>
+            {% endfor %}
+          </select>
+          <div class="gf-hint">Seuls vos produits actifs avec l'achat groupé activé apparaissent ici.</div>
+
+          <div class="gf-product-preview" id="productPreview">
+            <div class="gf-product-img" id="previewImg"></div>
+            <div>
+              <div class="gf-product-name" id="previewNom"></div>
+              <div class="gf-product-price" id="previewPrix"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="gf-section fi">
+        <div class="gf-section-title"><i class="bi bi-box-seam"></i> Produit</div>
+        <div class="gf-product-preview show">
+          <div class="gf-product-img">
+            {% if groupe.produit.image_principale %}<img src="{{ groupe.produit.image_principale }}" alt="">{% endif %}
+          </div>
+          <div>
+            <div class="gf-product-name">{{ groupe.produit.titre }}</div>
+            <div class="gf-product-price">{{ groupe.prix_normal|floatformat:0 }} FCFA</div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Prix et participants -->
+      <div class="gf-section fi">
+        <div class="gf-section-title"><i class="bi bi-tag"></i> Conditions du groupe</div>
+
+        {% if mode == 'creation' %}
+        <div class="gf-field">
+          <label class="gf-label">Prix groupé (FCFA) <span class="req">*</span></label>
+          <input type="number" name="prix_groupe" id="prixGroupe" class="gf-input" min="1" step="1"
+            placeholder="Prix débloqué une fois l'objectif atteint" required oninput="majCalcul()">
+          <div class="gf-hint">Doit être inférieur au prix normal du produit.</div>
+        </div>
+        {% endif %}
+
+        <div class="gf-grid">
+          <div class="gf-field">
+            <label class="gf-label">Participants minimum <span class="req">*</span></label>
+            <input type="number" name="nb_participants_min" id="nbMin" class="gf-input" min="2" value="5" required oninput="majCalcul()" {% if mode == 'edition' %}readonly value="{{ groupe.nb_participants_min }}"{% endif %}>
+          </div>
+          <div class="gf-field">
+            <label class="gf-label">Participants max <span class="opt">(optionnel)</span></label>
+            <input type="number" name="nb_participants_max" class="gf-input" min="2"
+                   placeholder="∞ illimité" value="{{ groupe.nb_participants_max|default:'' }}">
+          </div>
+        </div>
+
+        {% if mode == 'creation' %}
+        <div class="gf-grid">
+          <div class="gf-field">
+            <label class="gf-label">Quantité par participant</label>
+            <input type="number" name="quantite_par_participant" class="gf-input" min="1" value="1">
+          </div>
+          <div class="gf-field">
+            <label class="gf-label">Durée du groupe (jours) <span class="req">*</span></label>
+            <input type="number" name="duree_jours" class="gf-input" min="1" max="30" value="3" required>
+          </div>
+        </div>
+        {% else %}
+        <div class="gf-field">
+          <label class="gf-label">Prolonger la durée (jours) <span class="opt">(optionnel)</span></label>
+          <input type="number" name="duree_jours" class="gf-input" min="0" max="30" value="0" placeholder="0 = ne pas modifier">
+        </div>
+        {% endif %}
+
+        <!-- Calcul aperçu réduction -->
+        {% if mode == 'creation' %}
+        <div class="gf-calc-preview" id="calcPreview" style="display:none">
+          <div class="gf-calc-row"><span class="lbl">Prix normal</span><span class="val" id="calcNormal">—</span></div>
+          <div class="gf-calc-row"><span class="lbl">Prix groupé</span><span class="val" id="calcGroupe">—</span></div>
+          <div class="gf-calc-row"><span class="lbl">Réduction</span><span class="gf-calc-discount" id="calcReduction">—</span></div>
+        </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn-submit-gf fi">
+        <i class="bi bi-check-lg"></i> {% if mode == 'creation' %}Créer le groupe d'achat{% else %}Enregistrer{% endif %}
+      </button>
+    </form>
+    {% endif %}
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+function majApercuProduit(){
+  const sel = document.getElementById('selectProduit');
+  const opt = sel.options[sel.selectedIndex];
+  const preview = document.getElementById('productPreview');
+  if(!opt || !opt.value){ preview.classList.remove('show'); return; }
+
+  document.getElementById('previewNom').textContent = opt.dataset.nom;
+  document.getElementById('previewPrix').textContent = parseFloat(opt.dataset.prix).toLocaleString('fr') + ' FCFA';
+  const img = document.getElementById('previewImg');
+  img.innerHTML = opt.dataset.img ? `<img src="${opt.dataset.img}" alt="">` : '';
+  preview.classList.add('show');
+  majCalcul();
+}
+
+function majCalcul(){
+  const sel = document.getElementById('selectProduit');
+  const opt = sel?.options[sel.selectedIndex];
+  const prixNormal = opt ? parseFloat(opt.dataset.prix) : 0;
+  const prixGroupe = parseFloat(document.getElementById('prixGroupe')?.value) || 0;
+  const calcDiv = document.getElementById('calcPreview');
+
+  if(!prixNormal || !prixGroupe || prixGroupe >= prixNormal){
+    if(calcDiv) calcDiv.style.display = 'none';
+    return;
+  }
+
+  const reduction = prixNormal - prixGroupe;
+  const pct = (reduction / prixNormal * 100).toFixed(1);
+
+  document.getElementById('calcNormal').textContent = prixNormal.toLocaleString('fr') + ' FCFA';
+  document.getElementById('calcGroupe').textContent = prixGroupe.toLocaleString('fr') + ' FCFA';
+  document.getElementById('calcReduction').textContent = `-${reduction.toLocaleString('fr')} FCFA (-${pct}%)`;
+  calcDiv.style.display = 'block';
+}
+
+const io = new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}})},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

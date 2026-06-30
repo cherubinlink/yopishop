@@ -1,0 +1,414 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════
+   RETOUR DETAIL — hérite des vars de base.html
+══════════════════════════════════════════════ */
+.rd-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+
+/* ── Hero statut ── */
+.rd-hero {
+  border-radius: var(--r); padding: 1.5rem 1.75rem; margin-bottom: 1.5rem;
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 1.1rem;
+}
+.rd-hero.demande  { background: var(--saffron-d); border: 1px solid rgba(247,183,49,.25); }
+.rd-hero.approuve { background: var(--jade-d);    border: 1px solid rgba(0,200,150,.25); }
+.rd-hero.en_cours { background: var(--indigo-d);  border: 1px solid rgba(124,111,255,.25); }
+.rd-hero.complete { background: var(--jade-d);    border: 1px solid rgba(0,200,150,.25); }
+.rd-hero.refuse   { background: var(--ember-d);   border: 1px solid rgba(255,90,71,.25); }
+
+.rd-hero-icon {
+  width: 54px; height: 54px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+}
+.rd-hero.demande  .rd-hero-icon { background: rgba(247,183,49,.2);  color: var(--saffron); }
+.rd-hero.approuve .rd-hero-icon { background: rgba(0,200,150,.2);   color: var(--jade); }
+.rd-hero.en_cours .rd-hero-icon { background: rgba(124,111,255,.2); color: var(--indigo); }
+.rd-hero.complete .rd-hero-icon { background: rgba(0,200,150,.2);   color: var(--jade); }
+.rd-hero.refuse   .rd-hero-icon { background: rgba(255,90,71,.2);   color: var(--ember); }
+
+.rd-hero-title { font-family: var(--fg); font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: .25rem; }
+.rd-hero-sub   { font-size: .82rem; color: var(--muted); }
+
+/* ── Timeline de suivi ── */
+.rd-timeline { display: flex; flex-direction: column; gap: 0; }
+.rd-tl-item {
+  display: flex; gap: .85rem; padding: .9rem 0;
+  border-bottom: 1px solid var(--border); align-items: flex-start;
+  position: relative;
+}
+.rd-tl-item:last-child { border-bottom: none; }
+.rd-tl-dot {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: .85rem;
+  margin-top: .1rem; border: 2px solid var(--border);
+}
+.rd-tl-dot.done    { background: var(--jade);    border-color: var(--jade);    color: #0A0B1A; }
+.rd-tl-dot.current { background: var(--saffron); border-color: var(--saffron); color: #0A0B1A; }
+.rd-tl-dot.pending { background: var(--surface); color: var(--muted); }
+.rd-tl-dot.refuse  { background: var(--ember);   border-color: var(--ember);   color: #fff; }
+
+.rd-tl-label { font-size: .87rem; font-weight: 600; color: var(--text); margin-bottom: .1rem; }
+.rd-tl-sub   { font-size: .76rem; color: var(--muted); line-height: 1.4; }
+.rd-tl-date  { font-size: .7rem; color: var(--muted); margin-top: .2rem; }
+
+/* ── Produit card ── */
+.rd-product-card {
+  display: flex; align-items: center; gap: .9rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .9rem 1.1rem; margin-bottom: 1.25rem;
+}
+.rd-product-img {
+  width: 64px; height: 64px; border-radius: 10px; overflow: hidden;
+  flex-shrink: 0; background: var(--card); border: 1px solid var(--border);
+}
+.rd-product-img img { width: 100%; height: 100%; object-fit: cover; }
+.rd-product-name { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+.rd-product-meta { font-size: .76rem; color: var(--muted); }
+
+/* ── Infos ── */
+.rd-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.3rem 1.4rem; margin-bottom: 1.25rem; }
+.rd-card-title { font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .9rem; display: flex; align-items: center; gap: .4rem; }
+.rd-card-title i { color: var(--saffron); }
+
+.rd-info-row { display: flex; align-items: flex-start; gap: .75rem; padding: .55rem 0; border-bottom: 1px solid var(--border); }
+.rd-info-row:last-child { border-bottom: none; }
+.rd-info-ico { width: 30px; height: 30px; border-radius: 8px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: .8rem; color: var(--muted); flex-shrink: 0; }
+.rd-info-lbl { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .1rem; }
+.rd-info-val { font-size: .84rem; color: var(--text); font-weight: 500; }
+
+/* ── Raison badge ── */
+.rd-raison-badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .73rem; font-weight: 700; padding: .28rem .85rem;
+  border-radius: 99px;
+  background: var(--ember-d); color: var(--ember); border: 1px solid rgba(255,90,71,.25);
+}
+
+/* ── Remboursement card ── */
+.rd-refund-card {
+  background: var(--jade-d); border: 1px solid rgba(0,200,150,.25);
+  border-radius: var(--r); padding: 1.2rem 1.4rem; margin-bottom: 1.25rem;
+  display: flex; align-items: center; gap: 1rem;
+}
+.rd-refund-amount { font-family: var(--fm); font-size: 1.6rem; font-weight: 800; color: var(--jade); line-height: 1; }
+.rd-refund-label  { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+
+/* ── Notes admin ── */
+.rd-admin-note {
+  background: var(--surface); border-left: 3px solid var(--saffron);
+  border-radius: 0 8px 8px 0; padding: .75rem 1rem;
+  font-size: .82rem; color: var(--text-2); line-height: 1.6; margin-bottom: 1.25rem;
+}
+.rd-admin-note-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--saffron); margin-bottom: .3rem; }
+
+/* ── Actions ── */
+.rd-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.btn-cancel-retour {
+  background: var(--ember-d); color: var(--ember);
+  border: 1.5px solid rgba(255,90,71,.3); border-radius: 10px;
+  padding: .6rem 1.2rem; font-size: .85rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: .45rem;
+}
+.btn-cancel-retour:hover { background: var(--ember); color: #fff; }
+
+/* ── Polling indicator ── */
+.rd-polling {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .72rem; color: var(--muted);
+}
+.rd-polling-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--jade);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+
+
+<div class="rd-wrap">
+  <div class="container" style="max-width:780px">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'app_marketplace:mes_retours' %}" style="color:var(--muted);text-decoration:none">
+          Mes retours
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Retour #{{ retour.pk }}</span>
+      </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}var(--jade-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>{{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- ── Hero statut ── -->
+    <div class="rd-hero fi {{ retour.statut }}" id="rdHero">
+      <div class="rd-hero-icon">
+        {% if retour.statut == 'demande' %}<i class="bi bi-hourglass-split"></i>
+        {% elif retour.statut == 'approuve' %}<i class="bi bi-check-circle-fill"></i>
+        {% elif retour.statut == 'en_cours' %}<i class="bi bi-arrow-repeat"></i>
+        {% elif retour.statut == 'complete' %}<i class="bi bi-bag-check-fill"></i>
+        {% elif retour.statut == 'refuse' %}<i class="bi bi-x-circle-fill"></i>
+        {% endif %}
+      </div>
+      <div style="flex:1">
+        <div class="rd-hero-title" id="rdStatutTitle">
+          {% if retour.statut == 'demande' %}Demande en attente de traitement
+          {% elif retour.statut == 'approuve' %}Retour approuvé — Préparez votre colis
+          {% elif retour.statut == 'en_cours' %}Retour en cours de traitement
+          {% elif retour.statut == 'complete' %}Retour complété — Remboursement effectué
+          {% elif retour.statut == 'refuse' %}Demande refusée
+          {% endif %}
+        </div>
+        <div class="rd-hero-sub">
+          Commande <strong>{{ retour.commande.numero_commande }}</strong>
+          &nbsp;·&nbsp; Demande soumise le {{ retour.date_demande|date:"d M Y à H:i" }}
+          {% if retour.statut in 'demande,approuve,en_cours' %}
+          &nbsp;·&nbsp; <span class="rd-polling"><span class="rd-polling-dot"></span> Mise à jour automatique</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Produit concerné ── -->
+    <div class="rd-product-card fi">
+      <div class="rd-product-img">
+        {% if retour.article_commande.produit.image_principale %}
+        <img src="{{ retour.article_commande.produit.image_principale }}" alt="{{ retour.article_commande.produit.titre }}">
+        {% else %}
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image"></i></div>
+        {% endif %}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="rd-product-name">{{ retour.article_commande.produit.titre|truncatechars:55 }}</div>
+        <div class="rd-product-meta">
+          <i class="bi bi-shop"></i> {{ retour.article_commande.produit.vendeur.username }}
+          &nbsp;·&nbsp; Quantité retournée : {{ retour.quantite }}
+          {% if retour.article_commande.variante %}&nbsp;·&nbsp; {{ retour.article_commande.variante.nom }}{% endif %}
+        </div>
+      </div>
+      <a href="{% url 'apps_core:produit_detail' retour.article_commande.produit.slug %}"
+         class="btn-ghost" style="font-size:.76rem;padding:.35rem .85rem;flex-shrink:0">
+        <i class="bi bi-eye"></i>
+      </a>
+    </div>
+
+    <!-- ── Remboursement (si complété) ── -->
+    {% if retour.statut == 'complete' and retour.montant_remboursement %}
+    <div class="rd-refund-card fi">
+      <div style="width:50px;height:50px;border-radius:13px;background:rgba(0,200,150,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--jade);flex-shrink:0">
+        <i class="bi bi-wallet2"></i>
+      </div>
+      <div>
+        <div class="rd-refund-amount">{{ retour.montant_remboursement|floatformat:0 }} FCFA</div>
+        <div class="rd-refund-label">Remboursé sur votre wallet YopiPay le {{ retour.date_traitement|date:"d M Y" }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Notes admin ── -->
+    {% if retour.notes_admin %}
+    <div class="rd-admin-note fi">
+      <div class="rd-admin-note-lbl"><i class="bi bi-chat-left-text"></i> Message de l'équipe YopiShop</div>
+      {{ retour.notes_admin }}
+    </div>
+    {% endif %}
+
+    <!-- ── Timeline suivi ── -->
+    <div class="rd-card fi">
+      <div class="rd-card-title"><i class="bi bi-clock-history"></i> Suivi de la demande</div>
+      <div class="rd-timeline">
+
+        <!-- Étape 1 : Demande soumise -->
+        <div class="rd-tl-item">
+          <div class="rd-tl-dot done"><i class="bi bi-check-lg"></i></div>
+          <div>
+            <div class="rd-tl-label">Demande soumise</div>
+            <div class="rd-tl-sub">Votre demande a été enregistrée et est en attente d'examen.</div>
+            <div class="rd-tl-date">{{ retour.date_demande|date:"d M Y à H:i" }}</div>
+          </div>
+        </div>
+
+        <!-- Étape 2 : Examen -->
+        <div class="rd-tl-item">
+          <div class="rd-tl-dot {% if retour.statut in 'approuve,en_cours,complete' %}done{% elif retour.statut == 'refuse' %}refuse{% else %}pending{% endif %}">
+            {% if retour.statut in 'approuve,en_cours,complete' %}<i class="bi bi-check-lg"></i>
+            {% elif retour.statut == 'refuse' %}<i class="bi bi-x-lg"></i>
+            {% else %}<i class="bi bi-hourglass"></i>{% endif %}
+          </div>
+          <div>
+            <div class="rd-tl-label">Examen de la demande</div>
+            <div class="rd-tl-sub">
+              {% if retour.statut == 'demande' %}Notre équipe examine votre demande (48h ouvrées).
+              {% elif retour.statut == 'approuve' %}Demande approuvée — préparez votre colis.
+              {% elif retour.statut == 'refuse' %}Demande refusée.{% if retour.notes_admin %} Voir le message ci-dessus.{% endif %}
+              {% else %}Examinée et approuvée.{% endif %}
+            </div>
+            {% if retour.statut != 'demande' and retour.date_traitement %}
+            <div class="rd-tl-date">{{ retour.date_traitement|date:"d M Y à H:i" }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Étape 3 : En cours -->
+        <div class="rd-tl-item">
+          <div class="rd-tl-dot {% if retour.statut in 'en_cours,complete' %}done{% elif retour.statut == 'approuve' %}current{% else %}pending{% endif %}">
+            {% if retour.statut in 'en_cours,complete' %}<i class="bi bi-check-lg"></i>
+            {% elif retour.statut == 'approuve' %}<i class="bi bi-box-seam"></i>
+            {% else %}<i class="bi bi-box-seam"></i>{% endif %}
+          </div>
+          <div>
+            <div class="rd-tl-label">Retour en cours</div>
+            <div class="rd-tl-sub">
+              {% if retour.statut == 'approuve' %}Renvoyez le produit à l'adresse indiquée par le vendeur.
+              {% elif retour.statut in 'en_cours,complete' %}Produit reçu et examiné par le vendeur.
+              {% else %}En attente d'approbation.{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Étape 4 : Remboursement -->
+        <div class="rd-tl-item">
+          <div class="rd-tl-dot {% if retour.statut == 'complete' %}done{% else %}pending{% endif %}">
+            {% if retour.statut == 'complete' %}<i class="bi bi-check-lg"></i>
+            {% else %}<i class="bi bi-wallet2"></i>{% endif %}
+          </div>
+          <div>
+            <div class="rd-tl-label">Remboursement</div>
+            <div class="rd-tl-sub">
+              {% if retour.statut == 'complete' %}
+                {% if retour.montant_remboursement %}
+                {{ retour.montant_remboursement|floatformat:0 }} FCFA crédités sur votre wallet YopiPay.
+                {% else %}Retour complété.{% endif %}
+              {% else %}
+              Le remboursement sera effectué sur votre wallet YopiPay.
+              {% endif %}
+            </div>
+            {% if retour.statut == 'complete' and retour.date_traitement %}
+            <div class="rd-tl-date">{{ retour.date_traitement|date:"d M Y à H:i" }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Détails de la demande ── -->
+    <div class="rd-card fi">
+      <div class="rd-card-title"><i class="bi bi-file-text"></i> Détails de la demande</div>
+      <div style="margin-bottom:1rem">
+        <div class="rd-info-row">
+          <div class="rd-info-ico"><i class="bi bi-tag"></i></div>
+          <div>
+            <div class="rd-info-lbl">Raison du retour</div>
+            <span class="rd-raison-badge"><i class="bi bi-exclamation-circle"></i> {{ retour.get_raison_display }}</span>
+          </div>
+        </div>
+        <div class="rd-info-row">
+          <div class="rd-info-ico"><i class="bi bi-chat-left-text"></i></div>
+          <div>
+            <div class="rd-info-lbl">Description</div>
+            <div class="rd-info-val" style="line-height:1.6">{{ retour.description }}</div>
+          </div>
+        </div>
+        <div class="rd-info-row">
+          <div class="rd-info-ico"><i class="bi bi-boxes"></i></div>
+          <div>
+            <div class="rd-info-lbl">Quantité concernée</div>
+            <div class="rd-info-val">{{ retour.quantite }} article{{ retour.quantite|pluralize }}</div>
+          </div>
+        </div>
+        <div class="rd-info-row">
+          <div class="rd-info-ico"><i class="bi bi-bag"></i></div>
+          <div>
+            <div class="rd-info-lbl">Commande</div>
+            <div class="rd-info-val">
+              <a href="{% url 'app_marketplace:commande_detail' retour.commande.pk %}"
+                 style="color:var(--saffron)">{{ retour.commande.numero_commande }}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if retour.photos.exists %}
+      <div>
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Photos jointes</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          {% for photo in retour.photos.all %}
+          <a href="{{ photo.image.url }}" target="_blank">
+            <img src="{{ photo.image.url }}" alt=""
+                 style="width:72px;height:72px;border-radius:10px;object-fit:cover;border:1.5px solid var(--border)">
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Actions ── -->
+    {% if retour.statut == 'demande' and retour.utilisateur == request.user %}
+    <div class="rd-actions fi">
+      <form method="POST" action="{% url 'app_marketplace:annuler_retour' retour.pk %}"
+            onsubmit="return confirm('Annuler cette demande de retour ?')">
+        {% csrf_token %}
+        <button type="submit" class="btn-cancel-retour">
+          <i class="bi bi-x-circle"></i> Annuler ma demande
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- ── Bouton retour ── -->
+    <div style="margin-top:1.5rem;text-align:center">
+      <a href="{% url 'app_marketplace:mes_retours' %}" class="btn-ghost" style="font-size:.85rem">
+        <i class="bi bi-arrow-left"></i> Retour à mes demandes
+      </a>
+    </div>
+
+  </div>
+</div>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+
+/* ── Polling statut (toutes les 30s) — uniquement si retour en cours ── */
+{% if retour.statut in 'demande,approuve,en_cours' %}
+const POLLING_URL = "{% url 'app_marketplace:ajax_statut_retour' retour.pk %}";
+
+async function pollStatut(){
+  try{
+    const r = await fetch(POLLING_URL, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+    const d = await r.json();
+    if(d.statut && d.statut !== '{{ retour.statut }}'){
+      // Statut changé → recharger la page
+      location.reload();
+    }
+  } catch{}
+}
+
+setInterval(pollStatut, 30000); // toutes les 30s
+{% endif %}
+</script>
+{% endblock %}
+
+{% endblock %}

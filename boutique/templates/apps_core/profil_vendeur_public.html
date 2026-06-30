@@ -1,0 +1,782 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Profil vendeur — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.vendor-page{padding:0 0 4rem;min-height:80vh}
+
+/* ── HERO BANNER ── */
+.vendor-hero{
+  position:relative;
+  margin-bottom:5rem;
+}
+.vendor-banner{
+  height:240px;
+  background:linear-gradient(120deg,#0e1038 0%,#1a0c36 40%,#0e2444 100%);
+  overflow:hidden;position:relative;
+}
+.vendor-banner::after{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 65% 80% at 85% 50%,rgba(99,102,241,.25) 0%,transparent 65%),
+    radial-gradient(ellipse 40% 55% at 5% 80%,rgba(247,183,49,.15) 0%,transparent 55%),
+    radial-gradient(ellipse 30% 40% at 50% 5%,rgba(255,90,71,.08) 0%,transparent 50%);
+}
+.vendor-banner-img{width:100%;height:100%;object-fit:cover;display:block}
+
+.vendor-avatar-wrap{
+  position:absolute;
+  left:2rem;bottom:-3.8rem;
+  display:flex;align-items:flex-end;gap:1rem;
+  z-index:2;
+}
+.vendor-avatar{
+  width:110px;height:110px;border-radius:50%;
+  border:4px solid var(--bg);object-fit:cover;
+  background:var(--surface);display:block;flex-shrink:0;
+}
+.vendor-avatar-ph{
+  width:110px;height:110px;border-radius:50%;
+  border:4px solid var(--bg);flex-shrink:0;
+  background:linear-gradient(135deg,var(--saffron-d),var(--indigo-d));
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.8rem;font-weight:800;color:var(--saffron);
+}
+.vendor-badge-online{
+  width:18px;height:18px;border-radius:50%;
+  background:var(--jade);border:3px solid var(--bg);
+  position:absolute;bottom:8px;right:4px;
+}
+
+/* Info bar sous banner */
+.vendor-info-bar{
+  background:var(--card);border:1px solid var(--border);border-top:none;
+  border-radius:0 0 var(--r) var(--r);
+  padding:1rem 2rem 1.25rem calc(2rem + 110px + 1.25rem);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  flex-wrap:wrap;gap:.75rem;min-height:88px;
+}
+.vendor-name{
+  font-family:var(--fg);font-size:1.4rem;font-weight:800;
+  color:var(--text);letter-spacing:-.02em;line-height:1.1;
+}
+.vendor-handle{
+  font-size:.82rem;color:var(--muted);margin-top:.18rem;
+  display:flex;align-items:center;gap:.45rem;
+}
+.vendor-badges{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:.45rem}
+
+/* ── STATS BAR ── */
+.vendor-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--border);
+  border-radius:var(--r);overflow:hidden;
+  border:1px solid var(--border);margin-bottom:2rem;
+}
+@media(max-width:575px){.vendor-stats{grid-template-columns:repeat(2,1fr)}}
+.vstat{background:var(--card);padding:1.1rem .8rem;text-align:center}
+.vstat-n{font-family:var(--fm);font-size:1.4rem;font-weight:800;line-height:1;margin-bottom:.2rem}
+.vstat-l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── GRILLE PRINCIPALE ── */
+.vendor-grid{
+  display:grid;grid-template-columns:280px 1fr;gap:1.5rem;align-items:start;
+}
+@media(max-width:991px){.vendor-grid{grid-template-columns:1fr}}
+
+/* ── SIDEBAR ── */
+.vside-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;margin-bottom:1rem;
+}
+.vside-head{
+  padding:.75rem 1.1rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.vside-title{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.vside-body{padding:.6rem 1.1rem}
+
+.vinfo-row{
+  display:flex;align-items:center;gap:.8rem;
+  padding:.55rem 0;border-bottom:1px solid var(--border);
+}
+.vinfo-row:last-child{border-bottom:none}
+.vinfo-ico{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:.88rem;
+}
+.vinfo-lbl{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.1rem}
+.vinfo-val{font-size:.83rem;color:var(--text);font-weight:500}
+
+/* Note étoiles */
+.stars-row{display:flex;gap:.2rem;align-items:center}
+.stars-row i{color:var(--saffron);font-size:.82rem}
+.stars-row span{font-size:.76rem;color:var(--muted);margin-left:.3rem}
+
+/* ── PRODUITS ── */
+.vendor-products-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(175px,1fr));
+  gap:1rem;
+}
+@media(max-width:575px){.vendor-products-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* Product card (reprise du design system) */
+.pcard{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:transform var(--tr),box-shadow var(--tr),border-color var(--tr);
+}
+.pcard:hover{transform:translateY(-4px);box-shadow:var(--sh-h);border-color:var(--border-h)}
+.pcard-img{position:relative;overflow:hidden;aspect-ratio:1;background:var(--surface);display:flex;align-items:center;justify-content:center}
+.pcard-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.pcard:hover .pcard-img img{transform:scale(1.06)}
+.pcard-fav{
+  position:absolute;top:.55rem;right:.55rem;
+  background:rgba(7,9,26,.7);border:1px solid var(--border);
+  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:.83rem;cursor:pointer;
+  transition:background var(--tr),color var(--tr);
+}
+.pcard-fav:hover{background:var(--ember-d);color:var(--ember);border-color:var(--ember)}
+.pcard-body{padding:.8rem;flex:1;display:flex;flex-direction:column}
+.pcard-name{font-size:.83rem;font-weight:600;color:var(--text);margin-bottom:.3rem;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pcard-price .pn{font-family:var(--fm);font-size:.98rem;font-weight:700;color:var(--saffron)}
+.pcard-price .po{font-size:.71rem;color:var(--muted);text-decoration:line-through;margin-left:.3rem}
+.pcard-foot{border-top:1px solid var(--border);padding:.55rem .8rem;display:flex;align-items:center;justify-content:space-between;gap:.4rem}
+.pcard-cart{
+  background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.2);
+  border-radius:99px;font-size:.73rem;font-weight:600;padding:.28rem .75rem;
+  cursor:pointer;display:flex;align-items:center;gap:.3rem;
+  transition:background var(--tr),color var(--tr);white-space:nowrap;
+}
+.pcard-cart:hover{background:var(--saffron);color:#0A0B1A}
+.pcard-stars-sm{display:flex;align-items:center;gap:.2rem;font-size:.68rem;color:var(--muted)}
+.pcard-stars-sm i{color:var(--saffron);font-size:.7rem}
+
+/* ── AVIS ── */
+.avis-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:1rem 1.1rem;margin-bottom:.75rem;
+  transition:border-color var(--tr);
+}
+.avis-card:hover{border-color:var(--border-h)}
+.avis-avatar{
+  width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  background:var(--card);border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.88rem;font-weight:700;color:var(--saffron);overflow:hidden;
+}
+.avis-avatar img{width:100%;height:100%;object-fit:cover}
+
+/* Section header */
+.vsec-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:1.2rem;flex-wrap:wrap;gap:.5rem;
+}
+.vsec-title{
+  font-family:var(--fg);font-size:1.05rem;font-weight:700;color:var(--text);
+  display:flex;align-items:center;gap:.5rem;
+}
+.vsec-title i{color:var(--saffron)}
+
+/* Onglets */
+.vendor-tabs{
+  display:flex;gap:.15rem;border-bottom:2px solid var(--border);
+  margin-bottom:1.5rem;overflow-x:auto;scrollbar-width:none;
+}
+.vendor-tabs::-webkit-scrollbar{display:none}
+.vtab{
+  display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.05rem;
+  font-size:.82rem;font-weight:600;color:var(--muted);
+  border-bottom:2.5px solid transparent;margin-bottom:-2px;
+  cursor:pointer;text-decoration:none;white-space:nowrap;
+  transition:color .2s,border-color .2s;
+}
+.vtab:hover{color:var(--text)}
+.vtab.on{color:var(--saffron);border-bottom-color:var(--saffron)}
+.vtab i{font-size:.83rem}
+
+/* Empty state */
+.vempty{text-align:center;padding:3rem 1rem}
+.vempty i{font-size:2.5rem;color:var(--muted);opacity:.4;display:block;margin-bottom:.8rem}
+.vempty-title{font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.3rem}
+.vempty-sub{font-size:.8rem;color:var(--muted)}
+
+/* Note globale grande */
+.big-note{
+  display:flex;align-items:center;gap:1rem;
+  padding:1rem 1.1rem;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  margin-bottom:1rem;
+}
+.big-note-val{
+  font-family:var(--fm);font-size:2.5rem;font-weight:800;
+  color:var(--saffron);line-height:1;
+}
+.big-note-stars{display:flex;gap:.2rem;margin:.3rem 0}
+.big-note-stars i{color:var(--saffron);font-size:1rem}
+.big-note-count{font-size:.74rem;color:var(--muted)}
+
+@media(max-width:600px){
+  .vendor-info-bar{padding:4.5rem 1rem 1.1rem}
+  .vendor-avatar-wrap{left:1rem;bottom:-3.2rem}
+  .vendor-avatar,.vendor-avatar-ph{width:84px;height:84px;font-size:2.2rem}
+  .vendor-banner{height:160px}
+  .vendor-name{font-size:1.1rem}
+}
+</style>
+
+<div class="vendor-page">
+  <div class="container" style="padding-top:2rem">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+      <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <a href="/boutiques/" style="color:var(--muted)">Boutiques</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <span style="color:var(--saffron)">{{ vendeur.username }}</span>
+    </nav>
+
+  </div>
+
+  <!-- ═══ HERO ═══ -->
+  <div class="container-fluid px-0">
+    <div class="vendor-hero">
+
+      <!-- Banner -->
+      <div class="vendor-banner">
+        {% if vendeur.boutique.banniere %}
+        <img src="{{ vendeur.boutique.banniere.url }}" alt="Bannière" class="vendor-banner-img">
+        {% endif %}
+      </div>
+
+      <!-- Avatar -->
+      <div class="vendor-avatar-wrap" style="left:max(2rem, calc((100% - 1320px)/2 + 2rem))">
+        {% if vendeur.avatar %}
+        <div style="position:relative">
+          <img src="{{ vendeur.avatar.url }}" alt="{{ vendeur.username }}" class="vendor-avatar">
+          <div class="vendor-badge-online"></div>
+        </div>
+        {% else %}
+        <div style="position:relative">
+          <div class="vendor-avatar-ph">{{ vendeur.username|first|upper }}</div>
+          <div class="vendor-badge-online"></div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Info bar -->
+      <div class="vendor-info-bar" style="margin:0 max(0px, calc((100% - 1320px)/2))">
+        <div>
+          <!-- Nom boutique ou username -->
+          <div class="vendor-name">
+            {% if vendeur.boutique %}{{ vendeur.boutique.nom }}{% else %}{{ vendeur.get_full_name|default:vendeur.username }}{% endif %}
+          </div>
+          <div class="vendor-handle">
+            <i class="bi bi-at"></i>{{ vendeur.username }}
+            {% if vendeur.boutique and vendeur.boutique.ville %}
+            &nbsp;<i class="bi bi-geo-alt"></i> {{ vendeur.boutique.ville }}
+            {% elif profil.ville %}
+            &nbsp;<i class="bi bi-geo-alt"></i> {{ profil.ville }}
+            {% endif %}
+          </div>
+          <div class="vendor-badges">
+            {% if vendeur.type_vendeur == 'yopishop' %}
+            <span class="chip" style="background:var(--jade-d);color:var(--jade);font-size:.6rem;border:1px solid rgba(16,212,160,.2)">
+              <i class="bi bi-patch-check-fill"></i> YopiShop Officiel
+            </span>
+            {% elif vendeur.type_vendeur == 'pro' %}
+            <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.6rem;border:1px solid rgba(99,102,241,.2)">
+              <i class="bi bi-briefcase-fill"></i> Vendeur Pro
+            </span>
+            {% else %}
+            <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.6rem;border:1px solid rgba(247,183,49,.2)">
+              <i class="bi bi-shop"></i> Vendeur
+            </span>
+            {% endif %}
+            {% if vendeur.kyc_valide %}
+            <span class="chip" style="background:var(--jade-d);color:var(--jade);font-size:.6rem;border:1px solid rgba(16,212,160,.2)">
+              <i class="bi bi-shield-check"></i> KYC validé
+            </span>
+            {% endif %}
+            <span class="chip" style="font-size:.6rem;background:var(--surface);color:var(--muted);border:1px solid var(--border)">
+              <i class="bi bi-calendar3"></i> Depuis {{ vendeur.date_joined|date:"M Y" }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Actions visiteur -->
+        <div class="d-flex gap-2 flex-wrap">
+          {% if request.user.is_authenticated and request.user != vendeur %}
+          <button class="btn-ghost" style="font-size:.8rem" onclick="toggleFollow(this)" data-id="{{ vendeur.id }}">
+            <i class="bi bi-person-plus"></i> Suivre
+          </button>
+          <a href="/messages/nouveau/{{ vendeur.username }}/" class="btn-ghost" style="font-size:.8rem">
+            <i class="bi bi-chat"></i> Contacter
+          </a>
+          {% endif %}
+          {% if vendeur.boutique %}
+          <a href="{% url 'apps_marketplace:boutique_detail' vendeur.boutique.slug %}" class="btn-gold" style="font-size:.8rem">
+            <i class="bi bi-shop"></i> Voir la boutique
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Stats -->
+    <div class="vendor-stats fi">
+      <div class="vstat">
+        <div class="vstat-n" style="color:var(--saffron)">{{ produits|length|default:"0" }}</div>
+        <div class="vstat-l">Produits</div>
+      </div>
+      <div class="vstat">
+        <div class="vstat-n" style="color:var(--jade)">{{ profil.note_moyenne|default:"—"|floatformat:1 }}</div>
+        <div class="vstat-l">Note moyenne</div>
+      </div>
+      <div class="vstat">
+        <div class="vstat-n" style="color:var(--indigo)">{{ avis|length|default:"0" }}</div>
+        <div class="vstat-l">Avis reçus</div>
+      </div>
+      <div class="vstat">
+        <div class="vstat-n" style="color:var(--ember)">{{ profil.nb_ventes|default:"0" }}</div>
+        <div class="vstat-l">Ventes</div>
+      </div>
+    </div>
+
+    <!-- Grille sidebar + contenu -->
+    <div class="vendor-grid">
+
+      <!-- ── SIDEBAR ── -->
+      <aside class="fi">
+
+        <!-- À propos -->
+        <div class="vside-card">
+          <div class="vside-head">
+            <span class="vside-title">À propos</span>
+          </div>
+          <div class="vside-body">
+            {% if vendeur.bio %}
+            <p style="font-size:.83rem;color:var(--text-2);line-height:1.65;margin:0">{{ vendeur.bio }}</p>
+            {% elif vendeur.boutique and vendeur.boutique.description %}
+            <p style="font-size:.83rem;color:var(--text-2);line-height:1.65;margin:0">{{ vendeur.boutique.description|truncatechars:180 }}</p>
+            {% else %}
+            <p style="font-size:.8rem;color:var(--muted);font-style:italic;margin:0">Aucune description disponible.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Informations boutique -->
+        <div class="vside-card">
+          <div class="vside-head">
+            <span class="vside-title">Informations</span>
+          </div>
+          <div class="vside-body">
+
+            {% if vendeur.boutique and vendeur.boutique.note_moyenne %}
+            <div class="vinfo-row">
+              <div class="vinfo-ico" style="background:var(--saffron-d)"><i class="bi bi-star-fill" style="color:var(--saffron)"></i></div>
+              <div>
+                <div class="vinfo-lbl">Note</div>
+                <div class="stars-row">
+                  {% with note=vendeur.boutique.note_moyenne|floatformat:0|add:"0" %}
+                  {% for i in "12345" %}
+                  <i class="bi bi-star{% if forloop.counter <= note %}-fill{% endif %}"></i>
+                  {% endfor %}
+                  {% endwith %}
+                  <span>{{ vendeur.boutique.note_moyenne|floatformat:1 }} / 5</span>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="vinfo-row">
+              <div class="vinfo-ico" style="background:var(--indigo-d)"><i class="bi bi-box-seam" style="color:var(--indigo)"></i></div>
+              <div>
+                <div class="vinfo-lbl">Produits actifs</div>
+                <div class="vinfo-val">{{ produits|length }}</div>
+              </div>
+            </div>
+
+            {% if vendeur.boutique and vendeur.boutique.delai_traitement %}
+            <div class="vinfo-row">
+              <div class="vinfo-ico" style="background:var(--jade-d)"><i class="bi bi-clock" style="color:var(--jade)"></i></div>
+              <div>
+                <div class="vinfo-lbl">Délai de traitement</div>
+                <div class="vinfo-val">{{ vendeur.boutique.delai_traitement }}</div>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if vendeur.boutique and vendeur.boutique.politique_retour %}
+            <div class="vinfo-row">
+              <div class="vinfo-ico" style="background:var(--ember-d)"><i class="bi bi-arrow-counterclockwise" style="color:var(--ember)"></i></div>
+              <div>
+                <div class="vinfo-lbl">Retours</div>
+                <div class="vinfo-val" style="font-size:.78rem">{{ vendeur.boutique.politique_retour|truncatechars:40 }}</div>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="vinfo-row">
+              <div class="vinfo-ico" style="background:var(--surface)"><i class="bi bi-calendar3" style="color:var(--muted)"></i></div>
+              <div>
+                <div class="vinfo-lbl">Membre depuis</div>
+                <div class="vinfo-val">{{ vendeur.date_joined|date:"d F Y" }}</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Partage & contact -->
+        <div class="vside-card">
+          <div class="vside-head"><span class="vside-title">Partager</span></div>
+          <div class="vside-body" style="padding:.75rem 1.1rem">
+            <div class="d-flex gap-2 flex-wrap">
+              <a href="https://wa.me/?text={{ request.build_absolute_uri }}" target="_blank"
+                 class="btn-ghost" style="font-size:.78rem;padding:.38rem .85rem">
+                <i class="bi bi-whatsapp" style="color:#25D366"></i> WhatsApp
+              </a>
+              <button class="btn-ghost" style="font-size:.78rem;padding:.38rem .85rem"
+                      onclick="navigator.clipboard.writeText(window.location.href).then(()=>this.textContent='✓ Copié !')">
+                <i class="bi bi-link-45deg"></i> Copier le lien
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ── CONTENU PRINCIPAL ── -->
+      <main>
+
+        <!-- Onglets -->
+        <div class="vendor-tabs fi">
+          <a class="vtab on" href="#" data-tab="produits"><i class="bi bi-bag"></i> Produits <span style="font-size:.7rem;color:var(--muted)">({{ produits|length }})</span></a>
+          <a class="vtab" href="#" data-tab="avis"><i class="bi bi-star"></i> Avis <span style="font-size:.7rem;color:var(--muted)">({{ avis|length }})</span></a>
+          {% if vendeur.est_influenceur %}
+          <a class="vtab" href="#" data-tab="videos"><i class="bi bi-play-circle"></i> Vidéos</a>
+          {% endif %}
+        </div>
+
+        <!-- ═══ ONGLET PRODUITS ═══ -->
+        <div class="tab-pane active" id="vtab-produits">
+          {% if produits %}
+          <div class="vendor-products-grid fi">
+            {% for p in produits %}
+            <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard text-decoration-none">
+              <div class="pcard-img">
+                {% if p.image_principale %}
+                <img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+                {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)">
+                  <i class="bi bi-image" style="font-size:2rem"></i>
+                </div>
+                {% endif %}
+                {% if p.prix_promotionnel < p.prix %}
+                <span style="position:absolute;top:.5rem;left:.5rem;background:var(--ember);color:#fff;font-size:.58rem;font-weight:700;padding:2px 7px;border-radius:99px;text-transform:uppercase">Promo</span>
+                {% endif %}
+                <button class="pcard-fav" data-id="{{ p.id }}" onclick="return false"><i class="bi bi-heart"></i></button>
+              </div>
+              <div class="pcard-body">
+                <div class="pcard-name">{{ p.titre }}</div>
+                <div class="pcard-price">
+                  <span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>
+                  {% if p.prix_promotionnel < p.prix %}<span class="po">{{ p.prix|floatformat:0 }}</span>{% endif %}
+                </div>
+              </div>
+              <div class="pcard-foot">
+                <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false">
+                  <i class="bi bi-bag-plus"></i> Ajouter
+                </button>
+                <div class="pcard-stars-sm"><i class="bi bi-star-fill"></i> {{ p.note_moyenne|default:"—"|floatformat:1 }}</div>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="vempty fi">
+            <i class="bi bi-bag"></i>
+            <div class="vempty-title">Aucun produit disponible</div>
+            <div class="vempty-sub">Ce vendeur n'a pas encore mis de produits en vente.</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- ═══ ONGLET AVIS ═══ -->
+        <div class="tab-pane" id="vtab-avis" style="display:none">
+
+          {% if avis %}
+          <!-- Note globale -->
+          <div class="big-note fi">
+            <div>
+              <div class="big-note-val">{{ profil.note_moyenne|default:"—"|floatformat:1 }}</div>
+              <div class="big-note-stars">
+                {% with note=profil.note_moyenne|default:0|floatformat:0|add:"0" %}
+                {% for i in "12345" %}
+                <i class="bi bi-star{% if forloop.counter <= note %}-fill{% endif %}"></i>
+                {% endfor %}
+                {% endwith %}
+              </div>
+              <div class="big-note-count">{{ avis|length }} avis vérifiés</div>
+            </div>
+            <div style="flex:1;padding-left:1rem">
+              {% for note_val in "54321" %}
+              <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.3rem">
+                <span style="font-size:.72rem;color:var(--muted);width:10px;text-align:right">{{ note_val }}</span>
+                <i class="bi bi-star-fill" style="color:var(--saffron);font-size:.72rem"></i>
+                <div style="flex:1;height:5px;background:var(--border);border-radius:99px;overflow:hidden">
+                  <div style="height:100%;background:var(--saffron);border-radius:99px;width:{% if note_val == '5' %}60{% elif note_val == '4' %}25{% elif note_val == '3' %}10{% else %}5{% endif %}%"></div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="fi">
+            {% for av in avis %}
+            <div class="avis-card">
+              <div class="d-flex align-items-start gap-3">
+                <div class="avis-avatar">
+                  {% if av.utilisateur.avatar %}<img src="{{ av.utilisateur.avatar.url }}" alt="">
+                  {% else %}{{ av.utilisateur.username|first|upper }}{% endif %}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mb-1">
+                    <div style="font-size:.84rem;font-weight:700;color:var(--text)">{{ av.utilisateur.get_full_name|default:av.utilisateur.username }}</div>
+                    <div style="font-size:.72rem;color:var(--muted)">{{ av.date_creation|date:"d M Y" }}</div>
+                  </div>
+                  <div style="display:flex;gap:.18rem;margin-bottom:.5rem">
+                    {% for i in "12345" %}
+                    <i class="bi bi-star{% if forloop.counter <= av.note %}-fill{% endif %}" style="color:var(--saffron);font-size:.78rem"></i>
+                    {% endfor %}
+                  </div>
+                  {% if av.commentaire %}
+                  <p style="font-size:.82rem;color:var(--text-2);line-height:1.6;margin:0">{{ av.commentaire }}</p>
+                  {% endif %}
+                  {% if av.commande %}
+                  <div style="font-size:.7rem;color:var(--muted);margin-top:.45rem;display:flex;align-items:center;gap:.3rem">
+                    <i class="bi bi-bag-check" style="color:var(--jade)"></i> Achat vérifié
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          {% else %}
+          <div class="vempty fi">
+            <i class="bi bi-star"></i>
+            <div class="vempty-title">Aucun avis pour l'instant</div>
+            <div class="vempty-sub">Soyez le premier à laisser un avis après votre achat.</div>
+          </div>
+          {% endif %}
+
+        </div>
+
+        <!-- ═══ ONGLET VIDÉOS ═══ -->
+        {% if vendeur.est_influenceur %}
+        <div class="tab-pane" id="vtab-videos" style="display:none">
+          <div class="vempty fi">
+            <i class="bi bi-play-circle"></i>
+            <div class="vempty-title">Aucune vidéo disponible</div>
+            <div class="vempty-sub">Les vidéos ShopTok de ce vendeur apparaîtront ici.</div>
+          </div>
+        </div>
+        {% endif %}
+
+      </main>
+    </div>
+
+  </div>
+</div>
+
+<script>
+window.YOPI_URLS = {
+  ajouterPanier: "{% url 'apps_marketplace:ajouter_au_panier' '00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', '{id}'),
+};
+</script>
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Scroll-to-top ── */
+const goTop = document.getElementById('goTop');
+if (goTop) {
+  window.addEventListener('scroll', () => goTop.classList.toggle('vis', scrollY > 400));
+}
+
+/* ── Onglets ── */
+(function(){
+  const tabs  = document.querySelectorAll('.vtab[data-tab]');
+  const panes = document.querySelectorAll('.tab-pane');
+  function activateTab(id){
+    tabs.forEach(t  => t.classList.toggle('on', t.dataset.tab === id));
+    panes.forEach(p => {
+      const show = p.id === 'vtab-' + id;
+      p.style.display = show ? 'block' : 'none';
+      if(show) p.classList.add('fi','vis');
+    });
+  }
+  tabs.forEach(t => t.addEventListener('click', function(e){
+    e.preventDefault();
+    activateTab(this.dataset.tab);
+    history.replaceState(null,'','#'+this.dataset.tab);
+  }));
+  const hash = location.hash.replace('#','');
+  if(hash && document.querySelector(`.vtab[data-tab="${hash}"]`)) activateTab(hash);
+})();
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* ── Favoris ── */
+document.querySelectorAll('.pcard-fav').forEach(btn => {
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    try{
+      const r = await fetch(`/favoris/toggle/${this.dataset.id}/`,{
+        method:'POST',
+        headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}
+      });
+      const d = await r.json();
+      if(d.success){
+        const ic = this.querySelector('i');
+        ic.className = d.ajoute ? 'bi bi-heart-fill' : 'bi bi-heart';
+        this.style.color      = d.ajoute ? 'var(--ember)' : '';
+        this.style.borderColor= d.ajoute ? 'var(--ember)' : '';
+      }
+    }catch{}
+  });
+});
+
+/* ── Ajouter au panier ── */
+document.addEventListener('click', async function(e) {
+
+  const btn = e.target.closest('.pcard-cart');
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  const produitId = btn.dataset.id;
+  if (!produitId) {
+    console.error('Produit ID manquant sur le bouton', btn);
+    return;
+  }
+
+  // ✅ Construction de l'URL correcte
+  const url = window.YOPI_URLS.ajouterPanier.replace('{id}', produitId);
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></span>';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken':      document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type':     'application/x-www-form-urlencoded',
+      },
+      body: 'quantite=1',
+    });
+
+    // ✅ Vérifier HTTP avant de parser JSON
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error(`HTTP ${response.status}`, errData.message || '');
+      btn.innerHTML     = `<i class="bi bi-x-lg"></i> ${errData.message || 'Stock épuisé'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      btn.innerHTML         = '<i class="bi bi-check-lg"></i> Ajouté !';
+      btn.style.background  = 'var(--jade)';
+      btn.style.color       = '#0A0B1A';
+      btn.style.borderColor = 'var(--jade)';
+
+      // ✅ Mise à jour du badge panier dans la navbar
+      // Cible le lien panier spécifiquement via l'icône .bi-bag
+      const panierNavIcon = document.querySelector('.nav-acts .nav-icon .bi-bag')?.closest('.nav-icon');
+      if (panierNavIcon) {
+        let bc = panierNavIcon.querySelector('.bc');
+        if (bc) {
+          bc.textContent = data.nb_articles;
+        } else if (data.nb_articles > 0) {
+          bc             = document.createElement('span');
+          bc.className   = 'bc';
+          bc.textContent = data.nb_articles;
+          panierNavIcon.appendChild(bc);
+        }
+      }
+
+      // Événement custom pour d'autres composants éventuels
+      document.dispatchEvent(new CustomEvent('panier:maj', { detail: data }));
+
+    } else {
+      btn.innerHTML         = `<i class="bi bi-x-lg"></i> ${data.message || 'Erreur'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+    }
+
+  } catch (error) {
+    console.error('Panier fetch error:', error);
+    btn.innerHTML         = '<i class="bi bi-x-lg"></i> Erreur réseau';
+    btn.style.background  = 'var(--ember)';
+    btn.style.color       = '#fff';
+    btn.style.borderColor = 'var(--ember)';
+
+  } finally {
+    setTimeout(() => {
+      btn.innerHTML         = originalHtml;
+      btn.disabled          = false;
+      btn.style.background  = '';
+      btn.style.color       = '';
+      btn.style.borderColor = '';
+    }, 2200);
+  }
+});
+
+/* ── Follow toggle ── */
+async function toggleFollow(btn){
+  const id = btn.dataset.id;
+  try{
+    const r = await fetch(`/vendeurs/follow/${id}/`,{
+      method:'POST',
+      headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}
+    });
+    const d = await r.json();
+    if(d.success){
+      btn.innerHTML = d.suivi
+        ? '<i class="bi bi-person-check-fill"></i> Suivi'
+        : '<i class="bi bi-person-plus"></i> Suivre';
+      btn.style.borderColor = d.suivi ? 'var(--jade)' : '';
+      btn.style.color       = d.suivi ? 'var(--jade)' : '';
+    }
+  }catch{}
+}
+</script>
+{% endblock %}
+{% endblock %}

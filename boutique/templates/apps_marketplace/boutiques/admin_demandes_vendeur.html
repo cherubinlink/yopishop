@@ -1,0 +1,193 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Demandes vendeur — Admin YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ADMIN ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1 flex-wrap">
+      <a href="{% url 'apps_core:accueil' %}" class="cpill"><i class="bi bi-house me-1"></i>Accueil</a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-person-check me-1" style="color:var(--saffron)"></i>Demandes vendeur
+      </span>
+      <div class="ms-auto d-flex gap-2">
+        <a href="{% url 'apps_marketplace:admin_kyc_liste' %}" class="cpill">
+          <i class="bi bi-file-earmark-check me-1"></i>KYC
+        </a>
+        <a href="{% url 'apps_marketplace:boutiques_liste' %}" class="cpill">
+          <i class="bi bi-shop me-1"></i>Boutiques
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ SOUS-TITRE + FILTRES STATUT ═══════ -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="?statut=en_attente" class="cpill {% if statut == 'en_attente' or not statut %}on{% endif %}" style="{% if statut == 'en_attente' or not statut %}color:var(--saffron){% endif %}">
+        <i class="bi bi-hourglass-split"></i>En attente
+      </a>
+      <a href="?statut=en_cours" class="cpill {% if statut == 'en_cours' %}on{% endif %}">
+        <i class="bi bi-arrow-clockwise"></i>En cours
+      </a>
+      <a href="?statut=approuve" class="cpill {% if statut == 'Approuvee' %}on{% endif %}" style="{% if statut == 'Approuvee' %}color:var(--jade){% endif %}">
+        <i class="bi bi-check-circle"></i>Approuvées
+      </a>
+      <a href="?statut=refuse" class="cpill {% if statut == 'refuse' %}on{% endif %}" style="{% if statut == 'refuse' %}color:var(--ember){% endif %}">
+        <i class="bi bi-x-circle"></i>Refusées
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ LISTE DEMANDES ═══════ -->
+<section class="ys bg-surface">
+  <div class="container">
+
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🛡️ Administration</div>
+        <h2 class="sec-title">
+          Demandes
+          {% if statut == 'en_attente' or not statut %}<span class="ac">en attente</span>
+          {% elif statut == 'Approuvee' %}<span style="color:var(--jade)">approuvées</span>
+          {% elif statut == 'refuse' %}<span style="color:var(--ember)">refusées</span>
+          {% else %}<span class="ac">{{ statut }}</span>{% endif %}
+        </h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ demandes.paginator.count }} demande{{ demandes.paginator.count|pluralize }}</span>
+    </div>
+
+    {% if demandes %}
+    <div class="d-flex flex-column gap-3">
+      {% for demande in demandes %}
+      <div class="ycard fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <div class="row align-items-center gy-3">
+
+          <!-- Avatar + Infos candidat -->
+          <div class="col-12 col-md-5">
+            <div class="d-flex align-items-center gap-3">
+              <div style="width:48px;height:48px;border-radius:50%;background:var(--surface);border:2px solid var(--border);
+                          display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;color:var(--saffron);font-size:1rem">
+                {% if demande.utilisateur.avatar %}
+                <img src="{{ demande.utilisateur.avatar.url }}" alt="{{ demande.utilisateur.username }}"
+                     style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                {% else %}
+                {{ demande.utilisateur.username|first|upper }}
+                {% endif %}
+              </div>
+              <div>
+                <div style="font-size:.9rem;font-weight:700;color:var(--text)">
+                  {{ demande.utilisateur.get_full_name|default:demande.utilisateur.username }}
+                </div>
+                <div style="font-size:.72rem;color:var(--muted)">
+                  <i class="bi bi-envelope me-1"></i>{{ demande.utilisateur.email }}
+                </div>
+                <div style="font-size:.7rem;color:var(--muted);margin-top:.1rem">
+                  <i class="bi bi-calendar3 me-1"></i>{{ demande.date_demande|date:"d M Y à H:i" }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Infos demande -->
+          <div class="col-6 col-md-3">
+            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Type</div>
+            <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.72rem">
+              {{ demande.type_vendeur }}
+            </span>
+            {% if demande.nom_boutique_souhaite %}
+            <div style="font-size:.75rem;color:var(--text-2);margin-top:.3rem">
+              <i class="bi bi-shop me-1" style="color:var(--muted)"></i>{{ demande.nom_boutique_souhaite|truncatechars:20 }}
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Statut -->
+          <div class="col-6 col-md-2">
+            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Statut</div>
+            {% if demande.statut == 'en_attente' %}
+            <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.7rem">
+              <i class="bi bi-hourglass-split me-1"></i>En attente
+            </span>
+            {% elif demande.statut == 'en_cours' %}
+            <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.7rem">
+              <i class="bi bi-arrow-clockwise me-1"></i>En cours
+            </span>
+            {% elif demande.statut == 'approuvee' %}
+            <span class="chip chip-jade" style="font-size:.7rem">
+              <i class="bi bi-check-circle me-1"></i>Approuvée
+            </span>
+            {% elif demande.statut == 'refuse' %}
+            <span class="chip chip-ember" style="font-size:.7rem">
+              <i class="bi bi-x-circle me-1"></i>Refusée
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Actions -->
+          <div class="col-12 col-md-2">
+            <div class="d-flex gap-2 justify-content-md-end">
+              <a href="{% url 'apps_marketplace:admin_demande_detail' demande.pk %}" class="btn-gold" style="font-size:.75rem;padding:.4rem .9rem">
+                <i class="bi bi-eye me-1"></i>Examiner
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if demandes.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if demandes.has_previous %}
+        <li><a class="cpill" href="?statut={{ statut }}&page={{ demandes.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for num in demandes.paginator.page_range %}
+          {% if demandes.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= demandes.number and num|add:"2" >= demandes.number %}
+          <li><a class="cpill" href="?statut={{ statut }}&page={{ num }}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if demandes.has_next %}
+        <li><a class="cpill" href="?statut={{ statut }}&page={{ demandes.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-person-check" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Aucune demande</div>
+      <div style="font-size:.82rem;color:var(--muted)">
+        Aucune demande vendeur avec le statut « {{ statut|default:"en_attente" }} » pour le moment.
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.05});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

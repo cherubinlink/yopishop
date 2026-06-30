@@ -1,0 +1,251 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Modifier mon profil — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<style>
+.edit-page{padding:2.5rem 0 4rem;min-height:80vh}
+.edit-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;position:relative;overflow:hidden;
+}
+.edit-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad-a)}
+.edit-header::after{content:'';position:absolute;right:-5%;top:-40%;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--saffron-d) 0%,transparent 70%);pointer-events:none}
+.edit-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem}
+.edit-card-head{
+  padding:.85rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.6rem;
+}
+.edit-card-head i{color:var(--saffron);font-size:1rem}
+.edit-card-title{font-size:.88rem;font-weight:700;color:var(--text)}
+.edit-card-body{padding:1.25rem}
+.ef-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;display:block}
+.ef-input{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-family:var(--fd);font-size:.87rem;padding:.62rem .95rem;outline:none;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+.ef-input:focus{border-color:var(--saffron);box-shadow:0 0 0 3px var(--saffron-d)}
+.ef-input::placeholder{color:var(--muted)}
+.ef-input.err{border-color:var(--ember)}
+textarea.ef-input{resize:vertical;min-height:100px}
+.ef-hint{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+.ef-error{font-size:.72rem;color:var(--ember);margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+
+/* Avatar upload */
+.avatar-zone{
+  border:2px dashed var(--border);border-radius:var(--r);
+  padding:1.25rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;
+  transition:border-color var(--tr);cursor:pointer;
+}
+.avatar-zone:hover{border-color:var(--saffron)}
+.av-preview{
+  width:76px;height:76px;border-radius:50%;flex-shrink:0;
+  border:3px solid var(--border);overflow:hidden;
+  background:var(--surface);display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;font-weight:700;color:var(--saffron);
+}
+.av-preview img{width:100%;height:100%;object-fit:cover}
+.av-info{flex:1;min-width:0}
+.av-info-title{font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:.25rem}
+.av-info-sub{font-size:.74rem;color:var(--muted)}
+input[type="file"].ef-input{padding:.45rem .75rem;cursor:pointer}
+input[type="file"].ef-input::file-selector-button{
+  background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.25);
+  border-radius:6px;padding:.3rem .75rem;font-size:.75rem;font-weight:600;
+  cursor:pointer;margin-right:.75rem;transition:background var(--tr);
+}
+input[type="file"].ef-input::file-selector-button:hover{background:var(--saffron);color:#0A0B1A}
+</style>
+
+<div class="edit-page">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8 col-xl-7">
+
+        <!-- Breadcrumb -->
+        <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+          <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <a href="{% url 'apps_core:profil' %}" style="color:var(--muted)">Mon profil</a>
+          <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+          <span style="color:var(--saffron)">Modifier</span>
+        </nav>
+
+        <!-- Messages -->
+        {% if messages %}{% for msg in messages %}
+        <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+          <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+          {{ msg }}
+          <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+        </div>
+        {% endfor %}{% endif %}
+
+        <!-- Header -->
+        <div class="edit-header fi">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;border-radius:12px;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--saffron);flex-shrink:0">
+              <i class="bi bi-pencil-square"></i>
+            </div>
+            <div>
+              <div style="font-family:var(--fg);font-size:1.2rem;font-weight:700;color:var(--text)">Modifier mon profil</div>
+              <div style="font-size:.8rem;color:var(--muted)">Mettez à jour vos informations personnelles</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulaire -->
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <!-- Avatar -->
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <i class="bi bi-camera-fill"></i>
+              <span class="edit-card-title">Photo de profil</span>
+            </div>
+            <div class="edit-card-body">
+              <div class="avatar-zone" onclick="document.getElementById('{{ form.avatar.id_for_label }}').click()">
+                <div class="av-preview" id="avPreview">
+                  {% if request.user.avatar %}
+                  <img src="{{ request.user.avatar.url }}" alt="avatar" id="avImg">
+                  {% else %}
+                  <span id="avInitial">{{ request.user.first_name|first|upper|default:request.user.username|first|upper }}</span>
+                  {% endif %}
+                </div>
+                <div class="av-info">
+                  <div class="av-info-title">Choisir une photo</div>
+                  <div class="av-info-sub">JPG, PNG ou WEBP · Max 2 Mo · Recommandé : 400×400 px</div>
+                  <div class="mt-2">
+                    <input type="file" name="{{ form.avatar.html_name }}" id="{{ form.avatar.id_for_label }}"
+                           class="ef-input" accept="image/*" style="display:none"
+                           onchange="previewAvatar(this)">
+                    <span class="btn-ghost" style="font-size:.78rem;padding:.35rem .85rem;pointer-events:none">
+                      <i class="bi bi-upload"></i> Parcourir
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {% if request.user.avatar %}
+              <div class="mt-2">
+                <a href="{% url 'apps_core:supprimer_avatar' %}"
+                   onclick="return confirm('Supprimer votre avatar ?')"
+                   style="font-size:.76rem;color:var(--ember);display:inline-flex;align-items:center;gap:.3rem">
+                  <i class="bi bi-trash3"></i> Supprimer l'avatar actuel
+                </a>
+              </div>
+              {% endif %}
+              {% if form.avatar.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.avatar.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Identité -->
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <i class="bi bi-person-fill"></i>
+              <span class="edit-card-title">Identité</span>
+            </div>
+            <div class="edit-card-body">
+              <div class="row g-3">
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.first_name.id_for_label }}">Prénom</label>
+                  <input type="text" name="{{ form.first_name.html_name }}" id="{{ form.first_name.id_for_label }}"
+                         class="ef-input {% if form.first_name.errors %}err{% endif %}"
+                         placeholder="Votre prénom"
+                         value="{{ form.first_name.value|default:'' }}">
+                  {% if form.first_name.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.first_name.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.last_name.id_for_label }}">Nom de famille</label>
+                  <input type="text" name="{{ form.last_name.html_name }}" id="{{ form.last_name.id_for_label }}"
+                         class="ef-input {% if form.last_name.errors %}err{% endif %}"
+                         placeholder="Votre nom"
+                         value="{{ form.last_name.value|default:'' }}">
+                  {% if form.last_name.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.last_name.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12">
+                  <label class="ef-label" for="{{ form.email.id_for_label }}">Adresse e-mail</label>
+                  <input type="email" name="{{ form.email.html_name }}" id="{{ form.email.id_for_label }}"
+                         class="ef-input {% if form.email.errors %}err{% endif %}"
+                         placeholder="votre@email.com"
+                         value="{{ form.email.value|default:'' }}">
+                  {% if form.email.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.email.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.telephone.id_for_label }}">Téléphone</label>
+                  <input type="tel" name="{{ form.telephone.html_name }}" id="{{ form.telephone.id_for_label }}"
+                         class="ef-input {% if form.telephone.errors %}err{% endif %}"
+                         placeholder="+237 6XX XXX XXX"
+                         value="{{ form.telephone.value|default:'' }}">
+                  {% if form.telephone.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.telephone.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label class="ef-label" for="{{ form.date_naissance.id_for_label }}">Date de naissance</label>
+                  <input type="date" name="{{ form.date_naissance.html_name }}" id="{{ form.date_naissance.id_for_label }}"
+                         class="ef-input {% if form.date_naissance.errors %}err{% endif %}"
+                         value="{{ form.date_naissance.value|default:'' }}">
+                  {% if form.date_naissance.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.date_naissance.errors.0 }}</div>{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bio -->
+          <div class="edit-card fi">
+            <div class="edit-card-head">
+              <i class="bi bi-chat-quote"></i>
+              <span class="edit-card-title">Biographie</span>
+            </div>
+            <div class="edit-card-body">
+              <label class="ef-label" for="{{ form.bio.id_for_label }}">À propos de vous</label>
+              <textarea name="{{ form.bio.html_name }}" id="{{ form.bio.id_for_label }}"
+                        class="ef-input {% if form.bio.errors %}err{% endif %}"
+                        placeholder="Parlez de vous, de vos centres d'intérêt…"
+                        maxlength="500">{{ form.bio.value|default:'' }}</textarea>
+              <div class="ef-hint">Max 500 caractères · <span id="bioCount">0</span>/500</div>
+              {% if form.bio.errors %}<div class="ef-error"><i class="bi bi-exclamation-circle"></i>{{ form.bio.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-3 justify-content-end fi">
+            <a href="{% url 'apps_core:profil' %}" class="btn-ghost">
+              <i class="bi bi-x-lg"></i> Annuler
+            </a>
+            <button type="submit" class="btn-gold">
+              <i class="bi bi-check-lg"></i> Enregistrer les modifications
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+function previewAvatar(input){
+  if(!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById('avPreview');
+    prev.innerHTML = `<img src="${e.target.result}" id="avImg" style="width:100%;height:100%;object-fit:cover">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+const bioTa = document.getElementById('{{ form.bio.id_for_label }}');
+const bioCount = document.getElementById('bioCount');
+if(bioTa && bioCount){
+  bioCount.textContent = bioTa.value.length;
+  bioTa.addEventListener('input', () => bioCount.textContent = bioTa.value.length);
+}
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

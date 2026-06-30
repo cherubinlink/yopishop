@@ -1,0 +1,560 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Boutique — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ BANNIÈRE BOUTIQUE ═══════ -->
+{% if boutique.banniere %}
+<div style="width:100%;height:200px;overflow:hidden;position:relative">
+  <img src="{{ boutique.banniere.url }}" alt="Bannière {{ boutique.nom }}"
+       style="width:100%;height:100%;object-fit:cover;object-position:center">
+  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(10,11,26,.85))"></div>
+</div>
+{% endif %}
+
+<!-- ═══════ HERO BOUTIQUE ═══════ -->
+<section class="hero" style="min-height:{% if boutique.banniere %}200px{% else %}280px{% endif %};padding:2rem 0;background:{% if boutique.banniere %}transparent{% endif %}">
+  {% if not boutique.banniere %}<div class="hero-glow"></div><div class="hero-grid"></div>{% endif %}
+  <div class="container position-relative" style="z-index:2">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="d-flex align-items-center gap-2 list-unstyled mb-0" style="font-size:.78rem;color:var(--muted)">
+        <li><a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none">Accueil</a></li>
+        <li><i class="bi bi-chevron-right" style="font-size:.6rem"></i></li>
+        <li><a href="{% url 'apps_marketplace:boutiques_liste' %}" style="color:var(--muted);text-decoration:none">Boutiques</a></li>
+        <li><i class="bi bi-chevron-right" style="font-size:.6rem"></i></li>
+        <li style="color:var(--text-2)">{{ boutique.nom }}</li>
+      </ol>
+    </nav>
+
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-8 fi">
+        <div class="d-flex align-items-start gap-4">
+
+          <!-- Logo -->
+          <div style="width:88px;height:88px;border-radius:20px;overflow:hidden;flex-shrink:0;
+                      background:var(--surface);
+                      border:3px solid {% if boutique.est_vedette %}var(--saffron){% elif boutique.est_verifiee %}var(--jade){% else %}var(--border){% endif %};
+                      display:flex;align-items:center;justify-content:center;
+                      box-shadow:0 8px 24px rgba(0,0,0,.3)">
+            {% if boutique.logo %}
+            <img src="{{ boutique.logo.url }}" alt="{{ boutique.nom }}" style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+            <i class="bi bi-shop" style="font-size:2.2rem;color:var(--muted)"></i>
+            {% endif %}
+          </div>
+
+          <div style="min-width:0">
+            <!-- Badges -->
+            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+              {% if boutique.est_verifiee %}
+              <span class="chip chip-jade" style="font-size:.65rem"><i class="bi bi-patch-check-fill me-1"></i>Vérifiée</span>
+              {% endif %}
+              {% if boutique.est_vedette %}
+              <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.65rem"><i class="bi bi-star-fill me-1"></i>Vedette</span>
+              {% endif %}
+              <span class="chip" style="background:{% if boutique.statut == 'active' %}rgba(16,185,129,.12){% else %}var(--ember-d){% endif %};color:{% if boutique.statut == 'active' %}var(--jade){% else %}var(--ember){% endif %};font-size:.65rem">
+                <i class="bi bi-circle-fill me-1" style="font-size:.4rem"></i>{{ boutique.get_statut_display }}
+              </span>
+            </div>
+
+            <h1 class="hero-title" style="font-size:clamp(1.6rem,4vw,2.6rem);margin-bottom:.5rem">
+              {{ boutique.nom }}
+            </h1>
+
+            <!-- Méta infos -->
+            <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size:.8rem;color:var(--muted)">
+              <span>
+                <i class="bi bi-star-fill" style="color:var(--saffron)"></i>
+                <strong style="color:var(--text)">{{ avis_stats.moyenne|default:"—"|floatformat:1 }}</strong>
+                <span>({{ avis_stats.total }} avis)</span>
+              </span>
+              {% if boutique.ville %}
+              <span><i class="bi bi-geo-alt me-1" style="color:var(--saffron)"></i>{{ boutique.ville }}</span>
+              {% endif %}
+              <span><i class="bi bi-bag-check me-1" style="color:var(--jade)"></i>{{ boutique.nombre_ventes|default:0 }} vente{{ boutique.nombre_ventes|pluralize }}</span>
+              <span><i class="bi bi-calendar3 me-1"></i>Depuis {{ boutique.date_creation|date:"M Y" }}</span>
+              {% if boutique.delai_traitement %}
+              <span><i class="bi bi-clock me-1" style="color:var(--indigo)"></i>Traitement {{ boutique.delai_traitement }}j</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% if boutique.description %}
+        <p class="hero-desc mt-3" style="font-size:.87rem;max-width:580px">{{ boutique.description|truncatechars:220 }}</p>
+        {% endif %}
+
+        <!-- Actions + réseaux -->
+        <div class="d-flex align-items-center gap-3 flex-wrap mt-3">
+          <a href="#produits" class="btn-gold">
+            <i class="bi bi-bag me-1"></i>Produits ({{ nb_produits }})
+          </a>
+          <a href="#avis" class="btn-ghost"><i class="bi bi-star me-1"></i>Avis</a>
+          {% if request.user.is_authenticated and request.user == boutique.vendeur %}
+          <a href="{% url 'apps_marketplace:editer_boutique' boutique.slug %}" class="btn-ghost">
+            <i class="bi bi-pencil me-1"></i>Modifier
+          </a>
+          {% endif %}
+          <!-- Réseaux sociaux -->
+          <div class="d-flex gap-2 ms-auto">
+            {% if boutique.facebook %}
+            <a href="{{ boutique.facebook }}" target="_blank" rel="noopener"
+               class="nav-icon" style="width:34px;height:34px;font-size:.85rem" title="Facebook">
+              <i class="bi bi-facebook" style="color:var(--indigo)"></i>
+            </a>
+            {% endif %}
+            {% if boutique.instagram %}
+            <a href="https://instagram.com/{{ boutique.instagram|cut:'@' }}" target="_blank" rel="noopener"
+               class="nav-icon" style="width:34px;height:34px;font-size:.85rem" title="Instagram">
+              <i class="bi bi-instagram" style="color:var(--ember)"></i>
+            </a>
+            {% endif %}
+            {% if boutique.tiktok %}
+            <a href="https://tiktok.com/@{{ boutique.tiktok|cut:'@' }}" target="_blank" rel="noopener"
+               class="nav-icon" style="width:34px;height:34px;font-size:.85rem" title="TikTok">
+              <i class="bi bi-tiktok" style="color:var(--text)"></i>
+            </a>
+            {% endif %}
+            {% if boutique.whatsapp %}
+            <a href="https://wa.me/{{ boutique.whatsapp|cut:'+' }}" target="_blank" rel="noopener"
+               class="nav-icon" style="width:34px;height:34px;font-size:.85rem" title="WhatsApp">
+              <i class="bi bi-whatsapp" style="color:var(--jade)"></i>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte stats + contact (desktop) -->
+      <div class="col-lg-4 d-none d-lg-flex flex-column gap-3 fi fi-d2">
+        <!-- Stats -->
+        <div class="ycard" style="border:1px solid var(--border)">
+          <div class="row g-0 text-center">
+            <div class="col-4" style="border-right:1px solid var(--border);padding:.8rem .5rem">
+              <div style="font-family:var(--fm);font-size:1.4rem;font-weight:800;color:var(--saffron)">{{ nb_produits }}</div>
+              <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Produits</div>
+            </div>
+            <div class="col-4" style="border-right:1px solid var(--border);padding:.8rem .5rem">
+              <div style="font-family:var(--fm);font-size:1.4rem;font-weight:800;color:var(--jade)">{{ boutique.nombre_ventes|default:0 }}</div>
+              <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Ventes</div>
+            </div>
+            <div class="col-4" style="padding:.8rem .5rem">
+              <div style="font-family:var(--fm);font-size:1.4rem;font-weight:800;color:var(--ember)">{{ avis_stats.moyenne|default:"—"|floatformat:1 }}</div>
+              <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Note /5</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        {% if boutique.telephone or boutique.email or boutique.adresse %}
+        <div class="ycard" style="border:1px solid var(--border)">
+          <div style="font-size:.72rem;font-weight:700;color:var(--text-2);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.08em">
+            <i class="bi bi-info-circle me-1" style="color:var(--saffron)"></i>Contact
+          </div>
+          {% if boutique.telephone %}
+          <div class="d-flex align-items-center gap-2 mb-2" style="font-size:.82rem;color:var(--text-2)">
+            <i class="bi bi-telephone" style="color:var(--saffron)"></i>{{ boutique.telephone }}
+          </div>
+          {% endif %}
+          {% if boutique.email %}
+          <div class="d-flex align-items-center gap-2 mb-2" style="font-size:.82rem;color:var(--text-2)">
+            <i class="bi bi-envelope" style="color:var(--indigo)"></i>{{ boutique.email }}
+          </div>
+          {% endif %}
+          {% if boutique.adresse %}
+          <div class="d-flex align-items-start gap-2" style="font-size:.78rem;color:var(--muted)">
+            <i class="bi bi-geo-alt" style="color:var(--jade);margin-top:.1rem"></i>{{ boutique.adresse }}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════ SOUS-NAV ═══════ -->
+<div class="cat-strip d-block" style="position:sticky;top:0;z-index:50">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="#produits" class="cpill on"><i class="bi bi-bag"></i>Produits ({{ nb_produits }})</a>
+      <a href="#avis" class="cpill"><i class="bi bi-star"></i>Avis ({{ avis_stats.total }})</a>
+      {% if boutique.ville %}
+      <span class="cpill" style="cursor:default;pointer-events:none">
+        <i class="bi bi-geo-alt" style="color:var(--saffron)"></i>{{ boutique.ville }}
+      </span>
+      {% endif %}
+      {% if boutique.site_web %}
+      <a href="{{ boutique.site_web }}" target="_blank" rel="noopener" class="cpill">
+        <i class="bi bi-globe2"></i>Site web
+      </a>
+      {% endif %}
+      {% if request.user.is_authenticated and request.user == boutique.vendeur %}
+      <a href="{% url 'apps_marketplace:dashboard_vendeur' %}" class="cpill ms-auto" style="color:var(--saffron)">
+        <i class="bi bi-speedometer2"></i>Dashboard
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════ PRODUITS ═══════ -->
+<section class="ys bg-surface" id="produits">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🛍️ Catalogue</div>
+        <h2 class="sec-title">Produits de <span class="ac">{{ boutique.nom|truncatechars:22 }}</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ nb_produits }} produit{{ nb_produits|pluralize }}</span>
+    </div>
+
+    {% if produits %}
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-xl-5 g-3">
+      {% for p in produits %}
+      <div class="col fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <a href="{% url 'apps_core:produit_detail' p.slug %}" class="pcard h-100 text-decoration-none">
+          <div class="pcard-img">
+            {% if p.image_principale %}
+            <img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+            {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)">
+              <i class="bi bi-image" style="font-size:2rem"></i>
+            </div>
+            {% endif %}
+            {% if p.prix_promotionnel < p.prix %}
+            <div class="pcard-badge pb-off">Promo</div>
+            {% endif %}
+            <button class="pcard-fav {% if p.id in favoris_ids %}active{% endif %}"
+                    data-id="{{ p.id }}" onclick="return false">
+              <i class="bi bi-heart{% if p.id in favoris_ids %}-fill{% endif %}"
+                 style="{% if p.id in favoris_ids %}color:var(--ember){% endif %}"></i>
+            </button>
+          </div>
+          <div class="pcard-body">
+            <div class="pcard-name">{{ p.titre }}</div>
+            {% if p.categorie %}
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.3rem">
+              <i class="bi bi-tag me-1" style="color:var(--saffron);font-size:.62rem"></i>{{ p.categorie.nom }}
+            </div>
+            {% endif %}
+            <div class="pcard-price">
+              <span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>
+              {% if p.prix_promotionnel < p.prix %}
+              <span class="po">{{ p.prix|floatformat:0 }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="pcard-foot">
+            <button class="pcard-cart" data-id="{{ p.id }}" onclick="return false">
+              <i class="bi bi-bag-plus"></i> Ajouter
+            </button>
+            {% if p.note_moyenne %}
+            <div class="pcard-stars"><i class="bi bi-star-fill"></i>{{ p.note_moyenne|floatformat:1 }}</div>
+            {% endif %}
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if produits.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if produits.has_previous %}
+        <li><a class="cpill" href="?page={{ produits.previous_page_number }}#produits"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for num in produits.paginator.page_range %}
+          {% if produits.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= produits.number and num|add:"2" >= produits.number %}
+          <li><a class="cpill" href="?page={{ num }}#produits">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if produits.has_next %}
+        <li><a class="cpill" href="?page={{ produits.next_page_number }}#produits"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-bag" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+      <div style="font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:.4rem">Aucun produit disponible</div>
+      <div style="font-size:.8rem;color:var(--muted)">Cette boutique n'a pas encore ajouté de produits.</div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+
+<!-- ═══════ AVIS ═══════ -->
+<section class="ys" id="avis">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">⭐ Réputation</div>
+        <h2 class="sec-title">Avis <span class="ac">clients</span></h2>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Résumé notes -->
+      <div class="col-12 col-md-4 fi">
+        <div class="ycard h-100" style="border:1px solid var(--border)">
+          <div class="text-center mb-4 pb-4" style="border-bottom:1px solid var(--border)">
+            <div style="font-family:var(--fm);font-size:4rem;font-weight:900;color:var(--saffron);line-height:1">
+              {{ avis_stats.moyenne|default:"—"|floatformat:1 }}
+            </div>
+            <div style="margin:.5rem 0">
+              {% for i in "12345" %}
+              <i class="bi bi-star{% if forloop.counter <= avis_stats.moyenne|default:0 %}-fill{% endif %}"
+                 style="color:var(--saffron);font-size:1rem"></i>
+              {% endfor %}
+            </div>
+            <div style="font-size:.78rem;color:var(--muted)">{{ avis_stats.total }} avis client{{ avis_stats.total|pluralize }}</div>
+          </div>
+
+          <div class="d-flex flex-column gap-3">
+            {% if avis_stats.moy_comm %}
+            <div>
+              <div class="d-flex justify-content-between mb-1" style="font-size:.75rem">
+                <span style="color:var(--muted)">Communication</span>
+                <span style="color:var(--text-2);font-weight:600">{{ avis_stats.moy_comm|floatformat:1 }}/5</span>
+              </div>
+              <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:{% widthratio avis_stats.moy_comm 5 100 %}%;background:var(--saffron);border-radius:3px;transition:width 1s ease"></div>
+              </div>
+            </div>
+            {% endif %}
+            {% if avis_stats.moy_exp %}
+            <div>
+              <div class="d-flex justify-content-between mb-1" style="font-size:.75rem">
+                <span style="color:var(--muted)">Expédition</span>
+                <span style="color:var(--text-2);font-weight:600">{{ avis_stats.moy_exp|floatformat:1 }}/5</span>
+              </div>
+              <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:{% widthratio avis_stats.moy_exp 5 100 %}%;background:var(--jade);border-radius:3px;transition:width 1s ease"></div>
+              </div>
+            </div>
+            {% endif %}
+            {% if avis_stats.moy_emb %}
+            <div>
+              <div class="d-flex justify-content-between mb-1" style="font-size:.75rem">
+                <span style="color:var(--muted)">Emballage</span>
+                <span style="color:var(--text-2);font-weight:600">{{ avis_stats.moy_emb|floatformat:1 }}/5</span>
+              </div>
+              <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:{% widthratio avis_stats.moy_emb 5 100 %}%;background:var(--indigo);border-radius:3px;transition:width 1s ease"></div>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Cartes avis -->
+      <div class="col-12 col-md-8 fi fi-d2">
+        {% if avis_liste %}
+        <div class="d-flex flex-column gap-3">
+          {% for avis in avis_liste %}
+          <div class="ycard" style="border:1px solid var(--border)">
+            <div class="d-flex align-items-start gap-3">
+              <!-- Avatar -->
+              <div style="width:42px;height:42px;border-radius:50%;background:var(--surface);
+                          border:1px solid var(--border);display:flex;align-items:center;
+                          justify-content:center;flex-shrink:0;font-weight:700;color:var(--saffron);font-size:.9rem">
+                {% if avis.utilisateur.avatar %}
+                <img src="{{ avis.utilisateur.avatar.url }}" alt=""
+                     style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                {% else %}
+                {{ avis.utilisateur.username|first|upper }}
+                {% endif %}
+              </div>
+
+              <div style="flex:1;min-width:0">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mb-1">
+                  <span style="font-size:.85rem;font-weight:600;color:var(--text)">
+                    {{ avis.utilisateur.get_full_name|default:avis.utilisateur.username }}
+                  </span>
+                  <div>
+                    {% for i in "12345" %}
+                    <i class="bi bi-star{% if forloop.counter <= avis.note %}-fill{% endif %}"
+                       style="color:var(--saffron);font-size:.78rem"></i>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                {% if avis.commentaire %}
+                <div style="font-size:.82rem;color:var(--text-2);line-height:1.55;margin-bottom:.5rem">
+                  {{ avis.commentaire }}
+                </div>
+                {% endif %}
+
+                <div style="font-size:.7rem;color:var(--muted)">
+                  <i class="bi bi-calendar3 me-1"></i>{{ avis.date_creation|date:"d M Y" }}
+                </div>
+
+                <!-- Réponse vendeur -->
+                {% if avis.reponse_vendeur %}
+                <div class="mt-3 p-3" style="background:var(--surface);border-left:3px solid var(--saffron);border-radius:0 8px 8px 0">
+                  <div style="font-size:.72rem;font-weight:700;color:var(--saffron);margin-bottom:.3rem">
+                    <i class="bi bi-shop me-1"></i>Réponse de {{ boutique.nom }}
+                  </div>
+                  <div style="font-size:.8rem;color:var(--text-2)">{{ avis.reponse_vendeur }}</div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-chat-square-text" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+          <div style="font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.3rem">Aucun avis pour l'instant</div>
+          <div style="font-size:.78rem;color:var(--muted)">Soyez le premier à laisser un avis après votre achat.</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+window.YOPI_URLS = {
+  ajouterPanier: "{% url 'apps_marketplace:ajouter_au_panier' '00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', '{id}'),
+};
+</script>
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Scroll-to-top ── */
+const goTop = document.getElementById('goTop');
+if (goTop) {
+  window.addEventListener('scroll', () => goTop.classList.toggle('vis', scrollY > 400));
+}
+
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);} });
+}, {threshold:.06});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* ── Ajouter au panier ── */
+document.addEventListener('click', async function(e) {
+
+  const btn = e.target.closest('.pcard-cart');
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  const produitId = btn.dataset.id;
+  if (!produitId) {
+    console.error('Produit ID manquant sur le bouton', btn);
+    return;
+  }
+
+  // ✅ Construction de l'URL correcte
+  const url = window.YOPI_URLS.ajouterPanier.replace('{id}', produitId);
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></span>';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken':      document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type':     'application/x-www-form-urlencoded',
+      },
+      body: 'quantite=1',
+    });
+
+    // ✅ Vérifier HTTP avant de parser JSON
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      console.error(`HTTP ${response.status}`, errData.message || '');
+      btn.innerHTML     = `<i class="bi bi-x-lg"></i> ${errData.message || 'Stock épuisé'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      btn.innerHTML         = '<i class="bi bi-check-lg"></i> Ajouté !';
+      btn.style.background  = 'var(--jade)';
+      btn.style.color       = '#0A0B1A';
+      btn.style.borderColor = 'var(--jade)';
+
+      // ✅ Mise à jour du badge panier dans la navbar
+      // Cible le lien panier spécifiquement via l'icône .bi-bag
+      const panierNavIcon = document.querySelector('.nav-acts .nav-icon .bi-bag')?.closest('.nav-icon');
+      if (panierNavIcon) {
+        let bc = panierNavIcon.querySelector('.bc');
+        if (bc) {
+          bc.textContent = data.nb_articles;
+        } else if (data.nb_articles > 0) {
+          bc             = document.createElement('span');
+          bc.className   = 'bc';
+          bc.textContent = data.nb_articles;
+          panierNavIcon.appendChild(bc);
+        }
+      }
+
+      // Événement custom pour d'autres composants éventuels
+      document.dispatchEvent(new CustomEvent('panier:maj', { detail: data }));
+
+    } else {
+      btn.innerHTML         = `<i class="bi bi-x-lg"></i> ${data.message || 'Erreur'}`;
+      btn.style.background  = 'var(--ember)';
+      btn.style.color       = '#fff';
+      btn.style.borderColor = 'var(--ember)';
+    }
+
+  } catch (error) {
+    console.error('Panier fetch error:', error);
+    btn.innerHTML         = '<i class="bi bi-x-lg"></i> Erreur réseau';
+    btn.style.background  = 'var(--ember)';
+    btn.style.color       = '#fff';
+    btn.style.borderColor = 'var(--ember)';
+
+  } finally {
+    setTimeout(() => {
+      btn.innerHTML         = originalHtml;
+      btn.disabled          = false;
+      btn.style.background  = '';
+      btn.style.color       = '';
+      btn.style.borderColor = '';
+    }, 2200);
+  }
+});
+
+/* Favoris */
+document.querySelectorAll('.pcard-fav').forEach(btn=>{
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    try{
+      const r=await fetch(`/favoris/toggle/${this.dataset.id}/`,{method:'POST',headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}});
+      const d=await r.json();
+      if(d.success){const ic=this.querySelector('i');ic.className=d.ajoute?'bi bi-heart-fill':'bi bi-heart';this.style.color=d.ajoute?'var(--ember)':'';}
+    }catch{}
+  });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

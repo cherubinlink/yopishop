@@ -1,0 +1,539 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes favoris — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+.fav-page{padding:2.5rem 0 4rem;min-height:80vh}
+
+/* Header */
+.fav-header{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.5rem 1.75rem;margin-bottom:1.75rem;
+  position:relative;overflow:hidden;
+}
+.fav-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--ember),var(--indigo))}
+.fav-header::after{content:'';position:absolute;right:-5%;top:-40%;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--ember-d) 0%,transparent 70%);pointer-events:none}
+
+/* Barre d'outils -->
+.fav-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:.75rem;margin-bottom:1.5rem;
+}
+.fav-count{
+  font-size:.82rem;color:var(--muted);
+  display:flex;align-items:center;gap:.4rem;
+}
+.fav-count strong{color:var(--text);font-weight:700}
+
+/* Grille produits */
+.fav-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:1rem;
+}
+@media(max-width:575px){.fav-grid{grid-template-columns:repeat(2,1fr);gap:.75rem}}
+
+/* Product card */
+.pcard{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:transform var(--tr),box-shadow var(--tr),border-color var(--tr);
+  position:relative;
+}
+.pcard:hover{transform:translateY(-4px);box-shadow:var(--sh-h);border-color:var(--border-h)}
+.pcard-img{position:relative;overflow:hidden;aspect-ratio:1;background:var(--surface);display:flex;align-items:center;justify-content:center}
+.pcard-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.pcard:hover .pcard-img img{transform:scale(1.06)}
+.pcard-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+
+.pcard-badge{position:absolute;top:.6rem;left:.6rem;font-size:.58rem;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em}
+.pb-off{background:var(--ember);color:#fff}
+.pb-new{background:var(--jade);color:#0A0B1A}
+.pb-top{background:var(--saffron);color:#0A0B1A}
+.pb-vip{background:var(--indigo);color:#fff}
+
+/* Bouton supprimer favori */
+.fav-remove{
+  position:absolute;top:.6rem;right:.6rem;
+  width:32px;height:32px;border-radius:50%;
+  background:rgba(255,90,71,.88);border:none;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:.82rem;cursor:pointer;
+  opacity:0;transition:opacity var(--tr),transform var(--tr);
+  z-index:2;
+}
+.pcard:hover .fav-remove{opacity:1}
+.fav-remove:hover{transform:scale(1.12);background:var(--ember)}
+
+.pcard-body{padding:.85rem;flex:1;display:flex;flex-direction:column}
+.pcard-name{font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:.3rem;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pcard-vendor{font-size:.69rem;color:var(--muted);display:flex;align-items:center;gap:.3rem;margin-bottom:.5rem}
+.pcard-price .pn{font-family:var(--fm);font-size:1rem;font-weight:700;color:var(--saffron)}
+.pcard-price .po{font-size:.71rem;color:var(--muted);text-decoration:line-through;margin-left:.3rem}
+.pcard-price .pd{font-size:.66rem;font-weight:700;background:var(--ember-d);color:var(--ember);padding:2px 5px;border-radius:4px;margin-left:.3rem}
+.pcard-stars{display:flex;align-items:center;gap:.22rem;font-size:.69rem;color:var(--muted);margin-top:.35rem}
+.pcard-stars i{color:var(--saffron);font-size:.72rem}
+
+.pcard-foot{border-top:1px solid var(--border);padding:.6rem .85rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.pcard-cart{
+  background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.2);
+  border-radius:99px;font-size:.74rem;font-weight:600;padding:.32rem .8rem;
+  cursor:pointer;display:flex;align-items:center;gap:.3rem;
+  transition:background var(--tr),color var(--tr);white-space:nowrap;flex:1;justify-content:center;
+}
+.pcard-cart:hover{background:var(--saffron);color:#0A0B1A}
+
+/* Vue liste alternative */
+.fav-list-item{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:.85rem 1rem;display:flex;align-items:center;gap:1rem;
+  transition:border-color var(--tr);margin-bottom:.5rem;
+}
+.fav-list-item:hover{border-color:var(--border-h)}
+.fav-list-img{
+  width:64px;height:64px;border-radius:10px;flex-shrink:0;
+  overflow:hidden;background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:var(--muted);
+}
+.fav-list-img img{width:100%;height:100%;object-fit:cover}
+.fav-list-info{flex:1;min-width:0}
+.fav-list-name{font-size:.86rem;font-weight:600;color:var(--text);margin-bottom:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fav-list-meta{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.fav-list-price{font-family:var(--fm);font-size:.95rem;font-weight:700;color:var(--saffron);white-space:nowrap;flex-shrink:0}
+.fav-list-actions{display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.fla-btn{
+  width:34px;height:34px;border-radius:8px;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:.85rem;cursor:pointer;background:none;
+  transition:border-color var(--tr),color var(--tr),background var(--tr);
+}
+.fla-btn:hover{border-color:var(--saffron);color:var(--saffron);background:var(--saffron-d)}
+.fla-btn.danger:hover{border-color:var(--ember);color:var(--ember);background:var(--ember-d)}
+
+/* Toggle vue grille/liste */
+.view-toggle{display:flex;gap:.3rem}
+.vt-btn{
+  width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:.9rem;cursor:pointer;background:none;
+  transition:border-color var(--tr),color var(--tr),background var(--tr);
+}
+.vt-btn:hover{border-color:var(--saffron);color:var(--saffron)}
+.vt-btn.on{border-color:var(--saffron);background:var(--saffron-d);color:var(--saffron)}
+
+/* Empty state */
+.fav-empty{
+  text-align:center;padding:5rem 1rem;
+  background:var(--card);border:1.5px dashed var(--border);border-radius:var(--rl);
+}
+.fav-empty-icon{
+  width:80px;height:80px;border-radius:50%;
+  background:var(--ember-d);border:2px solid rgba(255,90,71,.2);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1.1rem;font-size:2rem;color:var(--ember);
+}
+.fav-empty-title{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem}
+.fav-empty-sub{font-size:.84rem;color:var(--muted);max-width:320px;margin:0 auto 1.5rem;line-height:1.65}
+
+/* Toast notification */
+.fav-toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--card);border:1px solid var(--border);border-radius:99px;
+  padding:.6rem 1.25rem;font-size:.82rem;font-weight:600;color:var(--text);
+  display:flex;align-items:center;gap:.5rem;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:9999;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s;
+  opacity:0;white-space:nowrap;
+}
+.fav-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+
+<div class="fav-page">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+      <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)"><i class="bi bi-house-fill"></i> Accueil</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <a href="{% url 'apps_core:profil' %}" style="color:var(--muted)">Mon profil</a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <span style="color:var(--saffron)">Mes favoris</span>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}rgba(16,212,160,.1){% else %}rgba(255,90,71,.1){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(16,212,160,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+      {{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- Header -->
+    <div class="fav-header fi">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:46px;height:46px;border-radius:13px;background:var(--ember-d);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--ember);flex-shrink:0">
+            <i class="bi bi-heart-fill"></i>
+          </div>
+          <div>
+            <div style="font-family:var(--fg);font-size:1.2rem;font-weight:700;color:var(--text)">
+              Mes favoris
+              {% if produits %}
+              <span style="font-family:var(--fm);font-size:.9rem;font-weight:700;background:var(--ember-d);color:var(--ember);padding:2px 10px;border-radius:99px;margin-left:.5rem">{{ produits|length }}</span>
+              {% endif %}
+            </div>
+            <div style="font-size:.8rem;color:var(--muted)">Produits sauvegardés dans votre liste de souhaits</div>
+          </div>
+        </div>
+        {% if produits %}
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn-ghost" style="font-size:.8rem" id="btnToutAuPanier">
+            <i class="bi bi-bag-plus"></i> Tout ajouter au panier
+          </button>
+          <button class="btn-ghost" style="font-size:.8rem;border-color:var(--ember);color:var(--ember)" id="btnViderFavoris"
+                  onclick="viderFavoris()">
+            <i class="bi bi-trash3"></i> Vider les favoris
+          </button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if produits %}
+
+    <!-- Barre outils -->
+    <div class="fav-toolbar fi">
+      <div class="fav-count">
+        <i class="bi bi-heart-fill" style="color:var(--ember)"></i>
+        <strong>{{ produits|length }}</strong> produit{{ produits|length|pluralize }} enregistré{{ produits|length|pluralize }}
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <!-- Tri -->
+        <select id="triSelect" class="ef-select" style="width:auto;font-size:.8rem;padding:.35rem .75rem;background:var(--card);border:1.5px solid var(--border);border-radius:99px;color:var(--text);outline:none" onchange="trierFavoris(this.value)">
+          <option value="default">Ordre par défaut</option>
+          <option value="prix_asc">Prix croissant</option>
+          <option value="prix_desc">Prix décroissant</option>
+          <option value="nom_asc">Nom A-Z</option>
+        </select>
+        <!-- Toggle vue -->
+        <div class="view-toggle">
+          <button class="vt-btn on" id="btnGrille" onclick="setView('grille')" title="Vue grille">
+            <i class="bi bi-grid"></i>
+          </button>
+          <button class="vt-btn" id="btnListe" onclick="setView('liste')" title="Vue liste">
+            <i class="bi bi-list-ul"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vue GRILLE -->
+    <div class="fav-grid fi" id="viewGrille">
+      {% for p in produits %}
+      <div class="pcard" data-id="{{ p.id }}" data-prix="{{ p.prix_promotionnel|floatformat:2 }}" data-nom="{{ p.titre }}">
+
+        <a href="/produits/{{ p.id }}/" style="display:contents;text-decoration:none">
+          <div class="pcard-img">
+            {% if p.image_principale %}
+            <img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+            {% else %}
+            <div class="pcard-img-ph"><i class="bi bi-image" style="font-size:2rem"></i></div>
+            {% endif %}
+
+            {% if p.prix_promotionnel < p.prix %}
+            <div class="pcard-badge pb-off">
+              -{% widthratio p.prix_promotionnel p.prix 100 %}%
+            </div>
+            {% elif p.est_vedette %}
+            <div class="pcard-badge pb-top"><i class="bi bi-star-fill"></i> Vedette</div>
+            {% endif %}
+
+          </div>
+          <div class="pcard-body">
+            <div class="pcard-name">{{ p.titre }}</div>
+            <div class="pcard-vendor"><i class="bi bi-shop"></i> {{ p.vendeur.boutique.nom|default:p.vendeur.username }}</div>
+            <div class="pcard-price">
+              <span class="pn">{{ p.prix_promotionnel|floatformat:0 }} FCFA</span>
+              {% if p.prix_promotionnel < p.prix %}
+              <span class="po">{{ p.prix|floatformat:0 }}</span>
+              {% endif %}
+            </div>
+            <div class="pcard-stars">
+              {% for i in "12345" %}
+              <i class="bi bi-star{% if forloop.counter <= p.note_moyenne|default:0|floatformat:0|add:0 %}-fill{% endif %}"></i>
+              {% endfor %}
+              <span>{{ p.note_moyenne|default:"—"|floatformat:1 }}</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Bouton retirer du favori -->
+        <button class="fav-remove" data-id="{{ p.id }}" title="Retirer des favoris" onclick="retirerFavori({{ p.id }}, this)">
+          <i class="bi bi-heart-slash-fill"></i>
+        </button>
+
+        <div class="pcard-foot">
+          <button class="pcard-cart" data-id="{{ p.id }}" onclick="ajouterPanier({{ p.id }}, this)">
+            <i class="bi bi-bag-plus"></i> Ajouter au panier
+          </button>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Vue LISTE -->
+    <div id="viewListe" style="display:none" class="fi">
+      {% for p in produits %}
+      <div class="fav-list-item" data-id="{{ p.id }}" data-prix="{{ p.prix_promotionnel|floatformat:2 }}" data-nom="{{ p.titre }}">
+
+        <!-- Image -->
+        <a href="/produits/{{ p.id }}/" class="fav-list-img text-decoration-none">
+          {% if p.image_principale %}
+          <img src="{{ p.image_principale }}" alt="{{ p.titre }}" loading="lazy">
+          {% else %}
+          <i class="bi bi-image" style="font-size:1.3rem"></i>
+          {% endif %}
+        </a>
+
+        <!-- Infos -->
+        <div class="fav-list-info">
+          <a href="/produits/{{ p.id }}/" class="fav-list-name text-decoration-none" style="display:block">{{ p.titre }}</a>
+          <div class="fav-list-meta">
+            <span><i class="bi bi-shop" style="font-size:.65rem"></i> {{ p.vendeur.boutique.nom|default:p.vendeur.username }}</span>
+            {% if p.categorie %}<span><i class="bi bi-tag" style="font-size:.65rem"></i> {{ p.categorie.nom }}</span>{% endif %}
+            <span>
+              {% for i in "12345" %}
+              <i class="bi bi-star{% if forloop.counter <= p.note_moyenne|default:0|floatformat:0|add:0 %}-fill{% endif %}" style="color:var(--saffron);font-size:.65rem"></i>
+              {% endfor %}
+            </span>
+          </div>
+        </div>
+
+        <!-- Prix -->
+        <div class="text-end flex-shrink-0">
+          <div class="fav-list-price">{{ p.prix_promotionnel|floatformat:0 }} F</div>
+          {% if p.prix_promotionnel < p.prix %}
+          <div style="font-size:.7rem;color:var(--muted);text-decoration:line-through">{{ p.prix|floatformat:0 }} F</div>
+          {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="fav-list-actions">
+          <button class="fla-btn" data-id="{{ p.id }}" title="Ajouter au panier" onclick="ajouterPanier({{ p.id }}, this)">
+            <i class="bi bi-bag-plus"></i>
+          </button>
+          <button class="fla-btn danger" data-id="{{ p.id }}" title="Retirer des favoris" onclick="retirerFavori({{ p.id }}, this)">
+            <i class="bi bi-heart-slash"></i>
+          </button>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Suggestions (si produits) -->
+    <div class="fi mt-5" style="padding-top:2rem;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div style="font-family:var(--fm);font-size:.68rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--saffron);display:inline-flex;align-items:center;gap:.4rem;margin-bottom:.3rem">
+            <span style="width:18px;height:1.5px;background:var(--saffron);border-radius:2px;display:inline-block"></span>Suggestions
+          </div>
+          <div style="font-family:var(--fg);font-size:1.05rem;font-weight:700;color:var(--text)">Vous aimerez aussi</div>
+        </div>
+        <a href="/catalogue/" class="btn-ghost" style="font-size:.8rem">Explorer <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);text-align:center;padding:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">
+        <i class="bi bi-magic" style="color:var(--indigo);font-size:1.5rem;display:block;margin-bottom:.5rem"></i>
+        Les suggestions basées sur vos favoris apparaîtront ici.
+      </div>
+    </div>
+
+    {% else %}
+
+    <!-- État vide -->
+    <div class="fav-empty fi">
+      <div class="fav-empty-icon">
+        <i class="bi bi-heart"></i>
+      </div>
+      <div class="fav-empty-title">Votre liste de favoris est vide</div>
+      <div class="fav-empty-sub">
+        Parcourez notre catalogue et cliquez sur ♡ pour sauvegarder les produits qui vous plaisent.
+      </div>
+      <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="{% url 'apps_core:catalogue' %}" class="btn-gold" style="font-size:.86rem">
+          <i class="bi bi-bag"></i> Explorer le catalogue
+        </a>
+        <a href="/encheres/" class="btn-ghost" style="font-size:.86rem">
+          <i class="bi bi-hammer"></i> Voir les enchères
+        </a>
+      </div>
+    </div>
+
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="fav-toast" id="favToast"></div>
+
+<style>
+.ef-select{background:var(--card);border:1.5px solid var(--border);border-radius:99px;color:var(--text);font-family:var(--fd);font-size:.82rem;padding:.38rem .85rem;outline:none;cursor:pointer;transition:border-color var(--tr)}
+.ef-select:focus{border-color:var(--saffron)}
+</style>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Fade-in ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)} });
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+/* ── Toast ── */
+function showToast(msg, color='var(--jade)'){
+  const t = document.getElementById('favToast');
+  t.innerHTML = `<i class="bi bi-check-circle-fill" style="color:${color}"></i> ${msg}`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ── Toggle vue grille / liste ── */
+function setView(mode){
+  const grille = document.getElementById('viewGrille');
+  const liste  = document.getElementById('viewListe');
+  const btnG   = document.getElementById('btnGrille');
+  const btnL   = document.getElementById('btnListe');
+  if(mode === 'grille'){
+    grille.style.display = ''; liste.style.display = 'none';
+    btnG.classList.add('on'); btnL.classList.remove('on');
+  } else {
+    grille.style.display = 'none'; liste.style.display = 'block';
+    btnL.classList.add('on'); btnG.classList.remove('on');
+  }
+  localStorage.setItem('favView', mode);
+}
+/* Restaurer préférence vue */
+const savedView = localStorage.getItem('favView');
+if(savedView) setView(savedView);
+
+/* ── Tri des favoris (côté client) ── */
+function trierFavoris(critere){
+  const grille = document.getElementById('viewGrille');
+  const liste  = document.getElementById('viewListe');
+  const cardsG = [...grille.querySelectorAll('.pcard')];
+  const cardsL = [...liste.querySelectorAll('.fav-list-item')];
+
+  const sortFn = {
+    prix_asc:  (a,b) => parseFloat(a.dataset.prix) - parseFloat(b.dataset.prix),
+    prix_desc: (a,b) => parseFloat(b.dataset.prix) - parseFloat(a.dataset.prix),
+    nom_asc:   (a,b) => a.dataset.nom.localeCompare(b.dataset.nom),
+    default:   ()    => 0,
+  }[critere] || (() => 0);
+
+  cardsG.sort(sortFn).forEach(c => grille.appendChild(c));
+  cardsL.sort(sortFn).forEach(c => liste.appendChild(c));
+}
+
+/* ── Retirer un favori ── */
+async function retirerFavori(id, btn){
+  try{
+    const r = await fetch(`/favoris/toggle/${id}/`, {
+      method:'POST',
+      headers:{
+        'X-CSRFToken':     document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With':'XMLHttpRequest'
+      }
+    });
+    const d = await r.json();
+    if(d.success){
+      /* Retirer la carte grille et la ligne liste */
+      document.querySelectorAll(`.pcard[data-id="${id}"], .fav-list-item[data-id="${id}"]`).forEach(el => {
+        el.style.transition = 'opacity .3s, transform .3s';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(.9)';
+        setTimeout(() => {
+          el.remove();
+          /* Mettre à jour le compteur */
+          const remaining = document.querySelectorAll('.pcard').length;
+          document.querySelectorAll('.fav-count strong').forEach(s => s.textContent = remaining);
+          /* Si plus rien, recharger pour afficher état vide */
+          if(remaining === 0) location.reload();
+        }, 320);
+      });
+      /* Mettre à jour le badge navbar */
+      showToast('Produit retiré des favoris', 'var(--ember)');
+    }
+  }catch(e){ console.warn(e) }
+}
+
+/* ── Ajouter au panier ── */
+async function ajouterPanier(id, btn){
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:13px;height:13px"></span>';
+  btn.disabled  = true;
+  try{
+    const r = await fetch(`/panier/ajouter/${id}/`, {
+      method:'POST',
+      headers:{
+        'X-CSRFToken':     document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With':'XMLHttpRequest'
+      }
+    });
+    const d = await r.json();
+    if(d.success){
+      btn.innerHTML = '<i class="bi bi-check-lg"></i> Ajouté !';
+      btn.style.cssText = 'background:var(--jade);color:#0A0B1A;border-color:var(--jade)';
+      const bc = document.querySelector('.nav-icon .bc');
+      if(bc) bc.textContent = d.nb_articles;
+      showToast('Produit ajouté au panier');
+      setTimeout(() => { btn.innerHTML = orig; btn.style.cssText = ''; btn.disabled = false; }, 2200);
+    } else { btn.innerHTML = orig; btn.disabled = false; }
+  }catch(e){ btn.innerHTML = orig; btn.disabled = false; }
+}
+
+/* ── Tout ajouter au panier ── */
+document.getElementById('btnToutAuPanier')?.addEventListener('click', async function(){
+  const ids = [...document.querySelectorAll('.pcard[data-id]')].map(c => c.dataset.id);
+  this.disabled = true;
+  this.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:13px;height:13px"></span> Ajout en cours…';
+  let added = 0;
+  for(const id of ids){
+    try{
+      const r = await fetch(`/panier/ajouter/${id}/`, {
+        method:'POST',
+        headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}
+      });
+      const d = await r.json();
+      if(d.success) added++;
+    }catch{}
+  }
+  this.innerHTML = `<i class="bi bi-check-lg"></i> ${added} article(s) ajouté(s)`;
+  showToast(`${added} produit(s) ajoutés au panier`);
+  setTimeout(() => { this.innerHTML = '<i class="bi bi-bag-plus"></i> Tout ajouter au panier'; this.disabled = false; }, 2500);
+});
+
+/* ── Vider les favoris ── */
+async function viderFavoris(){
+  if(!confirm('Retirer tous les produits de vos favoris ?')) return;
+  const ids = [...document.querySelectorAll('.pcard[data-id]')].map(c => c.dataset.id);
+  for(const id of ids){
+    try{
+      await fetch(`/favoris/toggle/${id}/`, {
+        method:'POST',
+        headers:{'X-CSRFToken':document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'','X-Requested-With':'XMLHttpRequest'}
+      });
+    }catch{}
+  }
+  showToast('Favoris vidés', 'var(--ember)');
+  setTimeout(() => location.reload(), 800);
+}
+</script>
+{% endblock %}
+{% endblock %}

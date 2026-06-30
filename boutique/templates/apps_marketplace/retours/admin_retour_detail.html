@@ -1,0 +1,404 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'apps_marketplace:admin_retours_liste' %}" style="color:var(--saffron);text-decoration:none">Retours</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Retour #{{ retour.pk }}</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.5rem;font-weight:800;color:var(--text);margin:0">
+        Retour #{{ retour.pk }}
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        Soumis le {{ retour.date_demande|date:"d M Y à H:i" }}
+        &bull;
+        <span style="
+          color:{% if retour.statut == 'complete' %}var(--jade){% elif retour.statut == 'refuse' %}var(--ember){% elif retour.statut == 'approuve' or retour.statut == 'en_cours' %}var(--indigo){% else %}var(--saffron){% endif %}">
+          {{ retour.get_statut_display }}
+        </span>
+      </p>
+    </div>
+    <a href="{% url 'apps_marketplace:admin_retours_liste' %}" class="btn-ghost" style="font-size:.82rem">
+      <i class="bi bi-arrow-left"></i> Retour à la liste
+    </a>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
+      color:var(--text)">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- ══ Colonne principale ══ -->
+    <div class="col-12 col-lg-7">
+
+      <!-- Article concerné -->
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+          <i class="bi bi-box me-2" style="color:var(--saffron)"></i>Article concerné
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:64px;height:64px;border-radius:12px;overflow:hidden;background:var(--surface);flex-shrink:0">
+            {% if retour.article_commande.produit.image_principale %}
+              <img src="{{ retour.article_commande.produit.image_principale }}" alt="" style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted);font-size:1.2rem"></i></div>
+            {% endif %}
+          </div>
+          <div class="flex-grow-1">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text)">{{ retour.article_commande.produit.titre }}</div>
+            <div style="font-size:.76rem;color:var(--muted);margin-top:.2rem">
+              <i class="bi bi-shop me-1"></i>{{ retour.article_commande.produit.vendeur.boutique.nom|default:retour.article_commande.produit.vendeur.username }}
+            </div>
+            <div class="d-flex gap-2 mt-2 flex-wrap">
+              <span class="chip" style="font-size:.68rem;padding:.18rem .55rem;background:var(--surface);color:var(--muted)">
+                Qté commandée : {{ retour.article_commande.quantite }}
+              </span>
+              <span class="chip" style="font-size:.68rem;padding:.18rem .55rem;background:rgba(246,169,43,.12);color:var(--saffron)">
+                Qté retournée : {{ retour.quantite }}
+              </span>
+              <span class="chip" style="font-size:.68rem;padding:.18rem .55rem;background:var(--surface);color:var(--text-2)">
+                {{ retour.article_commande.prix_unitaire|floatformat:0 }} F/unité
+              </span>
+            </div>
+          </div>
+          <div class="text-end flex-shrink-0">
+            <div style="font-size:1rem;font-weight:900;color:var(--saffron);font-family:var(--fm)">
+              {{ retour.article_commande.prix_total|floatformat:0 }} F
+            </div>
+            <div style="font-size:.72rem;color:var(--muted)">Total article</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Raison et description -->
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+          <i class="bi bi-chat-left-text me-2" style="color:var(--indigo)"></i>Motif du retour
+        </div>
+        <div class="mb-3">
+          <span class="chip" style="font-size:.76rem;padding:.3rem .8rem;background:rgba(99,102,241,.12);color:var(--indigo)">
+            {{ retour.get_raison_display }}
+          </span>
+        </div>
+        <blockquote style="margin:0;padding:.75rem 1rem;border-left:3px solid var(--indigo);background:var(--surface);border-radius:0 var(--r) var(--r) 0;font-size:.84rem;color:var(--text-2);line-height:1.6">
+          {{ retour.description }}
+        </blockquote>
+      </div>
+
+      <!-- Photos (si disponibles) -->
+      {% if retour.photos.exists %}
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+          <i class="bi bi-images me-2" style="color:var(--jade)"></i>Photos jointes
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          {% for photo in retour.photos.all %}
+          <a href="{{ photo.image.url }}" target="_blank"
+            style="width:80px;height:80px;border-radius:10px;overflow:hidden;display:block;border:1px solid var(--border)">
+            <img src="{{ photo.image.url }}" alt="Photo retour" style="width:100%;height:100%;object-fit:cover">
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Notes admin existantes -->
+      {% if retour.notes_admin %}
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.6rem">
+          <i class="bi bi-sticky me-2" style="color:var(--ember)"></i>Notes admin
+        </div>
+        <div style="font-size:.82rem;color:var(--text-2);padding:.6rem .8rem;background:var(--surface);border-radius:var(--r)">
+          {{ retour.notes_admin }}
+        </div>
+        {% if retour.date_traitement %}
+        <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">
+          Traité le {{ retour.date_traitement|date:"d M Y à H:i" }}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- ══ Colonne latérale ══ -->
+    <div class="col-12 col-lg-5">
+
+      <!-- Infos acheteur -->
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+          <i class="bi bi-person me-2" style="color:var(--saffron)"></i>Acheteur
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+            {% if retour.utilisateur.avatar %}
+              <img src="{{ retour.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+            {% else %}
+              {{ retour.utilisateur.username|first|upper }}
+            {% endif %}
+          </div>
+          <div>
+            <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+              {{ retour.utilisateur.get_full_name|default:retour.utilisateur.username }}
+            </div>
+            <div style="font-size:.74rem;color:var(--muted)">{{ retour.utilisateur.email }}</div>
+          </div>
+        </div>
+        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem">Commande liée</div>
+          <a href="{% url 'apps_marketplace:commande_detail' retour.commande.pk %}"
+            style="font-size:.84rem;font-weight:700;color:var(--saffron);text-decoration:none;font-family:var(--fm)">
+            {{ retour.commande.numero_commande }}
+          </a>
+          <div style="font-size:.74rem;color:var(--muted);margin-top:.2rem">
+            {{ retour.commande.date_creation|date:"d M Y" }}
+            &bull; {{ retour.commande.montant_total|floatformat:0 }} FCFA
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions admin -->
+      {% if retour.statut == 'demande' or retour.statut == 'approuve' or retour.statut == 'en_cours' %}
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+          <i class="bi bi-shield-check me-2" style="color:var(--jade)"></i>Décision admin
+        </div>
+
+        <!-- Approuver -->
+        {% if retour.statut == 'demande' %}
+        <button class="btn-ghost w-100 justify-content-center mb-2 btn-action-retour"
+          data-action="approuver" data-pk="{{ retour.pk }}"
+          style="font-size:.82rem;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--jade)">
+          <i class="bi bi-check-circle"></i> Approuver la demande
+        </button>
+        {% endif %}
+
+        <!-- En cours -->
+        {% if retour.statut == 'demande' or retour.statut == 'approuve' %}
+        <button class="btn-ghost w-100 justify-content-center mb-2 btn-action-retour"
+          data-action="en_cours" data-pk="{{ retour.pk }}"
+          style="font-size:.82rem;color:var(--indigo);border-color:rgba(99,102,241,.3)">
+          <i class="bi bi-arrow-repeat"></i> Marquer en cours
+        </button>
+        {% endif %}
+
+        <!-- Compléter avec remboursement -->
+        <div class="mb-2">
+          <button class="btn-ghost w-100 justify-content-center btn-action-retour"
+            data-action="complete" data-pk="{{ retour.pk }}" data-need-montant="1"
+            style="font-size:.82rem;background:rgba(246,169,43,.1);border-color:rgba(246,169,43,.3);color:var(--saffron)">
+            <i class="bi bi-cash-coin"></i> Marquer complété + remboursement
+          </button>
+        </div>
+
+        <!-- Refuser -->
+        {% if retour.statut == 'demande' or retour.statut == 'approuve' %}
+        <button class="btn-ghost w-100 justify-content-center btn-action-retour"
+          data-action="refuser" data-pk="{{ retour.pk }}" data-need-notes="1"
+          style="font-size:.82rem;color:var(--ember);border-color:rgba(239,68,68,.3)">
+          <i class="bi bi-x-circle"></i> Refuser
+        </button>
+        {% endif %}
+
+      </div>
+      {% else %}
+      <!-- Résultat final -->
+      <div class="ycard p-4 mb-3 text-center" style="background:{% if retour.statut == 'complete' %}rgba(16,185,129,.08){% else %}rgba(239,68,68,.08){% endif %};border:1px solid {% if retour.statut == 'complete' %}rgba(16,185,129,.25){% else %}rgba(239,68,68,.25){% endif %};border-radius:var(--r)">
+        <i class="bi {% if retour.statut == 'complete' %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %}"
+          style="font-size:2rem;color:{% if retour.statut == 'complete' %}var(--jade){% else %}var(--ember){% endif %}"></i>
+        <div style="font-size:.9rem;font-weight:700;color:var(--text);margin:.6rem 0 .3rem">
+          {{ retour.get_statut_display }}
+        </div>
+        {% if retour.montant_remboursement %}
+        <div style="font-size:.84rem;color:var(--jade)">
+          Remboursé : {{ retour.montant_remboursement|floatformat:0 }} FCFA
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Timeline -->
+      <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+          <i class="bi bi-clock-history me-2" style="color:var(--ember)"></i>Historique
+        </div>
+        <div style="position:relative;padding-left:1.5rem">
+          <div style="position:absolute;left:.45rem;top:0;bottom:0;width:2px;background:var(--border)"></div>
+          <div class="d-flex gap-3 mb-3" style="position:relative">
+            <div style="width:12px;height:12px;border-radius:50%;background:var(--saffron);position:absolute;left:-1.08rem;top:.2rem"></div>
+            <div>
+              <div style="font-size:.8rem;font-weight:600;color:var(--text)">Demande soumise</div>
+              <div style="font-size:.72rem;color:var(--muted)">{{ retour.date_demande|date:"d M Y à H:i" }}</div>
+            </div>
+          </div>
+          {% if retour.date_traitement %}
+          <div style="position:relative">
+            <div style="width:12px;height:12px;border-radius:50%;background:{% if retour.statut == 'complete' %}var(--jade){% elif retour.statut == 'refuse' %}var(--ember){% else %}var(--indigo){% endif %};position:absolute;left:-1.08rem;top:.2rem"></div>
+            <div>
+              <div style="font-size:.8rem;font-weight:600;color:var(--text)">{{ retour.get_statut_display }}</div>
+              <div style="font-size:.72rem;color:var(--muted)">{{ retour.date_traitement|date:"d M Y à H:i" }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div style="position:relative">
+            <div style="width:12px;height:12px;border-radius:50%;background:var(--border);position:absolute;left:-1.08rem;top:.2rem"></div>
+            <div style="font-size:.8rem;color:var(--muted)">En attente de décision…</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal action retour ── -->
+<div id="modal-retour" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;max-width:440px;width:90%;margin:auto">
+    <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:1rem" id="modal-retour-titre">Action</div>
+
+    <!-- Montant remboursement (si complete) -->
+    <div id="montant-wrap" class="mb-3 d-none">
+      <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+        Montant à rembourser (FCFA)
+      </label>
+      <input type="number" id="modal-montant" min="0" step="1"
+        value="{{ retour.article_commande.prix_total|floatformat:0 }}"
+        style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.9rem;padding:.6rem .8rem">
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">
+        Prix de l'article : {{ retour.article_commande.prix_total|floatformat:0 }} FCFA — le montant sera crédité sur le wallet YopiPay de l'acheteur.
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem" id="modal-notes-label">
+        Notes admin (optionnel)
+      </label>
+      <textarea id="modal-notes" rows="3"
+        style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding:.6rem .8rem;resize:vertical"
+        placeholder="Commentaire interne ou motif visible par l'acheteur…"></textarea>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+      <button class="btn-ghost" onclick="fermerModalRetour()" style="font-size:.82rem;width:auto">Annuler</button>
+      <button id="modal-retour-confirm" class="btn-gold" style="font-size:.82rem;width:auto">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const csrf = () => document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+let currentPk = null, currentAction = null;
+
+const titres = {
+  approuver: '✓ Approuver la demande',
+  refuser:   '✗ Refuser la demande',
+  en_cours:  '↻ Marquer en cours de traitement',
+  complete:  '💰 Marquer complété + remboursement',
+};
+const couleurs = {
+  approuver: 'linear-gradient(90deg,var(--jade),#059669)',
+  refuser:   'linear-gradient(90deg,var(--ember),#dc2626)',
+  en_cours:  'linear-gradient(90deg,var(--indigo),#4f46e5)',
+  complete:  'linear-gradient(90deg,var(--saffron),#d97706)',
+};
+
+function fermerModalRetour() {
+  document.getElementById('modal-retour').style.display = 'none';
+}
+
+function ouvrirModalRetour(pk, action, needMontant, needNotes) {
+  currentPk = pk; currentAction = action;
+  document.getElementById('modal-retour-titre').textContent = titres[action] || action;
+  document.getElementById('modal-retour-confirm').style.background = couleurs[action] || '';
+  document.getElementById('modal-notes').value = '';
+  document.getElementById('modal-montant').value = '{{ retour.article_commande.prix_total|floatformat:0 }}';
+
+  // Montant visible uniquement pour "complete"
+  document.getElementById('montant-wrap').classList.toggle('d-none', !needMontant);
+
+  // Label notes selon action
+  document.getElementById('modal-notes-label').textContent =
+    action === 'refuser' ? 'Motif de refus (requis)' : 'Notes admin (optionnel)';
+
+  document.getElementById('modal-retour').style.display = 'flex';
+}
+
+document.querySelectorAll('.btn-action-retour').forEach(btn => {
+  btn.addEventListener('click', function () {
+    ouvrirModalRetour(
+      this.dataset.pk,
+      this.dataset.action,
+      this.dataset.needMontant === '1',
+      this.dataset.needNotes  === '1'
+    );
+  });
+});
+
+document.getElementById('modal-retour').addEventListener('click', function(e) {
+  if (e.target === this) fermerModalRetour();
+});
+
+document.getElementById('modal-retour-confirm').addEventListener('click', async function () {
+  const notes   = document.getElementById('modal-notes').value.trim();
+  const montant = document.getElementById('modal-montant').value;
+
+  if (currentAction === 'refuser' && !notes) {
+    alert('Un motif de refus est requis.');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('action', currentAction);
+  fd.append('notes_admin', notes);
+  if (currentAction === 'complete') fd.append('montant_remboursement', montant);
+
+  this.disabled = true;
+  this.textContent = 'Traitement…';
+
+  try {
+    const r = await fetch(`/retours/${currentPk}/traiter/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    });
+    const d = await r.json();
+    fermerModalRetour();
+    if (d.success) {
+      setTimeout(() => location.reload(), 400);
+    } else {
+      alert(d.message || 'Erreur lors du traitement.');
+      this.disabled = false;
+      this.textContent = 'Confirmer';
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erreur réseau.');
+    this.disabled = false;
+    this.textContent = 'Confirmer';
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,246 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Toutes les commandes</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+      Gestion des commandes
+    </h1>
+    <span style="font-size:.78rem;color:var(--muted)"><i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Vue admin</span>
+  </div>
+
+  <!-- ── KPIs ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--text)">{{ stats.total }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Total commandes</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--jade)">{{ stats.ca_total|floatformat:0 }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">CA livré (FCFA)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--saffron)">{{ stats.en_attente }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En attente</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--indigo)">{{ stats.commission_totale|floatformat:0 }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Commissions (FCFA)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtres + recherche ── -->
+  <div class="ycard p-3 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <form method="get" class="row g-2 align-items-end">
+      <!-- Recherche -->
+      <div class="col-12 col-md-5">
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.8rem"></i>
+          <input type="text" name="q" value="{{ q }}" placeholder="N° commande, username client…"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding-left:2.2rem">
+        </div>
+      </div>
+      <!-- Statut -->
+      <div class="col-12 col-md-4">
+        <select name="statut" class="form-select"
+          style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+          <option value="">— Tous les statuts —</option>
+          {% for val, label in statuts %}
+          <option value="{{ val }}" {% if statut == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.82rem">
+          <i class="bi bi-funnel"></i> Filtrer
+        </button>
+        {% if statut or q %}
+        <a href="{% url 'apps_marketplace:admin_commandes_liste' %}" class="btn-ghost" style="font-size:.82rem;width:auto">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Filtres statut rapides ── -->
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    <a href="{% url 'apps_marketplace:admin_commandes_liste' %}{% if q %}?q={{ q }}{% endif %}"
+      class="cpill {% if not statut %}on{% endif %}"
+      style="{% if not statut %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      Toutes <span class="chip" style="font-size:.6rem;padding:.1rem .4rem;background:var(--surface);margin-left:.2rem">{{ stats.total }}</span>
+    </a>
+    {% for val, label in statuts %}
+    <a href="?statut={{ val }}{% if q %}&q={{ q }}{% endif %}"
+      class="cpill {% if statut == val %}on{% endif %}"
+      style="{% if statut == val %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- ── Résultats ── -->
+  <div style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem">
+    {{ commandes.paginator.count }} commande{{ commandes.paginator.count|pluralize }} trouvée{{ commandes.paginator.count|pluralize }}
+  </div>
+
+  {% if commandes %}
+  <!-- Table responsive -->
+  <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--surface);border-bottom:2px solid var(--border)">
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:left;white-space:nowrap">N° Commande</th>
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:left;white-space:nowrap">Client</th>
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:left;white-space:nowrap">Boutique</th>
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:left;white-space:nowrap">Date</th>
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:right;white-space:nowrap">Total</th>
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;white-space:nowrap">Statut</th>
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;white-space:nowrap">Paiement</th>
+            <th style="padding:.75rem 1rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;white-space:nowrap">Source</th>
+            <th style="padding:.75rem .75rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:center"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cmd in commandes %}
+          <tr style="border-bottom:1px solid var(--border);transition:background .15s" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background=''">
+
+            <!-- N° commande -->
+            <td style="padding:.75rem 1rem;font-size:.8rem;font-weight:700;color:var(--text);font-family:var(--fm);white-space:nowrap">
+              {{ cmd.numero_commande }}
+            </td>
+
+            <!-- Client -->
+            <td style="padding:.75rem 1rem">
+              <div style="display:flex;align-items:center;gap:.6rem">
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+                  {% if cmd.utilisateur.avatar %}
+                    <img src="{{ cmd.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                  {% else %}
+                    {{ cmd.utilisateur.username|first|upper }}
+                  {% endif %}
+                </div>
+                <div>
+                  <div style="font-size:.78rem;font-weight:600;color:var(--text);white-space:nowrap">{{ cmd.utilisateur.get_full_name|default:cmd.utilisateur.username|truncatechars:18 }}</div>
+                  <div style="font-size:.68rem;color:var(--muted)">@{{ cmd.utilisateur.username }}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Boutique -->
+            <td style="padding:.75rem 1rem;font-size:.78rem;color:var(--text-2);white-space:nowrap">
+              {% if cmd.boutique %}
+                <span style="display:flex;align-items:center;gap:.4rem"><i class="bi bi-shop" style="color:var(--jade)"></i>{{ cmd.boutique.nom|truncatechars:16 }}</span>
+              {% else %}
+                <span style="color:var(--muted)"><i class="bi bi-person me-1"></i>Individuel</span>
+              {% endif %}
+            </td>
+
+            <!-- Date -->
+            <td style="padding:.75rem 1rem;font-size:.76rem;color:var(--muted);white-space:nowrap">
+              {{ cmd.date_creation|date:"d M Y" }}<br>
+              <span style="font-size:.68rem">{{ cmd.date_creation|date:"H:i" }}</span>
+            </td>
+
+            <!-- Total -->
+            <td style="padding:.75rem 1rem;font-size:.9rem;font-weight:800;color:var(--saffron);text-align:right;white-space:nowrap;font-family:var(--fm)">
+              {{ cmd.montant_total|floatformat:0 }} F
+            </td>
+
+            <!-- Statut commande -->
+            <td style="padding:.75rem 1rem;text-align:center">
+              <span class="chip" style="font-size:.65rem;padding:.2rem .55rem;white-space:nowrap;
+                background:{% if cmd.statut == 'livree' %}rgba(16,185,129,.15){% elif cmd.statut == 'annulee' %}rgba(239,68,68,.15){% elif cmd.statut == 'expediee' %}rgba(99,102,241,.15){% elif cmd.statut == 'en_traitement' %}rgba(99,102,241,.1){% else %}rgba(246,169,43,.15){% endif %};
+                color:{% if cmd.statut == 'livree' %}var(--jade){% elif cmd.statut == 'annulee' %}var(--ember){% elif cmd.statut == 'expediee' %}var(--indigo){% elif cmd.statut == 'en_traitement' %}var(--indigo){% else %}var(--saffron){% endif %}">
+                {{ cmd.get_statut_display }}
+              </span>
+            </td>
+
+            <!-- Statut paiement -->
+            <td style="padding:.75rem 1rem;text-align:center">
+              <span class="chip" style="font-size:.65rem;padding:.2rem .55rem;white-space:nowrap;
+                background:{% if cmd.statut_paiement == 'payee' %}rgba(16,185,129,.15){% elif cmd.statut_paiement == 'echec' or cmd.statut_paiement == 'rejete' %}rgba(239,68,68,.15){% else %}rgba(246,169,43,.15){% endif %};
+                color:{% if cmd.statut_paiement == 'payee' %}var(--jade){% elif cmd.statut_paiement == 'echec' or cmd.statut_paiement == 'rejete' %}var(--ember){% else %}var(--saffron){% endif %}">
+                {{ cmd.get_statut_paiement_display }}
+              </span>
+            </td>
+
+            <!-- Source -->
+            <td style="padding:.75rem 1rem;text-align:center">
+              <span class="chip" style="font-size:.65rem;padding:.2rem .55rem;background:var(--surface);color:var(--muted)">
+                {% if cmd.source == 'live' %}<i class="bi bi-broadcast me-1" style="color:var(--ember)"></i>
+                {% elif cmd.source == 'enchere' %}<i class="bi bi-hammer me-1" style="color:var(--ember)"></i>
+                {% elif cmd.source == 'groupe' %}<i class="bi bi-people me-1" style="color:var(--jade)"></i>
+                {% else %}<i class="bi bi-globe me-1"></i>{% endif %}
+                {{ cmd.get_source_display }}
+              </span>
+            </td>
+
+            <!-- Actions -->
+            <td style="padding:.75rem .75rem;text-align:center">
+              <a href="{% url 'apps_marketplace:commande_detail' cmd.pk %}" class="btn-ghost"
+                style="font-size:.72rem;padding:.28rem .6rem;width:auto">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if commandes.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+    {% if commandes.has_previous %}
+    <a href="?statut={{ statut }}&q={{ q }}&page={{ commandes.previous_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    {% for p in commandes.paginator.page_range %}
+      {% if p == commandes.number %}
+      <span class="btn-gold" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center">{{ p }}</span>
+      {% elif p >= commandes.number|add:"-2" and p <= commandes.number|add:"2" %}
+      <a href="?statut={{ statut }}&q={{ q }}&page={{ p }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center;width:auto">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if commandes.has_next %}
+    <a href="?statut={{ statut }}&q={{ q }}&page={{ commandes.next_page_number }}" class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:72px;height:72px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-inbox" style="font-size:2rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">Aucune commande trouvée</div>
+    <div style="font-size:.82rem;color:var(--muted)">Essayez de modifier vos filtres de recherche.</div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

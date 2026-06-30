@@ -1,0 +1,561 @@
+
+
+{% extends 'navigateur/base.html' %}
+{% load static %}
+ 
+{% block title %}{{ page_titre }}{% endblock %}
+ 
+{% block content %}
+ 
+<div style="padding:2rem 0 4rem;min-height:80vh">
+  <div class="container">
+ 
+    {# ── Fil d'Ariane ── #}
+    <nav class="mb-3" style="font-size:.78rem;color:var(--muted);
+         display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+      <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted)">
+        <i class="bi bi-house-fill"></i> Accueil
+      </a>
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      <a href="{% url 'apps_core:catalogue' %}" style="color:var(--muted)">Catalogue</a>
+      {% for bc in breadcrumb %}
+      <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+      {% if not forloop.last %}
+      <a href="{% url 'apps_core:categorie_detail' bc.slug %}"
+         style="color:var(--muted)">{{ bc.nom }}</a>
+      {% else %}
+      <span style="color:var(--saffron)">{{ bc.nom }}</span>
+      {% endif %}
+      {% endfor %}
+    </nav>
+ 
+    {# ── En-tête catégorie ── #}
+    <div class="ycard mb-4 fi" style="overflow:hidden;position:relative">
+      {% if categorie.image %}
+      <div style="position:absolute;inset:0;
+                  background:url('{{ categorie.image.url }}') center/cover no-repeat;
+                  opacity:.12;pointer-events:none"></div>
+      {% endif %}
+      <div style="position:absolute;inset:0;
+                  background:linear-gradient(90deg,var(--card) 50%,transparent);
+                  pointer-events:none"></div>
+      <div style="padding:1.5rem 1.75rem;position:relative">
+        <div class="eyebrow mb-2">Catégorie</div>
+        <h1 style="font-family:var(--fg);font-size:clamp(1.4rem,3vw,2rem);
+                   font-weight:700;color:var(--text);margin-bottom:.4rem">
+          {{ categorie.nom }}
+        </h1>
+        {% if categorie.description %}
+        <p style="font-size:.85rem;color:var(--muted);max-width:600px;margin-bottom:.7rem">
+          {{ categorie.description }}
+        </p>
+        {% endif %}
+        <div style="font-size:.78rem;color:var(--muted)">
+          <i class="bi bi-box-seam" style="color:var(--saffron)"></i>
+          {{ nb_resultats }} produit{{ nb_resultats|pluralize }}
+          {% if stats.prix_min_db and stats.prix_max_db %}
+          &nbsp;·&nbsp;
+          <i class="bi bi-tag" style="color:var(--jade)"></i>
+          {{ stats.prix_min_db|floatformat:0 }} – {{ stats.prix_max_db|floatformat:0 }} FCFA
+          {% endif %}
+        </div>
+      </div>
+    </div>
+ 
+    {# ── Sous-catégories pills ── #}
+    {% if sous_categories %}
+    <div class="d-flex gap-2 flex-wrap mb-4 fi">
+      <a href="{% url 'apps_core:categorie_detail' categorie.slug %}"
+         class="cpill {% if not request.GET.sous_cat %}on{% endif %}"
+         style="border:1px solid var(--border)">
+        <i class="bi bi-grid"></i> Tout voir ({{ nb_resultats }})
+      </a>
+      {% for sc in sous_categories %}
+      {% if sc.nb_produits > 0 %}
+      <a href="{% url 'apps_core:categorie_detail' sc.slug %}"
+         class="cpill"
+         style="border:1px solid var(--border)">
+        <i class="bi bi-tag"></i>
+        {{ sc.nom }}
+        <span style="font-size:.65rem;background:var(--border);
+                     color:var(--muted);padding:1px 6px;border-radius:99px">
+          {{ sc.nb_produits }}
+        </span>
+      </a>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+ 
+    <div class="row g-4">
+ 
+      {# ════════════════════════════════════════
+         SIDEBAR FILTRES
+      ════════════════════════════════════════ #}
+      <div class="col-12 col-lg-3">
+        <form method="get" id="filtreForm">
+ 
+          {# Conserver la recherche textuelle #}
+          {% if filtre_q %}
+          <input type="hidden" name="q" value="{{ filtre_q }}">
+          {% endif %}
+ 
+          {# ── Tri ── #}
+          <div class="ycard mb-3 fi">
+            <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);
+                        font-size:.72rem;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--muted)">
+              <i class="bi bi-sort-down" style="color:var(--saffron)"></i> Trier par
+            </div>
+            <div style="padding:.6rem .5rem">
+              {% for val, lbl in tri_choices %}
+              <label style="display:flex;align-items:center;gap:.6rem;
+                            padding:.42rem .65rem;border-radius:8px;cursor:pointer;
+                            font-size:.82rem;color:{% if filtre_tri == val %}var(--saffron){% else %}var(--text-2){% endif %};
+                            background:{% if filtre_tri == val %}var(--saffron-d){% else %}transparent{% endif %};
+                            transition:background .15s">
+                <input type="radio" name="tri" value="{{ val }}"
+                       {% if filtre_tri == val %}checked{% endif %}
+                       style="display:none"
+                       onchange="this.form.submit()">
+                <i class="bi {% if val == 'recent' %}bi-clock{% elif val == 'populaire' %}bi-fire{% elif val == 'note' %}bi-star{% elif val == 'prix_asc' %}bi-sort-numeric-up{% else %}bi-sort-numeric-down{% endif %}"
+                   style="font-size:.85rem"></i>
+                {{ lbl }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+ 
+          {# ── Prix ── #}
+          <div class="ycard mb-3 fi">
+            <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);
+                        font-size:.72rem;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--muted)">
+              <i class="bi bi-tag" style="color:var(--saffron)"></i> Prix (FCFA)
+            </div>
+            <div style="padding:.85rem 1rem">
+              <div class="d-flex gap-2 align-items-center">
+                <input type="number" name="prix_min" value="{{ filtre_prix_min }}"
+                       placeholder="Min"
+                       style="flex:1;background:var(--surface);border:1.5px solid var(--border);
+                              border-radius:8px;color:var(--text);font-size:.82rem;
+                              padding:.45rem .7rem;outline:none;width:100%"
+                       onfocus="this.style.borderColor='var(--saffron)'"
+                       onblur="this.style.borderColor='var(--border)'">
+                <span style="color:var(--muted);font-size:.8rem">–</span>
+                <input type="number" name="prix_max" value="{{ filtre_prix_max }}"
+                       placeholder="Max"
+                       style="flex:1;background:var(--surface);border:1.5px solid var(--border);
+                              border-radius:8px;color:var(--text);font-size:.82rem;
+                              padding:.45rem .7rem;outline:none;width:100%"
+                       onfocus="this.style.borderColor='var(--saffron)'"
+                       onblur="this.style.borderColor='var(--border)'">
+              </div>
+            </div>
+          </div>
+ 
+          {# ── État ── #}
+          <div class="ycard mb-3 fi">
+            <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);
+                        font-size:.72rem;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--muted)">
+              <i class="bi bi-shield-check" style="color:var(--jade)"></i> État
+            </div>
+            <div style="padding:.6rem .5rem">
+              <label style="display:flex;align-items:center;gap:.6rem;padding:.42rem .65rem;
+                            border-radius:8px;cursor:pointer;font-size:.82rem;
+                            color:{% if not filtre_etat %}var(--saffron){% else %}var(--text-2){% endif %}">
+                <input type="radio" name="etat" value=""
+                       {% if not filtre_etat %}checked{% endif %}
+                       style="display:none" onchange="this.form.submit()">
+                Tous les états
+              </label>
+              {% for val, lbl in etat_choices %}
+              <label style="display:flex;align-items:center;gap:.6rem;padding:.42rem .65rem;
+                            border-radius:8px;cursor:pointer;font-size:.82rem;
+                            color:{% if filtre_etat == val %}var(--saffron){% else %}var(--text-2){% endif %};
+                            background:{% if filtre_etat == val %}var(--saffron-d){% else %}transparent{% endif %}">
+                <input type="radio" name="etat" value="{{ val }}"
+                       {% if filtre_etat == val %}checked{% endif %}
+                       style="display:none" onchange="this.form.submit()">
+                {{ lbl }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+ 
+          {# ── Marques ── #}
+          {% if marques_disponibles %}
+          <div class="ycard mb-3 fi">
+            <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);
+                        font-size:.72rem;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--muted)">
+              <i class="bi bi-award" style="color:var(--indigo)"></i> Marque
+            </div>
+            <div style="padding:.6rem .5rem;max-height:220px;overflow-y:auto">
+              <label style="display:flex;align-items:center;gap:.6rem;padding:.42rem .65rem;
+                            border-radius:8px;cursor:pointer;font-size:.82rem;
+                            color:{% if not filtre_marque %}var(--saffron){% else %}var(--text-2){% endif %}">
+                <input type="radio" name="marque" value=""
+                       {% if not filtre_marque %}checked{% endif %}
+                       style="display:none" onchange="this.form.submit()">
+                Toutes les marques
+              </label>
+              {% for m in marques_disponibles %}
+              <label style="display:flex;align-items:center;justify-content:space-between;
+                            gap:.6rem;padding:.42rem .65rem;border-radius:8px;cursor:pointer;
+                            font-size:.82rem;
+                            color:{% if filtre_marque == m.marque__id|stringformat:'s' %}var(--saffron){% else %}var(--text-2){% endif %};
+                            background:{% if filtre_marque == m.marque__id|stringformat:'s' %}var(--saffron-d){% else %}transparent{% endif %}">
+                <span>
+                  <input type="radio" name="marque" value="{{ m.marque__id }}"
+                         {% if filtre_marque == m.marque__id|stringformat:'s' %}checked{% endif %}
+                         style="display:none" onchange="this.form.submit()">
+                  {{ m.marque__nom }}
+                </span>
+                <span style="font-size:.65rem;background:var(--border);
+                             color:var(--muted);padding:1px 6px;border-radius:99px">
+                  {{ m.nb }}
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+ 
+          {# ── Options ── #}
+          <div class="ycard mb-3 fi">
+            <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);
+                        font-size:.72rem;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--muted)">
+              <i class="bi bi-funnel" style="color:var(--ember)"></i> Options
+            </div>
+            <div style="padding:.75rem 1rem;display:flex;flex-direction:column;gap:.5rem">
+              <label style="display:flex;align-items:center;gap:.65rem;cursor:pointer;font-size:.82rem;color:var(--text-2)">
+                <input type="checkbox" name="en_stock" value="1"
+                       {% if filtre_en_stock == '1' %}checked{% endif %}
+                       onchange="this.form.submit()"
+                       style="width:16px;height:16px;accent-color:var(--jade);cursor:pointer">
+                <i class="bi bi-check-circle" style="color:var(--jade)"></i>
+                En stock uniquement
+              </label>
+              <label style="display:flex;align-items:center;gap:.65rem;cursor:pointer;font-size:.82rem;color:var(--text-2)">
+                <input type="checkbox" name="vedette" value="1"
+                       {% if filtre_vedette == '1' %}checked{% endif %}
+                       onchange="this.form.submit()"
+                       style="width:16px;height:16px;accent-color:var(--saffron);cursor:pointer">
+                <i class="bi bi-star-fill" style="color:var(--saffron)"></i>
+                Produits vedettes
+              </label>
+            </div>
+          </div>
+ 
+          {# Bouton appliquer (mobile) + Réinitialiser #}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn-gold flex-grow-1" style="font-size:.82rem">
+              <i class="bi bi-funnel-fill"></i> Appliquer
+            </button>
+            <a href="{% url 'apps_core:categorie_detail' categorie.slug %}"
+               class="btn-ghost" style="font-size:.82rem;padding:.55rem .9rem">
+              <i class="bi bi-x-lg"></i>
+            </a>
+          </div>
+ 
+        </form>
+      </div>
+ 
+      {# ════════════════════════════════════════
+         GRILLE PRODUITS
+      ════════════════════════════════════════ #}
+      <div class="col-12 col-lg-9">
+ 
+        {# Barre résultats + recherche rapide #}
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    flex-wrap:wrap;gap:.75rem;margin-bottom:1.25rem" class="fi">
+          <div style="font-size:.82rem;color:var(--muted)">
+            <strong style="color:var(--text)">{{ nb_resultats }}</strong>
+            produit{{ nb_resultats|pluralize }} trouvé{{ nb_resultats|pluralize }}
+            {% if filtre_q %}
+            pour <strong style="color:var(--saffron)">"{{ filtre_q }}"</strong>
+            {% endif %}
+          </div>
+          {# Recherche dans la catégorie #}
+          <form method="get" style="display:flex;gap:.4rem">
+            <input type="hidden" name="tri" value="{{ filtre_tri }}">
+            <div style="position:relative">
+              <i class="bi bi-search" style="position:absolute;left:.8rem;top:50%;
+                 transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none"></i>
+              <input type="text" name="q" value="{{ filtre_q }}"
+                     placeholder="Rechercher dans {{ categorie.nom }}…"
+                     style="background:var(--card);border:1.5px solid var(--border);
+                            border-radius:99px;color:var(--text);font-size:.82rem;
+                            padding:.45rem 1rem .45rem 2.2rem;outline:none;width:240px;
+                            transition:border-color .2s"
+                     onfocus="this.style.borderColor='var(--saffron)'"
+                     onblur="this.style.borderColor='var(--border)'">
+            </div>
+            <button type="submit" class="btn-gold" style="font-size:.8rem;padding:.45rem 1rem">
+              <i class="bi bi-search"></i>
+            </button>
+          </form>
+        </div>
+ 
+        {# Filtres actifs (chips) #}
+        {% if filtre_prix_min or filtre_prix_max or filtre_etat or filtre_en_stock or filtre_vedette or filtre_marque %}
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem" class="fi">
+          <span style="font-size:.72rem;color:var(--muted);align-self:center">Filtres :</span>
+          {% if filtre_prix_min %}
+          <span class="chip" style="background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.2)">
+            ≥ {{ filtre_prix_min }} FCFA
+            <a href="?tri={{ filtre_tri }}&prix_max={{ filtre_prix_max }}&etat={{ filtre_etat }}&en_stock={{ filtre_en_stock }}&vedette={{ filtre_vedette }}&marque={{ filtre_marque }}"
+               style="color:inherit;margin-left:.25rem;font-weight:700">✕</a>
+          </span>
+          {% endif %}
+          {% if filtre_prix_max %}
+          <span class="chip" style="background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.2)">
+            ≤ {{ filtre_prix_max }} FCFA
+            <a href="?tri={{ filtre_tri }}&prix_min={{ filtre_prix_min }}&etat={{ filtre_etat }}&en_stock={{ filtre_en_stock }}&vedette={{ filtre_vedette }}&marque={{ filtre_marque }}"
+               style="color:inherit;margin-left:.25rem;font-weight:700">✕</a>
+          </span>
+          {% endif %}
+          {% if filtre_etat %}
+          <span class="chip" style="background:var(--jade-d);color:var(--jade);border:1px solid rgba(16,212,160,.2)">
+            {{ filtre_etat|capfirst }}
+            <a href="?tri={{ filtre_tri }}&prix_min={{ filtre_prix_min }}&prix_max={{ filtre_prix_max }}&en_stock={{ filtre_en_stock }}&vedette={{ filtre_vedette }}&marque={{ filtre_marque }}"
+               style="color:inherit;margin-left:.25rem;font-weight:700">✕</a>
+          </span>
+          {% endif %}
+          {% if filtre_en_stock == '1' %}
+          <span class="chip" style="background:var(--jade-d);color:var(--jade);border:1px solid rgba(16,212,160,.2)">
+            En stock
+            <a href="?tri={{ filtre_tri }}&prix_min={{ filtre_prix_min }}&prix_max={{ filtre_prix_max }}&etat={{ filtre_etat }}&vedette={{ filtre_vedette }}&marque={{ filtre_marque }}"
+               style="color:inherit;margin-left:.25rem;font-weight:700">✕</a>
+          </span>
+          {% endif %}
+          {% if filtre_vedette == '1' %}
+          <span class="chip" style="background:var(--saffron-d);color:var(--saffron);border:1px solid rgba(247,183,49,.2)">
+            ⭐ Vedette
+            <a href="?tri={{ filtre_tri }}&prix_min={{ filtre_prix_min }}&prix_max={{ filtre_prix_max }}&etat={{ filtre_etat }}&en_stock={{ filtre_en_stock }}&marque={{ filtre_marque }}"
+               style="color:inherit;margin-left:.25rem;font-weight:700">✕</a>
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+ 
+        {# Grille produits #}
+        {% if produits %}
+        <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3">
+          {% for produit in produits %}
+          <div class="col fi fi-d{{ forloop.counter|add:"0"|slice:":1" }}">
+            <a href="{% url 'apps_core:produit_detail' produit.slug %}"
+               class="pcard text-decoration-none h-100">
+              <div class="pcard-img">
+                {% with produit.images.first as img %}
+                {% if img %}
+                <img src="{{ img.image.url }}" alt="{{ produit.titre }}" loading="lazy">
+                {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;
+                            justify-content:center;color:var(--muted)">
+                  <i class="bi bi-image" style="font-size:2.5rem;opacity:.3"></i>
+                </div>
+                {% endif %}
+                {% endwith %}
+ 
+                {# Badges #}
+                {% if produit.est_produit_yopishop %}
+                <div class="pcard-badge pb-vip">✅ Officiel</div>
+                {% elif not produit.est_en_stock %}
+                <div class="pcard-badge pb-off">Épuisé</div>
+                {% elif produit.est_vedette %}
+                <div class="pcard-badge pb-top">⭐ Vedette</div>
+                {% endif %}
+ 
+                {# Bouton favori #}
+                <button class="pcard-fav" data-id="{{ produit.id }}"
+                        onclick="return false"
+                        title="{% if produit.id|stringformat:'s' in favoris_ids|join:',' %}Retirer des favoris{% else %}Ajouter aux favoris{% endif %}">
+                  <i class="bi bi-heart{% if produit.id in favoris_ids %}-fill{% endif %}"
+                     {% if produit.id in favoris_ids %}style="color:var(--ember)"{% endif %}></i>
+                </button>
+              </div>
+ 
+              <div class="pcard-body">
+                <div class="pcard-name">{{ produit.titre }}</div>
+                <div class="pcard-vendor">
+                  <i class="bi bi-shop"></i>
+                  {{ produit.vendeur.boutique.nom|default:produit.vendeur.username }}
+                  {% if produit.ville %}
+                  &nbsp;<i class="bi bi-geo-alt"></i> {{ produit.ville.nom }}
+                  {% endif %}
+                </div>
+                <div class="pcard-price">
+                  <span class="pn">{{ produit.prix_promotionnel|floatformat:0 }} FCFA</span>
+                  {% if produit.prix_promotionnel != produit.prix %}
+                  <span class="po">{{ produit.prix|floatformat:0 }}</span>
+                  {% endif %}
+                </div>
+              </div>
+ 
+              <div class="pcard-foot">
+                <button class="pcard-cart" data-id="{{ produit.id }}"
+                        onclick="return false">
+                  <i class="bi bi-bag-plus"></i> Ajouter
+                </button>
+                <div class="pcard-stars">
+                  <i class="bi bi-star-fill"></i>
+                  {{ produit.note_moyenne|floatformat:1 }}
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+ 
+        {# ── Pagination ── #}
+        {% if produits.paginator.num_pages > 1 %}
+        <div style="display:flex;justify-content:center;align-items:center;
+                    gap:.35rem;margin-top:2.5rem;flex-wrap:wrap" class="fi">
+          {% if produits.has_previous %}
+          <a href="?page={{ produits.previous_page_number }}&tri={{ filtre_tri }}&prix_min={{ filtre_prix_min }}&prix_max={{ filtre_prix_max }}&etat={{ filtre_etat }}&en_stock={{ filtre_en_stock }}&vedette={{ filtre_vedette }}&marque={{ filtre_marque }}&q={{ filtre_q }}"
+             style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+                    display:flex;align-items:center;justify-content:center;
+                    color:var(--muted);transition:border-color .2s,color .2s"
+             onmouseover="this.style.borderColor='var(--saffron)';this.style.color='var(--saffron)'"
+             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+            <i class="bi bi-chevron-left" style="font-size:.8rem"></i>
+          </a>
+          {% endif %}
+ 
+          {% for num in produits.paginator.page_range %}
+          {% if produits.number == num %}
+          <span style="width:36px;height:36px;border-radius:8px;border:1px solid var(--saffron);
+                       background:var(--saffron-d);color:var(--saffron);font-size:.83rem;
+                       font-weight:700;display:flex;align-items:center;justify-content:center">
+            {{ num }}
+          </span>
+          {% elif num >= produits.number|add:"-2" and num <= produits.number|add:"2" %}
+          <a href="?page={{ num }}&tri={{ filtre_tri }}&prix_min={{ filtre_prix_min }}&prix_max={{ filtre_prix_max }}&etat={{ filtre_etat }}&en_stock={{ filtre_en_stock }}&vedette={{ filtre_vedette }}&marque={{ filtre_marque }}&q={{ filtre_q }}"
+             style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+                    color:var(--muted);font-size:.83rem;display:flex;
+                    align-items:center;justify-content:center;transition:border-color .2s,color .2s"
+             onmouseover="this.style.borderColor='var(--saffron)';this.style.color='var(--saffron)'"
+             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+            {{ num }}
+          </a>
+          {% endif %}
+          {% endfor %}
+ 
+          {% if produits.has_next %}
+          <a href="?page={{ produits.next_page_number }}&tri={{ filtre_tri }}&prix_min={{ filtre_prix_min }}&prix_max={{ filtre_prix_max }}&etat={{ filtre_etat }}&en_stock={{ filtre_en_stock }}&vedette={{ filtre_vedette }}&marque={{ filtre_marque }}&q={{ filtre_q }}"
+             style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+                    display:flex;align-items:center;justify-content:center;
+                    color:var(--muted);transition:border-color .2s,color .2s"
+             onmouseover="this.style.borderColor='var(--saffron)';this.style.color='var(--saffron)'"
+             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+            <i class="bi bi-chevron-right" style="font-size:.8rem"></i>
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+ 
+        {% else %}
+        {# Empty state #}
+        <div style="text-align:center;padding:5rem 1rem" class="fi">
+          <i class="bi bi-search" style="font-size:3rem;color:var(--muted);
+             opacity:.35;display:block;margin-bottom:1rem"></i>
+          <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">
+            Aucun produit trouvé
+          </div>
+          <div style="font-size:.84rem;color:var(--muted);margin-bottom:1.5rem">
+            Essayez de modifier vos filtres ou d'élargir votre recherche.
+          </div>
+          <a href="{% url 'apps_core:categorie_detail' categorie.slug %}"
+             class="btn-ghost">
+            <i class="bi bi-x-lg"></i> Réinitialiser les filtres
+          </a>
+        </div>
+        {% endif %}
+ 
+      </div>{# /col produits #}
+    </div>{# /row #}
+  </div>
+</div>
+ 
+{% block extra_js %}
+<script>
+"use strict";
+ 
+/* Fade-in */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); }
+  });
+}, {threshold:.07});
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+ 
+/* Favoris */
+document.querySelectorAll('.pcard-fav').forEach(btn => {
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    try {
+      const r = await fetch(`/favoris/toggle/${this.dataset.id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      });
+      const d = await r.json();
+      if(d.success){
+        const ic = this.querySelector('i');
+        ic.className = d.ajoute ? 'bi bi-heart-fill' : 'bi bi-heart';
+        ic.style.color = d.ajoute ? 'var(--ember)' : '';
+        this.style.color = d.ajoute ? 'var(--ember)' : '';
+        this.style.borderColor = d.ajoute ? 'var(--ember)' : '';
+      }
+    } catch {}
+  });
+});
+ 
+/* Panier */
+document.querySelectorAll('.pcard-cart').forEach(btn => {
+  btn.addEventListener('click', async function(e){
+    e.preventDefault(); e.stopPropagation();
+    const orig = this.innerHTML;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:12px;height:12px"></span>';
+    this.disabled = true;
+    try {
+      const r = await fetch(`/panier/ajouter/${this.dataset.id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      });
+      const d = await r.json();
+      if(d.success){
+        this.innerHTML = '<i class="bi bi-check-lg"></i> Ajouté !';
+        this.style.cssText = 'background:var(--jade);color:#0A0B1A;border-color:var(--jade)';
+        const bc = document.querySelector('.nav-icon .bc');
+        if(bc) bc.textContent = d.nb_articles;
+        setTimeout(() => {
+          this.innerHTML = orig;
+          this.style.cssText = '';
+          this.disabled = false;
+        }, 1800);
+      } else {
+        this.innerHTML = orig;
+        this.disabled = false;
+      }
+    } catch {
+      this.innerHTML = orig;
+      this.disabled = false;
+    }
+  });
+});
+</script>
+{% endblock %}
+ 
+{% endblock %}
+
+ 

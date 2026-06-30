@@ -1,0 +1,397 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════
+   ADMIN DEMANDES VENDEUR
+══════════════════════════════════════════ */
+.admin-wrap { padding: 2rem 0 4rem; min-height: 80vh; }
+
+/* Tabs statut */
+.admin-tabs {
+  display: flex; gap: .3rem;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.5rem; overflow-x: auto; scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
+.atab {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .55rem 1.1rem; font-size: .82rem; font-weight: 600;
+  color: var(--muted); border-bottom: 2.5px solid transparent;
+  margin-bottom: -2px; text-decoration: none; white-space: nowrap;
+  transition: color .2s, border-color .2s;
+}
+.atab:hover { color: var(--text); }
+.atab.on { color: var(--saffron); border-bottom-color: var(--saffron); }
+
+/* Carte demande */
+.demande-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.2rem 1.4rem;
+  display: flex; align-items: flex-start; gap: 1rem;
+  transition: border-color .2s; margin-bottom: .75rem;
+}
+.demande-card:hover { border-color: rgba(247,183,49,.3); }
+.demande-card::before {
+  content: '';
+  display: block; width: 3px; border-radius: 3px; flex-shrink: 0;
+  align-self: stretch; min-height: 60px;
+}
+.demande-card.en_attente::before { background: var(--saffron); }
+.demande-card.en_cours::before   { background: var(--indigo); }
+.demande-card.approuvee::before  { background: var(--jade); }
+.demande-card.refusee::before    { background: var(--ember); }
+
+.demande-avatar {
+  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+  object-fit: cover; border: 2px solid var(--border);
+  background: var(--saffron-d); display: flex; align-items: center;
+  justify-content: center; font-size: 1.2rem; font-weight: 700; color: var(--saffron);
+}
+.demande-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+.demande-info { flex: 1; min-width: 0; }
+.demande-user {
+  font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .2rem;
+}
+.demande-email { font-size: .78rem; color: var(--muted); margin-bottom: .35rem; }
+.demande-meta {
+  display: flex; flex-wrap: wrap; gap: .5rem; font-size: .75rem; color: var(--muted);
+}
+.demande-meta i { color: var(--saffron); }
+
+.statut-chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .68rem; font-weight: 700; padding: .22rem .75rem;
+  border-radius: 99px; text-transform: uppercase; letter-spacing: .05em;
+}
+.chip-en_attente { background: var(--saffron-d); color: var(--saffron); border: 1px solid rgba(247,183,49,.25); }
+.chip-en_cours   { background: var(--indigo-d);  color: var(--indigo);  border: 1px solid rgba(124,111,255,.25); }
+.chip-approuvee  { background: var(--jade-d);    color: var(--jade);    border: 1px solid rgba(0,200,150,.25); }
+.chip-refusee    { background: var(--ember-d);   color: var(--ember);   border: 1px solid rgba(255,90,71,.25); }
+
+.demande-actions { display: flex; gap: .5rem; flex-shrink: 0; flex-wrap: wrap; align-items: center; }
+.btn-approuver {
+  background: var(--jade); color: #0A0B1A; border: none;
+  border-radius: 8px; padding: .45rem 1rem; font-size: .8rem;
+  font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: .35rem;
+  transition: opacity .2s;
+}
+.btn-approuver:hover { opacity: .88; }
+.btn-refuser {
+  background: var(--ember-d); color: var(--ember);
+  border: 1.5px solid rgba(255,90,71,.3); border-radius: 8px;
+  padding: .45rem 1rem; font-size: .8rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: .35rem;
+  transition: all .2s;
+}
+.btn-refuser:hover { background: var(--ember); color: #fff; }
+.btn-detail {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: .45rem .9rem; font-size: .8rem;
+  font-weight: 600; color: var(--text-2); text-decoration: none;
+  display: flex; align-items: center; gap: .35rem; transition: all .2s;
+}
+.btn-detail:hover { border-color: var(--saffron); color: var(--saffron); }
+
+/* Modal refus */
+.modal-yopi .modal-content {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: calc(var(--r) + 4px); color: var(--text);
+}
+.modal-yopi .modal-header { border-bottom: 1px solid var(--border); }
+.modal-yopi .modal-footer { border-top: 1px solid var(--border); }
+.modal-yopi .btn-close { filter: invert(1); }
+.form-ctrl-y {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--fd);
+  font-size: .86rem; padding: .6rem .9rem; outline: none; resize: vertical;
+  transition: border-color .2s;
+}
+.form-ctrl-y:focus { border-color: var(--saffron); }
+.form-ctrl-y::placeholder { color: var(--muted); }
+
+/* Stats header */
+.admin-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 768px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } }
+.astat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem;
+}
+.astat-n {
+  font-family: var(--fm); font-size: 1.6rem; font-weight: 800; line-height: 1;
+  margin-bottom: .2rem;
+}
+.astat-l { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+/* Pagination */
+.yopi-pager {
+  display: flex; justify-content: center; gap: .35rem; margin-top: 1.5rem; flex-wrap: wrap;
+}
+.yopi-pager a, .yopi-pager span {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 36px; padding: 0 .5rem; border-radius: 8px;
+  font-size: .8rem; font-weight: 600; text-decoration: none;
+  border: 1.5px solid var(--border); color: var(--muted); transition: all .2s;
+}
+.yopi-pager a:hover { border-color: var(--saffron); color: var(--saffron); background: var(--saffron-d); }
+.yopi-pager .current { background: var(--saffron); color: #0A0B1A; border-color: var(--saffron); }
+
+.empty-state {
+  text-align: center; padding: 4rem 1rem;
+  border: 1.5px dashed var(--border); border-radius: var(--r);
+}
+.empty-state i { font-size: 2.8rem; color: var(--muted); opacity: .35; display: block; margin-bottom: 1rem; }
+</style>
+
+
+<div class="admin-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"
+           onmouseover="this.style.color='var(--saffron)'" onmouseout="this.style.color='var(--muted)'">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Demandes vendeurs</span>
+      </div>
+    </nav>
+
+    <!-- En-tête -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.5rem">
+      <div>
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem">Administration</div>
+        <h1 style="font-family:var(--fg);font-size:1.5rem;font-weight:800;color:var(--text);margin:0">
+          <i class="bi bi-person-check" style="color:var(--saffron)"></i>
+          Demandes vendeurs
+        </h1>
+      </div>
+      <a href="{% url 'apps_core:accueil' %}" class="btn-ghost" style="font-size:.82rem">
+        <i class="bi bi-house"></i> Retour accueil
+      </a>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div style="background:{% if msg.tags == 'success' %}var(--jade-d){% elif msg.tags == 'warning' %}var(--saffron-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% elif msg.tags == 'warning' %}rgba(247,183,49,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% elif msg.tags == 'warning' %}var(--saffron){% else %}var(--ember){% endif %};margin-bottom:1rem">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% elif msg.tags == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>{{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem;line-height:1">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- Stats globales -->
+    <div class="admin-stats">
+      <div class="astat-card">
+        <div class="astat-n" style="color:var(--saffron)">{{ stats.en_attente|default:0 }}</div>
+        <div class="astat-l">En attente</div>
+      </div>
+      <div class="astat-card">
+        <div class="astat-n" style="color:var(--indigo)">{{ stats.en_cours|default:0 }}</div>
+        <div class="astat-l">En cours</div>
+      </div>
+      <div class="astat-card">
+        <div class="astat-n" style="color:var(--jade)">{{ stats.approuvees|default:0 }}</div>
+        <div class="astat-l">Approuvées</div>
+      </div>
+      <div class="astat-card">
+        <div class="astat-n" style="color:var(--ember)">{{ stats.refusees|default:0 }}</div>
+        <div class="astat-l">Refusées</div>
+      </div>
+    </div>
+
+    <!-- Onglets statut -->
+    <div class="admin-tabs">
+      <a href="?statut=en_attente" class="atab {% if statut == 'en_attente' or not statut %}on{% endif %}">
+        <i class="bi bi-hourglass-split"></i> En attente
+        {% if stats.en_attente %}<span class="chip chip-en_attente" style="font-size:.6rem;padding:.15rem .6rem">{{ stats.en_attente }}</span>{% endif %}
+      </a>
+      <a href="?statut=en_cours" class="atab {% if statut == 'en_cours' %}on{% endif %}">
+        <i class="bi bi-search"></i> En cours
+      </a>
+      <a href="?statut=approuvee" class="atab {% if statut == 'approuvee' %}on{% endif %}">
+        <i class="bi bi-patch-check-fill"></i> Approuvées
+      </a>
+      <a href="?statut=refusee" class="atab {% if statut == 'refusee' %}on{% endif %}">
+        <i class="bi bi-x-circle"></i> Refusées
+      </a>
+      <a href="?statut=" class="atab {% if not statut %}{% endif %}">
+        <i class="bi bi-list-ul"></i> Toutes
+      </a>
+    </div>
+
+    <!-- Liste des demandes -->
+    {% if demandes %}
+    {% for demande in demandes %}
+    <div class="demande-card {{ demande.statut }}" id="demande-{{ demande.pk }}">
+
+      <!-- Avatar -->
+      <div class="demande-avatar">
+        {% if demande.utilisateur.avatar %}
+        <img src="{{ demande.utilisateur.avatar.url }}" alt="{{ demande.utilisateur.username }}">
+        {% else %}
+        {{ demande.utilisateur.username|first|upper }}
+        {% endif %}
+      </div>
+
+      <!-- Infos -->
+      <div class="demande-info">
+        <div class="demande-user">
+          {{ demande.utilisateur.get_full_name|default:demande.utilisateur.username }}
+          <span class="statut-chip chip-{{ demande.statut }} ms-2">
+            {% if demande.statut == 'en_attente' %}<i class="bi bi-hourglass-split"></i> En attente
+            {% elif demande.statut == 'en_cours' %}<i class="bi bi-search"></i> En cours
+            {% elif demande.statut == 'approuvee' %}<i class="bi bi-check-circle-fill"></i> Approuvée
+            {% elif demande.statut == 'refusee' %}<i class="bi bi-x-circle-fill"></i> Refusée
+            {% endif %}
+          </span>
+        </div>
+        <div class="demande-email">
+          <i class="bi bi-envelope" style="color:var(--muted)"></i> {{ demande.utilisateur.email }}
+        </div>
+        <div class="demande-meta">
+          <span><i class="bi bi-calendar3"></i> {{ demande.date_demande|date:"d M Y à H:i" }}</span>
+          <span><i class="bi bi-boxes"></i> {{ demande.get_volume_estime_display }}</span>
+          {% if demande.a_entreprise %}
+          <span><i class="bi bi-building"></i> {{ demande.nom_entreprise|default:"Entreprise" }}</span>
+          {% endif %}
+          {% if demande.traite_par %}
+          <span style="color:var(--jade)"><i class="bi bi-person-check"></i> Traité par {{ demande.traite_par.username }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Aperçu motivation -->
+        <div style="font-size:.8rem;color:var(--text-2);margin-top:.5rem;line-height:1.5;
+                    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+          {{ demande.motivation }}
+        </div>
+
+        {% if demande.commentaire_admin %}
+        <div style="background:var(--ember-d);border:1px solid rgba(255,90,71,.2);border-radius:8px;padding:.5rem .8rem;margin-top:.5rem;font-size:.78rem;color:var(--ember)">
+          <i class="bi bi-chat-left-text"></i> <strong>Commentaire admin :</strong> {{ demande.commentaire_admin }}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="demande-actions">
+        <a href="{% url 'app_marketplace:admin_demande_detail' demande.pk %}" class="btn-detail">
+          <i class="bi bi-eye"></i> Détail
+        </a>
+
+        {% if demande.statut in 'en_attente,en_cours' %}
+        <!-- Bouton approuver (action rapide) -->
+        <form method="POST" action="{% url 'app_marketplace:admin_demande_detail' demande.pk %}"
+              onsubmit="return confirm('Approuver la candidature de {{ demande.utilisateur.username }} ?')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="approuver">
+          <button type="submit" class="btn-approuver">
+            <i class="bi bi-check-lg"></i> Approuver
+          </button>
+        </form>
+
+        <!-- Bouton refuser → ouvre modal -->
+        <button class="btn-refuser" onclick="ouvrirModalRefus({{ demande.pk }}, '{{ demande.utilisateur.username }}')">
+          <i class="bi bi-x-lg"></i> Refuser
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if demandes.has_other_pages %}
+    <div class="yopi-pager">
+      {% if demandes.has_previous %}
+      <a href="?statut={{ statut }}&page={{ demandes.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>
+      {% endif %}
+      {% for num in demandes.paginator.page_range %}
+        {% if demandes.number == num %}
+        <span class="current">{{ num }}</span>
+        {% elif num > demandes.number|add:'-3' and num < demandes.number|add:'3' %}
+        <a href="?statut={{ statut }}&page={{ num }}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if demandes.has_next %}
+      <a href="?statut={{ statut }}&page={{ demandes.next_page_number }}"><i class="bi bi-chevron-right"></i></a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-inbox"></i>
+      <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.3rem">Aucune demande</div>
+      <div style="font-size:.85rem;color:var(--muted)">
+        Aucune candidature vendeur avec le statut « {{ statut|default:"sélectionné" }} ».
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+
+<!-- ══════ MODAL REFUS ══════ -->
+<div class="modal fade modal-yopi" id="modalRefus" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:440px">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" style="font-family:var(--fg);font-size:1rem;font-weight:700;color:var(--ember)">
+          <i class="bi bi-x-circle-fill me-2"></i>Refuser la candidature
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="formRefus" action="">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="refuser">
+        <div class="modal-body" style="padding:1.4rem;display:flex;flex-direction:column;gap:1rem">
+          <div style="font-size:.88rem;color:var(--text-2)">
+            Vous allez refuser la candidature de <strong id="modalNomUser" style="color:var(--text)"></strong>.
+            Un motif est obligatoire — il sera visible par le candidat.
+          </div>
+          <div>
+            <label style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.4rem">
+              Motif du refus <span style="color:var(--ember)">*</span>
+            </label>
+            <textarea name="commentaire" class="form-ctrl-y" rows="4" required
+                      placeholder="Ex: Les informations fournies sont insuffisantes. Merci de compléter votre dossier avec..."></textarea>
+          </div>
+          <div style="background:var(--saffron-d);border:1px solid rgba(247,183,49,.2);border-radius:8px;padding:.75rem 1rem;font-size:.78rem;color:var(--saffron)">
+            <i class="bi bi-info-circle-fill"></i>
+            Le candidat pourra re-soumettre une candidature après 30 jours.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal" style="font-size:.82rem">Annuler</button>
+          <button type="submit" class="btn-refuser" style="border-radius:8px;padding:.52rem 1.2rem;font-size:.84rem">
+            <i class="bi bi-x-lg"></i> Confirmer le refus
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+
+function ouvrirModalRefus(pk, nom) {
+  document.getElementById('formRefus').action = `/admin/demandes-vendeur/${pk}/`;
+  document.getElementById('modalNomUser').textContent = nom;
+  new bootstrap.Modal(document.getElementById('modalRefus')).show();
+}
+</script>
+{% endblock %}
+
+{% endblock %}
