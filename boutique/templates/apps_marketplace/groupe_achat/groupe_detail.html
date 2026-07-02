@@ -159,7 +159,7 @@
           <div class="gd-price-card">
             <div class="gd-price-row">
               <!-- ✅ prix_actuel est une méthode → appel avec () -->
-              <span class="gd-price-groupe">{{ groupe.prix_groupe|floatformat:0 }} FCFA</span>
+              <span class="gd-price-groupe">{{ groupe.prix_actuel|floatformat:0 }} FCFA</span>
               <span class="gd-price-normal">{{ groupe.prix_normal|floatformat:0 }} FCFA</span>
               <span class="gd-price-discount">-{{ groupe.pourcentage_reduction|floatformat:0 }}%</span>
             </div>
@@ -216,6 +216,38 @@
                 <i class="bi bi-people-fill"></i> Rejoindre ce groupe
               </button>
               {% elif groupe.createur == request.user %}
+              {% if groupe.statut == 'complet' %}
+
+                <a href="{% url 'apps_marketplace:finaliser_groupe' groupe.pk %}"
+                  class="btn-rejoindre"
+                  style="text-decoration:none;background:linear-gradient(90deg,var(--jade),#16a34a);">
+
+                    <i class="bi bi-check2-circle"></i>
+                    Finaliser l'achat
+                </a>
+
+            {% elif groupe.statut == 'traite' %}
+
+                <button class="btn-rejoindre" disabled>
+                    <i class="bi bi-check-circle-fill"></i>
+                    Achat déjà finalisé
+                </button>
+
+            {% elif groupe.statut == 'expire' %}
+
+                <button class="btn-rejoindre" disabled>
+                    <i class="bi bi-clock-history"></i>
+                    Groupe expiré
+                </button>
+
+            {% else %}
+
+                <div style="font-size:.8rem;color:var(--muted);text-align:center;padding:.5rem">
+                    <i class="bi bi-info-circle"></i>
+                    Vous êtes le créateur de ce groupe.
+                </div>
+
+            {% endif %}
               <div style="font-size:.8rem;color:var(--muted);text-align:center;padding:.5rem">
                 <i class="bi bi-info-circle"></i> Vous êtes le créateur de ce groupe.
               </div>

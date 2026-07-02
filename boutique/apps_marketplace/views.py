@@ -1042,6 +1042,7 @@ def passer_commande(request):
                     if frais is not None:
                         frais_set.add(frais)
                 frais_livraison = max(frais_set) if frais_set else Decimal('0')
+        
 
             vendeurs = {a.produit.vendeur for a in articles}
             boutique_principale = None
@@ -1051,6 +1052,41 @@ def passer_commande(request):
                     boutique_principale = v.boutique
 
             est_paiement_fractionne = (mode_paiement == 'bnpl')
+
+            # ==========================================================
+            # APPLICATION DU CODE PROMO
+            # ==========================================================
+            code_promo = None
+            montant_reduction = Decimal("0")
+
+            code_promo_id = request.session.get("code_promo_id")
+
+            if code_promo_id:
+
+                code_promo = CodePromo.objects.filter(
+                    pk=code_promo_id
+                ).first()
+
+                if code_promo:
+
+                    ok, _ = _verifier_eligibilite(
+                        code_promo,
+                        request.user,
+                        sous_total
+                    )
+
+                    if ok:
+
+                        if code_promo.type_reduction == "livraison_gratuite":
+                            frais_livraison = Decimal("0")
+
+                        else:
+                            montant_reduction = code_promo.calculer_reduction(
+                                sous_total
+                            )
+
+                    else:
+                        code_promo = None
 
             commande = Commande.objects.create(
                 utilisateur=request.user,
@@ -1090,6 +1126,19 @@ def passer_commande(request):
 
             commande.calculer_total()
 
+            # ==========================================================
+            # Enregistrer l'utilisation du code promo
+            # ==========================================================
+            if code_promo:
+
+                code_promo.nombre_utilisations += 1
+
+                code_promo.save(update_fields=["nombre_utilisations"])
+
+                request.session.pop('code_promo_id', None)
+                request.session.pop('code_promo_code', None)
+                request.session.pop('livraison_gratuite', None)
+                
             # ── NOUVEAU : créer immédiatement le PlanPaiement si BNPL ──
             plan = None
             if est_paiement_fractionne:

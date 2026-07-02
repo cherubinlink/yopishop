@@ -1,0 +1,602 @@
+
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Enchères{% endblock %}
+
+{% block content %}
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes countdown-flash { 0%,100%{color:var(--ember)} 50%{color:#fff} }
+
+.ed-timer { display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin:1rem 0; }
+.ed-timer-bloc { background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.5rem .9rem;text-align:center;min-width:60px; }
+.ed-timer-val { font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--text);line-height:1; }
+.ed-timer-lbl { font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em; }
+.ed-timer-bloc.urgent { border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08); }
+.ed-timer-bloc.urgent .ed-timer-val { animation:countdown-flash 1s infinite; }
+.ed-price-current { font-family:var(--fm);font-size:2.2rem;font-weight:900;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;line-height:1; }
+.ed-offre-row { display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:1px solid var(--border); }
+.ed-offre-row:last-child { border-bottom:none; }
+.ed-offre-avatar { width:32px;height:32px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:700;color:var(--saffron);flex-shrink:0; }
+</style>
+
+<div class="container py-4">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item"><a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'apps_enchere:encheres_liste' %}" style="color:var(--saffron);text-decoration:none">Enchères</a></li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">{{ enchere.titre|truncatechars:30 }}</li>
+    </ol>
+  </nav>
+
+  {% if messages %}{% for msg in messages %}
+  <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+    background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+    border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};color:var(--text)">
+    {% if msg.tags == 'success' %}<i class="bi bi-check-circle-fill me-1" style="color:var(--jade)"></i>
+    {% elif msg.tags == 'error' %}<i class="bi bi-x-circle-fill me-1" style="color:var(--ember)"></i>
+    {% else %}<i class="bi bi-info-circle-fill me-1" style="color:var(--saffron)"></i>{% endif %}{{ msg }}
+  </div>
+  {% endfor %}{% endif %}
+
+  <div class="row g-4">
+
+    <!-- ══ COL GAUCHE ══ -->
+    <div class="col-12 col-lg-7">
+
+      <!-- Image -->
+      <div class="ycard mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+        <div style="aspect-ratio:16/9;background:var(--surface);position:relative">
+          {% if enchere.produit.image_principale %}
+          <img src="{{ enchere.produit.image_principale }}" alt="{{ enchere.titre }}" style="width:100%;height:100%;object-fit:cover">
+          {% else %}
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="font-size:3rem;color:var(--muted)"></i></div>
+          {% endif %}
+
+          <!-- Badge statut -->
+          <div style="position:absolute;top:.75rem;left:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
+            <span class="chip" style="font-size:.72rem;padding:.3rem .75rem;color:#fff;backdrop-filter:blur(8px);
+              background:{% if enchere.statut == 'en_cours' %}rgba(16,185,129,.9){% elif enchere.statut == 'prolongee' %}rgba(246,169,43,.9){% elif enchere.statut == 'terminee' %}rgba(99,102,241,.9){% else %}rgba(100,100,100,.85){% endif %}">
+              {% if enchere.statut == 'en_cours' %}<i class="bi bi-circle-fill me-1" style="font-size:.5rem;animation:pulse 1.5s infinite"></i>En cours
+              {% elif enchere.statut == 'prolongee' %}<i class="bi bi-clock-history me-1"></i>Prolongée
+              {% elif enchere.statut == 'terminee' %}<i class="bi bi-check-circle-fill me-1"></i>Terminée
+              {% elif enchere.statut == 'annulee' %}<i class="bi bi-x-circle-fill me-1"></i>Annulée
+              {% else %}{{ enchere.get_statut_display }}{% endif %}
+            </span>
+          </div>
+
+          <!-- Nb offres -->
+          <div style="position:absolute;top:.75rem;right:.75rem">
+            <span class="chip" style="font-size:.72rem;padding:.3rem .75rem;background:rgba(0,0,0,.6);color:#fff;backdrop-filter:blur(8px)">
+              <i class="bi bi-hammer me-1"></i>{{ enchere.nb_offres }} offre{{ enchere.nb_offres|pluralize }}
+            </span>
+          </div>
+
+          {% if enchere.prix_achat_immediat %}
+          <div style="position:absolute;bottom:.75rem;right:.75rem">
+            <span class="chip" style="font-size:.72rem;padding:.3rem .75rem;background:rgba(246,169,43,.9);color:#0A0B1A;backdrop-filter:blur(8px);font-weight:700">
+              <i class="bi bi-lightning-fill me-1"></i>Achat imm. {{ enchere.prix_achat_immediat|floatformat:0 }} {{ enchere.devise }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Titre + description + social -->
+      <div class="ycard p-4 mb-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <h1 style="font-family:var(--fm);font-size:1.4rem;font-weight:800;color:var(--text);margin:0 0 .75rem">{{ enchere.titre }}</h1>
+        <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+          <span style="font-size:.78rem;color:var(--muted)">
+            <i class="bi bi-shop me-1" style="color:var(--jade)"></i>
+            {{ enchere.vendeur.boutique.nom|default:enchere.vendeur.username }}
+          </span>
+          <span style="font-size:.78rem;color:var(--muted)">
+            <i class="bi bi-calendar3 me-1"></i>{{ enchere.date_creation|date:"d M Y" }}
+          </span>
+        </div>
+
+        <!-- Boutons sociaux -->
+        <div class="d-flex gap-2 mb-3">
+          {% if request.user.is_authenticated %}
+          <!-- ✅ ajax_toggle_like -->
+          <button id="btnLike"
+                  data-url="{% url 'apps_enchere:ajax_toggle_like' enchere.pk %}"
+                  class="btn-ghost" style="font-size:.8rem;width:auto;{% if user_a_like %}color:var(--ember);border-color:rgba(239,68,68,.35){% endif %}">
+            <i class="bi {% if user_a_like %}bi-heart-fill{% else %}bi-heart{% endif %} me-1"></i>
+            <span id="nbLikes">{{ enchere.nb_likes }}</span>
+          </button>
+          {% endif %}
+          <!-- ✅ ajax_partager -->
+          <button id="btnPartager"
+                  data-url="{% url 'apps_enchere:ajax_partager' enchere.pk %}"
+                  class="btn-ghost" style="font-size:.8rem;width:auto">
+            <i class="bi bi-share me-1"></i>
+            <span id="nbPartages">{{ enchere.nb_partages }}</span>
+          </button>
+          <!-- ✅ mes_offres -->
+          <a href="{% url 'apps_enchere:mes_offres' %}" class="btn-ghost" style="font-size:.8rem;width:auto">
+            <i class="bi bi-list-check me-1"></i>Mes offres
+          </a>
+        </div>
+
+        {% if enchere.description %}
+        <div style="font-size:.84rem;color:var(--text-2);line-height:1.65;white-space:pre-line">{{ enchere.description }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Historique des offres -->
+      <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+        <div class="d-flex align-items-center justify-content-between px-4 py-3" style="border-bottom:1px solid var(--border);background:var(--surface)">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+            <i class="bi bi-clock-history me-2" style="color:var(--indigo)"></i>
+            Historique des offres
+            <span style="font-size:.74rem;color:var(--muted);font-weight:400;margin-left:.4rem">({{ enchere.nb_offres }})</span>
+          </div>
+          <!-- ✅ déclenche ajax_etat_enchere via JS -->
+          <button id="btnRefreshOffres" class="btn-ghost" style="font-size:.74rem;padding:.28rem .65rem;width:auto" title="Actualiser">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+        <div id="offres-container" style="padding:.5rem 1rem;max-height:320px;overflow-y:auto">
+          {% if offres_recentes %}
+            {% for offre in offres_recentes %}
+            <div class="ed-offre-row">
+              <div class="ed-offre-avatar">
+                {% if offre.encherisseur.avatar %}
+                <img src="{{ offre.encherisseur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                {% else %}{{ offre.encherisseur.username|first|upper }}{% endif %}
+              </div>
+              <div class="flex-grow-1 min-width-0">
+                <div style="font-size:.82rem;font-weight:600;color:var(--text)">
+                  {{ offre.encherisseur.username }}
+                  {% if offre.encherisseur == enchere.gagnant and enchere.statut == 'terminee' %}
+                  <i class="bi bi-trophy-fill ms-1" style="color:var(--saffron)"></i>{% endif %}
+                </div>
+                <div style="font-size:.7rem;color:var(--muted)">
+                  {{ offre.date_creation|timesince }} ago
+                  {% if offre.est_offre_auto %}<span class="chip ms-1" style="font-size:.62rem;padding:.1rem .4rem;background:rgba(99,102,241,.12);color:var(--indigo)"><i class="bi bi-robot me-1"></i>auto</span>{% endif %}
+                  {% if offre.est_achat_immediat %}<span class="chip ms-1" style="font-size:.62rem;padding:.1rem .4rem;background:rgba(246,169,43,.12);color:var(--saffron)"><i class="bi bi-lightning-fill me-1"></i>immédiat</span>{% endif %}
+                </div>
+              </div>
+              <div style="font-size:.92rem;font-weight:800;color:{% if forloop.first %}var(--saffron){% else %}var(--text){% endif %};flex-shrink:0;font-family:var(--fm)">
+                {{ offre.montant|floatformat:0 }} F
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center;padding:2rem;color:var(--muted);font-size:.84rem">
+            <i class="bi bi-hammer" style="font-size:2rem;display:block;margin-bottom:.6rem;opacity:.4"></i>
+            Aucune offre pour l'instant — soyez le premier !
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ COL DROITE — Sticky ══ -->
+    <div class="col-12 col-lg-5">
+      <div style="position:sticky;top:1rem;display:grid;gap:.75rem">
+
+        <!-- Prix + timer -->
+        <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+          <div class="text-center mb-2">
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem">Prix actuel</div>
+            <div class="ed-price-current" id="prixActuel">{{ enchere.prix_actuel|floatformat:0 }} {{ enchere.devise }}</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem">
+              Départ : {{ enchere.prix_depart|floatformat:0 }} {{ enchere.devise }}
+              &bull; Incrément min : {{ enchere.increment_minimum|floatformat:0 }} {{ enchere.devise }}
+            </div>
+          </div>
+
+          {% if enchere.statut == 'en_cours' or enchere.statut == 'prolongee' %}
+          <div class="ed-timer" id="edTimer" data-fin="{{ enchere.date_fin|date:'c' }}">
+            <div class="ed-timer-bloc" id="tb-j"><div class="ed-timer-val" id="tv-j">--</div><div class="ed-timer-lbl">Jours</div></div>
+            <div class="ed-timer-bloc" id="tb-h"><div class="ed-timer-val" id="tv-h">--</div><div class="ed-timer-lbl">Heures</div></div>
+            <div class="ed-timer-bloc" id="tb-m"><div class="ed-timer-val" id="tv-m">--</div><div class="ed-timer-lbl">Min</div></div>
+            <div class="ed-timer-bloc" id="tb-s"><div class="ed-timer-val" id="tv-s">--</div><div class="ed-timer-lbl">Sec</div></div>
+          </div>
+          {% elif enchere.statut == 'terminee' %}
+          <div style="text-align:center;padding:.6rem;background:rgba(99,102,241,.08);border-radius:var(--r);margin:.75rem 0;font-size:.82rem;color:var(--indigo)">
+            <i class="bi bi-check-circle-fill me-1"></i>Enchère terminée le {{ enchere.date_fin|date:"d M Y à H:i" }}
+          </div>
+          {% endif %}
+
+          {% if enchere.statut == 'terminee' and enchere.gagnant %}
+          <div style="background:rgba(246,169,43,.1);border:1px solid rgba(246,169,43,.25);border-radius:var(--r);padding:.75rem 1rem;text-align:center;margin-top:.5rem">
+            <i class="bi bi-trophy-fill" style="color:var(--saffron);font-size:1.2rem;display:block;margin-bottom:.4rem"></i>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ enchere.gagnant.username }} a remporté cette enchère</div>
+            <div style="font-size:.88rem;color:var(--saffron);font-family:var(--fm);font-weight:800;margin-top:.2rem">
+              {{ enchere.prix_actuel|floatformat:0 }} {{ enchere.devise }}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Formulaire offre acheteur -->
+        {% if request.user.is_authenticated %}
+        {% if enchere.vendeur != request.user %}
+        {% if enchere.statut == 'en_cours' or enchere.statut == 'prolongee' %}
+
+        <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+            <i class="bi bi-hammer me-2" style="color:var(--saffron)"></i>Placer une offre
+          </div>
+          <div style="font-size:.76rem;color:var(--muted);margin-bottom:.75rem;padding:.5rem .75rem;background:var(--surface);border-radius:8px">
+            <i class="bi bi-info-circle me-1" style="color:var(--indigo)"></i>
+            Offre minimum : <strong style="color:var(--text)" id="offreMin">{{ offre_minimum|floatformat:0 }} {{ enchere.devise }}</strong>
+          </div>
+
+          <!-- ✅ data-url → ajax_placer_offre -->
+          <form id="formOffre" novalidate
+                data-url="{% url 'apps_enchere:ajax_placer_offre' enchere.pk %}">
+            {% csrf_token %}
+            <div class="d-flex gap-2 mb-3">
+              <div style="position:relative;flex:1">
+                <input type="number" name="montant" id="inputMontant"
+                       min="{{ offre_minimum }}" step="1" value="{{ offre_minimum }}" required
+                       class="form-control"
+                       style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.95rem;font-weight:700;font-family:var(--fm);padding-right:3.5rem"
+                       oninput="validerMontant(this)">
+                <span style="position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:.76rem;color:var(--muted)">{{ enchere.devise }}</span>
+              </div>
+            </div>
+            <div class="d-flex gap-1 mb-3 flex-wrap">
+              {% with inc=enchere.increment_minimum %}
+              <button type="button" class="btn-ghost btn-increment" data-val="{{ inc }}" style="font-size:.72rem;padding:.28rem .65rem;width:auto">+{{ inc|floatformat:0 }} F</button>
+              <button type="button" class="btn-ghost btn-increment" data-val="{{ inc|add:inc }}" style="font-size:.72rem;padding:.28rem .65rem;width:auto">+{{ inc|add:inc|floatformat:0 }} F</button>
+              <button type="button" class="btn-ghost btn-increment" data-val="{{ inc|add:inc|add:inc }}" style="font-size:.72rem;padding:.28rem .65rem;width:auto">+{{ inc|add:inc|add:inc|floatformat:0 }} F</button>
+              {% endwith %}
+            </div>
+            <button type="submit" class="btn-gold w-100 justify-content-center" id="btnOffrir" style="font-size:.9rem">
+              <i class="bi bi-hammer me-1"></i>Enchérir
+            </button>
+          </form>
+
+          {% if enchere.prix_achat_immediat %}
+          <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)">
+            <!-- ✅ data-url → ajax_achat_immediat -->
+            <button id="btnAchatImmediat"
+                    data-url="{% url 'apps_enchere:ajax_achat_immediat' enchere.pk %}"
+                    class="btn-ghost w-100 justify-content-center"
+                    style="font-size:.85rem;color:var(--saffron);border-color:rgba(246,169,43,.35)">
+              <i class="bi bi-lightning-fill me-1"></i>
+              Acheter maintenant — {{ enchere.prix_achat_immediat|floatformat:0 }} {{ enchere.devise }}
+            </button>
+          </div>
+          {% endif %}
+        </div>
+
+        {% endif %}
+        {% else %}
+        <!-- Vendeur — gestion -->
+        <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+          <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+            <i class="bi bi-gear me-1" style="color:var(--saffron)"></i>Gérer mon enchère
+          </div>
+          <div class="d-grid gap-2">
+            {% if enchere.statut == 'en_cours' or enchere.statut == 'prolongee' %}
+            <!-- ✅ modifier_enchere -->
+            <a href="{% url 'apps_enchere:modifier_enchere' enchere.pk %}" class="btn-ghost justify-content-center" style="font-size:.82rem">
+              <i class="bi bi-pencil-fill me-1"></i>Modifier
+            </a>
+            <!-- ✅ terminer_enchere_manuelle -->
+            <form method="post" action="{% url 'apps_enchere:terminer_enchere_manuelle' enchere.pk %}"
+                  onsubmit="return confirm('Clôturer cette enchère maintenant ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-ghost w-100 justify-content-center" style="font-size:.82rem;color:var(--jade);border-color:rgba(16,185,129,.3)">
+                <i class="bi bi-check2-all me-1"></i>Clôturer
+              </button>
+            </form>
+            <!-- ✅ annuler_enchere -->
+            <form method="post" action="{% url 'apps_enchere:annuler_enchere' enchere.pk %}"
+                  onsubmit="return confirm('Annuler définitivement cette enchère ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-ghost w-100 justify-content-center" style="font-size:.82rem;color:var(--ember);border-color:rgba(239,68,68,.3)">
+                <i class="bi bi-x-circle me-1"></i>Annuler
+              </button>
+            </form>
+            {% else %}
+            <div style="font-size:.8rem;color:var(--muted);text-align:center;padding:.5rem">
+              <i class="bi bi-info-circle me-1"></i>Enchère {{ enchere.get_statut_display|lower }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- Non connecté -->
+        <div class="ycard p-4 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+          <i class="bi bi-lock-fill" style="font-size:1.5rem;color:var(--muted);display:block;margin-bottom:.75rem"></i>
+          <div style="font-size:.85rem;color:var(--text-2);margin-bottom:1rem">Connectez-vous pour participer à cette enchère</div>
+          <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" class="btn-gold justify-content-center">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Se connecter
+          </a>
+        </div>
+        {% endif %}
+
+        <!-- ══ SMART BID IA ══ -->
+        {% if request.user.is_authenticated %}
+        {% if enchere.vendeur != request.user %}
+        {% if enchere.statut == 'en_cours' or enchere.statut == 'prolongee' %}
+        <div class="ycard p-4" style="background:var(--card);border:1.5px solid {% if smart_bid_actif %}rgba(99,102,241,.4){% else %}rgba(99,102,241,.2){% endif %};border-radius:var(--r)">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi bi-robot" style="color:var(--indigo);font-size:1rem"></i>
+            </div>
+            <div>
+              <div style="font-size:.9rem;font-weight:700;color:var(--text)">Smart Bid IA</div>
+              <div style="font-size:.72rem;color:var(--muted)">Enchères automatiques intelligentes</div>
+            </div>
+            {% if smart_bid_actif %}
+            <span class="chip ms-auto" style="font-size:.68rem;padding:.2rem .6rem;background:rgba(99,102,241,.15);color:var(--indigo)">
+              <i class="bi bi-circle-fill me-1" style="font-size:.45rem;animation:pulse 1.5s infinite"></i>Actif
+            </span>
+            {% endif %}
+          </div>
+
+          {% if smart_bid_actif %}
+          <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:.85rem 1rem;margin-bottom:.85rem">
+            <div class="row g-2">
+              <div class="col-6">
+                <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Budget max</div>
+                <div style="font-size:.92rem;font-weight:800;color:var(--indigo);font-family:var(--fm)">{{ smart_bid_actif.prix_max|floatformat:0 }} F</div>
+              </div>
+              <div class="col-6">
+                <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Stratégie</div>
+                <div style="font-size:.8rem;font-weight:600;color:var(--text)">{{ smart_bid_actif.strategie|title }}</div>
+              </div>
+              {% if smart_bid_actif.budget_journalier %}
+              <div class="col-6">
+                <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Budget/jour</div>
+                <div style="font-size:.8rem;font-weight:600;color:var(--text)">{{ smart_bid_actif.budget_journalier|floatformat:0 }} F</div>
+              </div>
+              {% endif %}
+              <div class="col-{% if smart_bid_actif.budget_journalier %}6{% else %}12{% endif %}">
+                <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Priorité</div>
+                <div style="font-size:.8rem;font-weight:600;color:var(--text)">{{ smart_bid_actif.priorite }}/10</div>
+              </div>
+            </div>
+            <div style="margin-top:.65rem;padding-top:.65rem;border-top:1px solid rgba(99,102,241,.2);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+              <span id="sb-badge" class="chip" style="font-size:.7rem;padding:.2rem .6rem;background:rgba(99,102,241,.15);color:var(--indigo)">
+                <i class="bi bi-activity me-1"></i>En surveillance
+              </span>
+              <span id="sb-prochain-montant" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <!-- ✅ configurer_smart_bid -->
+            <a href="{% url 'apps_enchere:configurer_smart_bid' enchere.pk %}"
+               class="btn-ghost flex-grow-1 justify-content-center" style="font-size:.78rem">
+              <i class="bi bi-pencil-fill me-1"></i>Modifier
+            </a>
+            <!-- ✅ desactiver_smart_bid (int:pk = pk de ConfigSmartBid) -->
+            <form method="post" action="{% url 'apps_enchere:desactiver_smart_bid' smart_bid_actif.pk %}"
+                  onsubmit="return confirm('Désactiver le Smart Bid sur cette enchère ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-ghost" style="font-size:.78rem;padding:.38rem .75rem;color:var(--ember);border-color:rgba(239,68,68,.3);width:auto">
+                <i class="bi bi-pause-circle-fill me-1"></i>Désactiver
+              </button>
+            </form>
+          </div>
+
+          {% else %}
+          <p style="font-size:.8rem;color:var(--text-2);line-height:1.6;margin-bottom:.9rem">
+            Définissez un budget maximum et laissez l'IA enchérir pour vous, même quand vous n'êtes pas connecté.
+          </p>
+          <div class="d-grid gap-1 mb-3">
+            <div style="font-size:.76rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem"><i class="bi bi-check2-circle flex-shrink-0" style="color:var(--jade)"></i>Enchérit au minimum nécessaire</div>
+            <div style="font-size:.76rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem"><i class="bi bi-check2-circle flex-shrink-0" style="color:var(--jade)"></i>Ne dépasse jamais votre budget max</div>
+            <div style="font-size:.76rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem"><i class="bi bi-check2-circle flex-shrink-0" style="color:var(--jade)"></i>3 stratégies : Progressive, Agressive, Dernière seconde</div>
+            <div style="font-size:.76rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem"><i class="bi bi-check2-circle flex-shrink-0" style="color:var(--jade)"></i>Budget journalier optionnel</div>
+          </div>
+          <!-- ✅ configurer_smart_bid -->
+          <a href="{% url 'apps_enchere:configurer_smart_bid' enchere.pk %}"
+             class="btn-gold w-100 justify-content-center"
+             style="font-size:.88rem;background:linear-gradient(90deg,var(--indigo),#4f46e5);border:none">
+            <i class="bi bi-robot me-1"></i>Activer le Smart Bid
+          </a>
+          {% endif %}
+
+        </div>
+        {% endif %}
+        {% endif %}
+        {% endif %}
+        <!-- ══ FIN SMART BID ══ -->
+
+        <!-- Infos vendeur -->
+        <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+          <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+            <i class="bi bi-shop me-1" style="color:var(--jade)"></i>À propos du vendeur
+          </div>
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:var(--saffron);flex-shrink:0;overflow:hidden">
+              {% if enchere.vendeur.avatar %}<img src="{{ enchere.vendeur.avatar.url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ enchere.vendeur.username|first|upper }}{% endif %}
+            </div>
+            <div>
+              <div style="font-size:.88rem;font-weight:700;color:var(--text)">{{ enchere.vendeur.boutique.nom|default:enchere.vendeur.username }}</div>
+              {% if enchere.vendeur.boutique.est_verifiee %}
+              <div style="font-size:.72rem;color:var(--jade)"><i class="bi bi-patch-check-fill me-1"></i>Boutique vérifiée</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF   = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const DEVISE = "{{ enchere.devise }}";
+
+/* ── URLs injectées par Django — toutes correctes ── */
+const URL_ETAT  = "{% url 'apps_enchere:ajax_etat_enchere' enchere.pk %}";
+const URL_OFFRE = "{% url 'apps_enchere:ajax_placer_offre' enchere.pk %}";
+{% if request.user.is_authenticated and smart_bid_actif %}
+const URL_SB    = "{% url 'apps_enchere:ajax_smart_bid_status' enchere.pk %}";
+{% endif %}
+
+/* ══ Timer ══ */
+(function () {
+  const el = document.getElementById('edTimer');
+  if (!el) return;
+  const fin = new Date(el.dataset.fin);
+  const ids = ['j','h','m','s'];
+  const mul = [86400000,3600000,60000,1000];
+  function tick() {
+    const d = fin - new Date();
+    const u = d < 300000;
+    if (d <= 0) { ids.forEach(b=>{ document.getElementById('tv-'+b).textContent='00'; document.getElementById('tb-'+b).classList.add('urgent'); }); clearInterval(t); setTimeout(()=>location.reload(),3000); return; }
+    const v = mul.map((m,i)=>Math.floor(d/(i===0?m:mul.slice(0,i).reduce((a,b)=>a*b)%d||m)));
+    // Correct calc:
+    const vals = [Math.floor(d/mul[0]),Math.floor((d%mul[0])/mul[1]),Math.floor((d%mul[1])/mul[2]),Math.floor((d%mul[2])/mul[3])];
+    ids.forEach((b,i)=>{ document.getElementById('tv-'+b).textContent=String(vals[i]).padStart(2,'0'); document.getElementById('tb-'+b).classList.toggle('urgent',u); });
+  }
+  const t = setInterval(tick,1000); tick();
+})();
+
+/* ══ Validation montant ══ */
+function validerMontant(inp) {
+  const ok = !isNaN(parseFloat(inp.value)) && parseFloat(inp.value) >= parseFloat(inp.min);
+  inp.style.borderColor = ok ? 'var(--jade)' : 'var(--ember)';
+  const btn = document.getElementById('btnOffrir');
+  if (btn) btn.disabled = !ok;
+}
+
+/* ══ Boutons +incrément ══ */
+document.querySelectorAll('.btn-increment').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const inp = document.getElementById('inputMontant');
+    if (!inp) return;
+    inp.value = Math.round((parseFloat(inp.value)||parseFloat(inp.min)||0) + parseFloat(this.dataset.val));
+    validerMontant(inp);
+  });
+});
+
+/* ══ Soumission AJAX offre — ✅ ajax_placer_offre ══ */
+document.getElementById('formOffre')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn     = document.getElementById('btnOffrir');
+  const montant = document.getElementById('inputMontant').value;
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></span> …';
+  const fd = new FormData(); fd.append('montant', montant);
+  try {
+    const r = await fetch(URL_OFFRE, { method:'POST', headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'}, body:fd });
+    if (!r.ok) { let m=`Erreur ${r.status}`; try{const d=await r.json();m=d.message||m;}catch{} afficherToast(m,'error'); btn.disabled=false; btn.innerHTML='<i class="bi bi-hammer me-1"></i>Enchérir'; return; }
+    const d = await r.json();
+    if (d.success) {
+      const pEl = document.getElementById('prixActuel');
+      if (pEl) pEl.textContent=`${Math.round(d.prix_actuel).toLocaleString('fr')} ${DEVISE}`;
+      const mEl = document.getElementById('offreMin');
+      const inp = document.getElementById('inputMontant');
+      if (d.montant_min_suivant && mEl && inp) { mEl.textContent=`${Math.round(d.montant_min_suivant).toLocaleString('fr')} ${DEVISE}`; inp.min=d.montant_min_suivant; inp.value=d.montant_min_suivant; }
+      await rafraichirEtat();
+      afficherToast(d.message||'Offre placée !','success');
+      btn.innerHTML='<i class="bi bi-check-lg me-1"></i>Enchère placée !'; btn.style.background='linear-gradient(90deg,var(--jade),#059669)';
+      setTimeout(()=>{ btn.innerHTML='<i class="bi bi-hammer me-1"></i>Enchérir'; btn.style.background=''; btn.disabled=false; },2500);
+    } else { afficherToast(d.message||'Offre refusée.','error'); btn.disabled=false; btn.innerHTML='<i class="bi bi-hammer me-1"></i>Enchérir'; }
+  } catch(err) { afficherToast('Erreur réseau.','error'); btn.disabled=false; btn.innerHTML='<i class="bi bi-hammer me-1"></i>Enchérir'; }
+});
+
+/* ══ Achat immédiat AJAX — ✅ ajax_achat_immediat ══ */
+document.getElementById('btnAchatImmediat')?.addEventListener('click', async function() {
+  if (!confirm('Confirmer l\'achat immédiat pour {{ enchere.prix_achat_immediat|floatformat:0 }} {{ enchere.devise }} ?')) return;
+  this.disabled=true; this.innerHTML='<span class="spinner-border spinner-border-sm" style="width:14px;height:14px"></span>…';
+  try {
+    const r = await fetch(this.dataset.url, { method:'POST', headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'} });
+    if (!r.ok) { afficherToast(`Erreur ${r.status}`,'error'); this.disabled=false; this.innerHTML='<i class="bi bi-lightning-fill me-1"></i>Acheter maintenant…'; return; }
+    const d = await r.json();
+    if (d.success) { afficherToast(d.message||'Achat confirmé !','success'); setTimeout(()=>location.reload(),1500); }
+    else { afficherToast(d.message||'Erreur.','error'); this.disabled=false; this.innerHTML='<i class="bi bi-lightning-fill me-1"></i>Acheter maintenant…'; }
+  } catch { afficherToast('Erreur réseau.','error'); this.disabled=false; this.innerHTML='<i class="bi bi-lightning-fill me-1"></i>Acheter maintenant…'; }
+});
+
+/* ══ Like — ✅ ajax_toggle_like ══ */
+document.getElementById('btnLike')?.addEventListener('click', async function() {
+  try {
+    const r = await fetch(this.dataset.url, { method:'POST', headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'} });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.success) {
+      document.getElementById('nbLikes').textContent = d.nb_likes;
+      const icon = this.querySelector('i');
+      if (d.liked) { icon.className='bi bi-heart-fill me-1'; this.style.color='var(--ember)'; this.style.borderColor='rgba(239,68,68,.35)'; }
+      else          { icon.className='bi bi-heart me-1';      this.style.color=''; this.style.borderColor=''; }
+    }
+  } catch(e) { console.error(e); }
+});
+
+/* ══ Partager — ✅ ajax_partager ══ */
+document.getElementById('btnPartager')?.addEventListener('click', async function() {
+  try {
+    const r = await fetch(this.dataset.url, { method:'POST', headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'} });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.success) {
+      document.getElementById('nbPartages').textContent = d.nb_partages;
+      if (navigator.share) await navigator.share({title:'{{ enchere.titre|escapejs }}',url:window.location.href});
+      else { await navigator.clipboard.writeText(window.location.href); afficherToast('Lien copié !','success'); }
+    }
+  } catch(e) { console.error(e); }
+});
+
+/* ══ Rafraîchir état — ✅ ajax_etat_enchere ══ */
+async function rafraichirEtat() {
+  try {
+    const r = await fetch(URL_ETAT, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+    if (!r.ok) return;
+    const d = await r.json();
+    const pEl = document.getElementById('prixActuel');
+    if (pEl && d.prix_actuel) pEl.textContent=`${Math.round(d.prix_actuel).toLocaleString('fr')} ${DEVISE}`;
+  } catch(e) { /* silencieux */ }
+}
+document.getElementById('btnRefreshOffres')?.addEventListener('click', rafraichirEtat);
+setInterval(rafraichirEtat, 10000);
+
+/* ══ Smart Bid polling — ✅ ajax_smart_bid_status ══ */
+{% if request.user.is_authenticated and smart_bid_actif %}
+(function() {
+  const badgeEl=document.getElementById('sb-badge');
+  const montEl=document.getElementById('sb-prochain-montant');
+  async function poll() {
+    try {
+      const r=await fetch(URL_SB,{headers:{'X-Requested-With':'XMLHttpRequest'}});
+      if(!r.ok) return;
+      const d=await r.json();
+      if(!d.actif){if(badgeEl){badgeEl.innerHTML='<i class="bi bi-pause-circle me-1"></i>Suspendu';badgeEl.style.background='rgba(239,68,68,.12)';badgeEl.style.color='var(--ember)';}return;}
+      if(d.je_suis_meilleur){if(badgeEl){badgeEl.innerHTML='<i class="bi bi-trophy-fill me-1"></i>Meilleur enchérisseur';badgeEl.style.background='rgba(16,185,129,.12)';badgeEl.style.color='var(--jade)';}if(montEl)montEl.textContent='';}
+      else if(d.peut_encherir){if(badgeEl){badgeEl.innerHTML='<i class="bi bi-activity me-1"></i>En surveillance';badgeEl.style.background='rgba(99,102,241,.12)';badgeEl.style.color='var(--indigo)';}if(montEl&&d.prochain_montant>0)montEl.textContent=`Prochain : ${Math.round(d.prochain_montant).toLocaleString('fr')} F`;}
+      else{if(badgeEl){badgeEl.innerHTML='<i class="bi bi-x-circle me-1"></i>Budget max atteint';badgeEl.style.background='rgba(239,68,68,.12)';badgeEl.style.color='var(--ember)';}if(montEl)montEl.textContent='';}
+    } catch(e){}
+  }
+  setInterval(poll,8000); poll();
+})();
+{% endif %}
+
+/* ══ Toast ══ */
+function afficherToast(msg,type='info'){
+  const c={success:'var(--jade)',error:'var(--ember)',info:'var(--indigo)'};
+  const i={success:'bi-check-circle-fill',error:'bi-x-circle-fill',info:'bi-info-circle-fill'};
+  const t=document.createElement('div');
+  t.style.cssText=`position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:var(--card);border:1px solid var(--border);border-left:4px solid ${c[type]};border-radius:var(--r);padding:.75rem 1.1rem;font-size:.82rem;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.35);max-width:320px;display:flex;align-items:center;gap:.6rem;opacity:1;transition:opacity .3s`;
+  t.innerHTML=`<i class="bi ${i[type]}" style="color:${c[type]};flex-shrink:0"></i>${msg}`;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); },3500);
+}
+</script>
+{% endblock %}
+
+

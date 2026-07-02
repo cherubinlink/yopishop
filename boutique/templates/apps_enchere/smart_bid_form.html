@@ -1,0 +1,272 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Smart Bid — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1">
+      <a href="{% url 'apps_enchere:enchere_detail' enchere.pk %}" class="cpill">
+        <i class="bi bi-arrow-left me-1"></i>{{ enchere.titre|truncatechars:30 }}
+      </a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-robot me-1" style="color:var(--indigo)"></i>Smart Bid IA
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-7">
+
+        <!-- Titre -->
+        <div class="mb-4 fi">
+          <div class="eyebrow mb-2">🤖 Intelligence artificielle</div>
+          <h1 class="sec-title" style="font-size:clamp(1.4rem,3vw,1.9rem)">
+            {% if config_existante %}Modifier le{% else %}Activer un{% endif %}
+            <span class="ac">Smart Bid</span>
+          </h1>
+          <p style="color:var(--text-2);font-size:.85rem;margin:.4rem 0 0">
+            Le Smart Bid enchérit automatiquement selon votre stratégie et votre budget.
+          </p>
+        </div>
+
+        {% if messages %}
+        {% for msg in messages %}
+        <div class="ycard mb-3 fi" style="border-left:3px solid {% if 'success' in msg.tags %}var(--jade){% elif 'error' in msg.tags %}var(--ember){% else %}var(--indigo){% endif %}">
+          <div style="font-size:.85rem;color:{% if 'success' in msg.tags %}var(--jade){% elif 'error' in msg.tags %}var(--ember){% else %}var(--indigo){% endif %}">
+            <i class="bi bi-{% if 'success' in msg.tags %}check-circle{% elif 'error' in msg.tags %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>{{ msg }}
+          </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- Résumé enchère -->
+        <div class="ycard mb-4 fi" style="border:1px solid var(--indigo);background:var(--indigo-d)">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:52px;height:52px;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--border);flex-shrink:0">
+              {% if enchere.image_couverture %}
+              <img src="{{ enchere.image_couverture.url }}" alt="{{ enchere.titre }}" style="width:100%;height:100%;object-fit:cover">
+              {% elif enchere.produit.image_principale %}
+              <img src="{{ enchere.produit.image_principale }}" alt="{{ enchere.titre }}" style="width:100%;height:100%;object-fit:cover">
+              {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-hammer" style="color:var(--muted)"></i></div>
+              {% endif %}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.9rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ enchere.titre }}</div>
+              <div class="d-flex gap-3 flex-wrap mt-1">
+                <span style="font-size:.75rem;color:var(--muted)">
+                  <i class="bi bi-tag me-1"></i>Prix actuel :
+                  <strong style="color:var(--indigo)">{{ enchere.prix_actuel|floatformat:0 }} {{ enchere.devise }}</strong>
+                </span>
+                <span style="font-size:.75rem;color:var(--muted)">
+                  <i class="bi bi-arrow-up me-1"></i>Incrément min. :
+                  <strong style="color:var(--text)">{{ enchere.increment_minimum|floatformat:0 }} {{ enchere.devise }}</strong>
+                </span>
+                <span style="font-size:.75rem;color:var(--muted)">
+                  <i class="bi bi-clock me-1"></i>Fin : {{ enchere.date_fin|date:"d M Y à H:i" }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="mt-2" style="font-size:.75rem;color:var(--indigo)">
+            <i class="bi bi-info-circle me-1"></i>
+            Offre minimum pour enchérir maintenant : <strong>{{ montant_min|floatformat:0 }} {{ enchere.devise }}</strong>
+          </div>
+        </div>
+
+        <!-- Formulaire Smart Bid -->
+        <form method="post" id="smartBidForm">
+          {% csrf_token %}
+
+          <!-- Budget max -->
+          <div class="ycard mb-4 fi">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-wallet2" style="color:var(--saffron)"></i>Budget maximum
+            </div>
+
+            <div class="mb-1">
+              <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                Je ne veux pas dépasser <span style="color:var(--ember)">*</span>
+              </label>
+              <div style="position:relative">
+                <input type="number" name="prix_max" id="fieldPrixMax" required
+                       min="{{ montant_min|floatformat:0 }}" step="100"
+                       value="{{ config_existante.prix_max|default:montant_min|floatformat:0 }}"
+                       placeholder="{{ montant_min|floatformat:0 }}"
+                       style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem 3.5rem .6rem .9rem;font-size:.88rem;font-family:var(--fm);outline:none;transition:border-color .2s"
+                       onfocus="this.style.borderColor='var(--indigo)'"
+                       onblur="this.style.borderColor='var(--border)'"
+                       oninput="mettreAJourApercu()">
+                <span style="position:absolute;right:.9rem;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--muted);font-weight:600">FCFA</span>
+              </div>
+            </div>
+
+            <!-- Raccourcis montants -->
+            <div class="d-flex gap-2 flex-wrap mt-2">
+              {% with base=montant_min|floatformat:0 %}
+              <button type="button" class="cpill" style="font-size:.72rem;padding:.22rem .65rem" onclick="setMax({{ enchere.prix_actuel|add:enchere.increment_minimum|floatformat:0 }})">Min. ({{ enchere.prix_actuel|add:enchere.increment_minimum|floatformat:0 }} F)</button>
+              {% endwith %}
+              <button type="button" class="cpill" style="font-size:.72rem;padding:.22rem .65rem" onclick="setMax({{ enchere.prix_actuel|floatformat:0|add:'5000' }})">+5 000 F</button>
+              <button type="button" class="cpill" style="font-size:.72rem;padding:.22rem .65rem" onclick="setMax({{ enchere.prix_actuel|floatformat:0|add:'10000' }})">+10 000 F</button>
+              {% if enchere.prix_achat_immediat %}
+              <button type="button" class="cpill" style="font-size:.72rem;padding:.22rem .65rem;color:var(--saffron);border-color:rgba(246,169,43,.3)" onclick="setMax({{ enchere.prix_achat_immediat|floatformat:0 }})">
+                <i class="bi bi-lightning-fill me-1"></i>Prix achat imm. ({{ enchere.prix_achat_immediat|floatformat:0 }} F)
+              </button>
+              {% endif %}
+            </div>
+
+            <!-- Budget journalier -->
+            <div class="mt-3 pt-3" style="border-top:1px solid var(--border)">
+              <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                Budget journalier (optionnel)
+              </label>
+              <input type="number" name="budget_journalier" min="100" step="100"
+                     value="{{ config_existante.budget_journalier|default:'' }}"
+                     placeholder="Ex: 20000 — limite vos offres par jour"
+                     style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem .9rem;font-size:.85rem;outline:none;transition:border-color .2s"
+                     onfocus="this.style.borderColor='var(--indigo)'"
+                     onblur="this.style.borderColor='var(--border)'">
+              <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">
+                <i class="bi bi-shield-check me-1"></i>Protection contre les dépenses excessives
+              </div>
+            </div>
+          </div>
+
+          <!-- Stratégie -->
+          <div class="ycard mb-4 fi">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-cpu" style="color:var(--indigo)"></i>Stratégie d'enchère
+            </div>
+
+            <div class="d-flex flex-column gap-3">
+              {% for val, desc in strategies %}
+              <label class="strat-option" for="strat_{{ val }}"
+                     style="display:flex;align-items:flex-start;gap:.85rem;padding:.85rem 1rem;background:var(--surface);border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s">
+                <input type="radio" name="strategie" id="strat_{{ val }}" value="{{ val }}"
+                       {% if config_existante.strategie == val or not config_existante and val == 'progressive' %}checked{% endif %}
+                       style="accent-color:var(--indigo);margin-top:.2rem;flex-shrink:0;width:16px;height:16px">
+                <div>
+                  <div style="font-size:.85rem;font-weight:700;color:var(--text)">
+                    {% if val == 'progressive' %}<i class="bi bi-graph-up me-1" style="color:var(--jade)"></i>Progressive
+                    {% elif val == 'aggressive' %}<i class="bi bi-lightning-fill me-1" style="color:var(--ember)"></i>Agressive
+                    {% elif val == 'last_second' %}<i class="bi bi-clock-history me-1" style="color:var(--saffron)"></i>Dernière seconde
+                    {% endif %}
+                  </div>
+                  <div style="font-size:.75rem;color:var(--muted);margin-top:.15rem">{{ desc|cut:"Progressive — "|cut:"Agressive — "|cut:"Dernière seconde — " }}</div>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Priorité -->
+          <div class="ycard mb-4 fi">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-sort-down" style="color:var(--saffron)"></i>Priorité
+              <span id="prioriteVal" style="font-size:.78rem;color:var(--indigo);margin-left:auto;font-weight:700">{{ config_existante.priorite|default:5 }}/10</span>
+            </div>
+            <input type="range" name="priorite" id="prioriteRange"
+                   min="1" max="10" step="1"
+                   value="{{ config_existante.priorite|default:5 }}"
+                   oninput="document.getElementById('prioriteVal').textContent=this.value+'/10'"
+                   style="width:100%;accent-color:var(--indigo)">
+            <div class="d-flex justify-content-between" style="font-size:.7rem;color:var(--muted);margin-top:.3rem">
+              <span>Basse priorité</span>
+              <span>Haute priorité</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">
+              <i class="bi bi-info-circle me-1"></i>En cas de conflit entre plusieurs Smart Bids, le plus prioritaire enchérit en premier.
+            </div>
+          </div>
+
+          <!-- Aperçu -->
+          <div class="ycard mb-4 fi" style="background:var(--indigo-d);border:1px solid rgba(99,102,241,.2)">
+            <div style="font-size:.8rem;font-weight:700;color:var(--indigo);margin-bottom:.5rem">
+              <i class="bi bi-robot me-1"></i>Résumé du Smart Bid
+            </div>
+            <div id="apercuSB" style="font-size:.8rem;color:var(--text-2);line-height:1.8">—</div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex align-items-center justify-content-between gap-3 fi">
+            <a href="{% url 'apps_enchere:enchere_detail' enchere.pk %}" class="btn-ghost">
+              <i class="bi bi-x-circle me-1"></i>Annuler
+            </a>
+            <button type="submit" class="btn-gold" style="min-width:200px;background:linear-gradient(90deg,var(--indigo),#4f46e5);border-color:var(--indigo)">
+              <i class="bi bi-robot me-1"></i>
+              {% if config_existante %}Mettre à jour le Smart Bid{% else %}Activer le Smart Bid{% endif %}
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+"use strict";
+const PRIX_ACTUEL = {{ enchere.prix_actuel|floatformat:0 }};
+const INCREMENT   = {{ enchere.increment_minimum|floatformat:0 }};
+
+function setMax(val) {
+  document.getElementById('fieldPrixMax').value = val;
+  mettreAJourApercu();
+}
+
+function mettreAJourApercu() {
+  const max  = parseFloat(document.getElementById('fieldPrixMax').value) || 0;
+  const strat = document.querySelector('[name="strategie"]:checked')?.value || 'progressive';
+  const budgetJ = parseFloat(document.querySelector('[name="budget_journalier"]')?.value) || 0;
+  const prio = document.getElementById('prioriteRange').value;
+
+  const labels = { progressive: '📈 Progressive', aggressive: '⚡ Agressive', last_second: '⏱️ Dernière seconde' };
+  let html = '';
+  if (max > 0) {
+    html += `Budget max : <strong style="color:var(--indigo)">${Math.round(max).toLocaleString('fr')} FCFA</strong><br>`;
+    const nbOffres = Math.floor((max - PRIX_ACTUEL) / INCREMENT);
+    html += `≈ ${nbOffres > 0 ? nbOffres : 0} offre${nbOffres > 1 ? 's' : ''} possible${nbOffres > 1 ? 's' : ''} depuis le prix actuel<br>`;
+  }
+  html += `Stratégie : <strong>${labels[strat] || strat}</strong><br>`;
+  if (budgetJ > 0) html += `Limite journalière : <strong>${Math.round(budgetJ).toLocaleString('fr')} FCFA</strong><br>`;
+  html += `Priorité : <strong>${prio}/10</strong>`;
+
+  document.getElementById('apercuSB').innerHTML = html || '—';
+}
+
+/* Styles stratégie */
+document.querySelectorAll('.strat-option input').forEach(radio => {
+  radio.addEventListener('change', function() {
+    document.querySelectorAll('.strat-option').forEach(l => {
+      l.style.borderColor = 'var(--border)';
+      l.style.background  = 'var(--surface)';
+    });
+    if (this.checked) {
+      this.closest('.strat-option').style.borderColor = 'var(--indigo)';
+      this.closest('.strat-option').style.background  = 'var(--indigo-d)';
+    }
+    mettreAJourApercu();
+  });
+});
+/* Init */
+const checkedStrat = document.querySelector('.strat-option input:checked');
+if (checkedStrat) { checkedStrat.closest('.strat-option').style.borderColor = 'var(--indigo)'; checkedStrat.closest('.strat-option').style.background = 'var(--indigo-d)'; }
+
+document.getElementById('fieldPrixMax').addEventListener('input', mettreAJourApercu);
+document.querySelector('[name="budget_journalier"]').addEventListener('input', mettreAJourApercu);
+mettreAJourApercu();
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

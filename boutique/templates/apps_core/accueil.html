@@ -143,12 +143,15 @@
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_commandes' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-box" style="color:var(--indigo)"></i>Mes commandes</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_paiements' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-credit-card me-1" style="color:var(--indigo)"></i>Mes paiements</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_retours' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes retours</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_offres' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes offres</a></li>
+           
      
             
             {% if request.user.peut_vendre %}
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:mes_produits' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-box" style="color:var(--indigo)"></i>Mes produits</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:mes_promotions' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-percent" style="color:var(--indigo)"></i>Mes promotions</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_marketplace:mes_codes_promo' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-percent" style="color:var(--indigo)"></i>Mes code promotions</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_encheres:mes_encheres' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-hammer" style="color:var(--indigo)"></i>Mes encheres</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_marketplace:mes_groupes_achat' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-people-fill" style="color:var(--indigo)"></i>Mes groupes</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:tableau_de_bord' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-shop" style="color:var(--jade)"></i>Tableau de bord</a></li>
             {% endif %}
@@ -264,6 +267,22 @@
                 Admin achat groupe
               </a>
             </li>
+             <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_encheres:admin_encheres_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-hammer" style="color:var(--jade);font-size:.9rem"></i>
+                Admin enchere
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_encheres:admin_offres_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-hammer" style="color:var(--jade);font-size:.9rem"></i>
+                Admin offre liste
+              </a>
+            </li>
             
             {% endif %}
             <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
@@ -323,7 +342,7 @@
                           text-transform:uppercase;color:var(--muted)">Découvrir</span></li>
           <li>
             <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
-              href="/encheres/"
+              href="{% url 'apps_encheres:encheres_liste' %}"
               style="color:var(--text-2);font-size:.83rem">
               <i class="bi bi-hammer" style="color:var(--ember);font-size:.9rem"></i>
               Enchères en direct
@@ -389,7 +408,7 @@
       {% endfor %}
 
 
-      <a href="/encheres/" class="cpill special"><i class="bi bi-hammer"></i>Enchères</a>
+      <a href="{% url 'apps_encheres:encheres_liste' %}" class="cpill special"><i class="bi bi-hammer"></i>Enchères</a>
       <a href="/lives/" class="cpill special"><i class="bi bi-broadcast"></i>Lives</a>
       <a href="{% url 'apps_core:promotions_liste' %}" class="cpill" style="color:var(--saffron)"><i class="bi bi-percent"></i>Promos</a>
     </div>
@@ -458,7 +477,7 @@
       
       {% for cat in categories_menu %}<a href="{% url 'apps_core:categorie_detail' cat.slug %}?categorie={{ cat.slug }}" class="cpill"><i class="bi bi-tag me-2"></i>{{ cat.nom }}</a>{% endfor %}
       <hr style="border-color:var(--border)">
-      <a href="/encheres/" class="cpill special"><i class="bi bi-hammer me-2"></i>Enchères</a>
+      <a href="{% url 'apps_encheres:encheres_liste' %}" class="cpill special"><i class="bi bi-hammer me-2"></i>Enchères</a>
       <a href="/lives/" class="cpill special"><i class="bi bi-broadcast me-2"></i>Lives</a>
       <a href="{% url 'apps_core:promotions_liste' %}" class="cpill"><i class="bi bi-percent me-2" style="color:var(--saffron)"></i>Promotions</a>
     </div>
@@ -689,7 +708,7 @@
         <div class="eyebrow">📡 En temps réel</div>
         <h2 class="sec-title">Publicités &amp; <span class="ac">Enchères</span></h2>
       </div>
-      <a href="/encheres/" class="btn-ghost">Toutes les enchères <i class="bi bi-arrow-right"></i></a>
+      <a href="{% url 'apps_enchere:encheres_liste' %}" class="btn-ghost">Toutes les enchères <i class="bi bi-arrow-right"></i></a>
     </div>
     <div class="hscroll fi">
       {% for item in slider_pub_enchere %}
@@ -707,7 +726,7 @@
       </a>
 
       {% elif item.type == 'enchere' %}
-      <a href="/encheres/{{ item.objet.id }}/" class="mix-card text-decoration-none">
+      <a href="{% url 'apps_enchere:enchere_detail' item.objet.pk  %}" class="mix-card text-decoration-none">
         {% if item.objet.produit and item.objet.produit.image_principale %}
         <img src="{{ item.objet.produit.image_principale }}" alt="{{ item.objet.titre }}" loading="lazy">
         {% else %}<div class="mix-no-img">🔨</div>{% endif %}
@@ -785,7 +804,7 @@
         <div class="eyebrow">⏱ En temps réel</div>
         <h2 class="sec-title">Enchères <span class="ac">en cours</span></h2>
       </div>
-      <a href="/encheres/" class="btn-ghost">Toutes <i class="bi bi-arrow-right"></i></a>
+      <a href="{% url 'apps_enchere:encheres_liste' %}" class="btn-ghost">Toutes <i class="bi bi-arrow-right"></i></a>
     </div>
     <div class="row g-3">
       {% for enc in encheres_actives %}
@@ -811,7 +830,7 @@
               </div>
             </div>
             <div class="ecard-info"><i class="bi bi-people-fill" style="color:var(--ember)"></i>{{ enc.nb_offres|default:0 }} offre{{ enc.nb_offres|pluralize }} &bull; {{ enc.nb_vues|default:0 }} vues</div>
-            <a href="/encheres/{{ enc.id }}/" class="btn-ember"><i class="bi bi-hammer"></i> Enchérir maintenant</a>
+            <a href="{% url 'apps_enchere:enchere_detail' enc.pk %}" class="btn-ember"><i class="bi bi-hammer"></i> Enchérir maintenant</a>
           </div>
         </div>
       </div>

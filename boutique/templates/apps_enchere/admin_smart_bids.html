@@ -1,0 +1,197 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Smart Bids Admin — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_enchere:admin_encheres_liste' %}" class="cpill">
+          <i class="bi bi-arrow-left me-1"></i>Admin Enchères
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+          <i class="bi bi-robot me-1" style="color:var(--indigo)"></i>Gestion Smart Bids
+        </span>
+      </div>
+      <a href="{% url 'apps_enchere:cron_executer_smart_bids' %}" class="btn-gold" style="font-size:.8rem">
+        <i class="bi bi-play-fill me-1"></i>Exécuter maintenant
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<div class="container py-4">
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4 fi">
+    <div class="col-4">
+      <div class="ycard p-3 text-center" style="border:1px solid var(--border)">
+        <div style="font-family:var(--fm);font-size:1.6rem;font-weight:900;color:var(--text)">{{ stats.total }}</div>
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Total Smart Bids</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="ycard p-3 text-center" style="border:1px solid rgba(16,185,129,.3)">
+        <div style="font-family:var(--fm);font-size:1.6rem;font-weight:900;color:var(--jade)">{{ stats.actifs }}</div>
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Actifs</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="ycard p-3 text-center" style="border:1px solid rgba(99,102,241,.3)">
+        <div style="font-family:var(--fm);font-size:1.6rem;font-weight:900;color:var(--indigo)">{{ stats.offres_auto }}</div>
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Offres auto générées</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="ycard p-3 mb-4 fi" style="border:1px solid var(--border)">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-6">
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.78rem"></i>
+          <input type="text" name="q" value="{{ q }}" placeholder="Utilisateur, titre enchère…"
+                 style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:.45rem .8rem .45rem 2.1rem;font-size:.82rem;outline:none">
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <select name="actif" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:.45rem .8rem;font-size:.82rem;outline:none">
+          <option value="">— Statut —</option>
+          <option value="1" {% if actif == '1' %}selected{% endif %}>Actifs uniquement</option>
+          <option value="0" {% if actif == '0' %}selected{% endif %}>Inactifs uniquement</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.82rem">
+          <i class="bi bi-funnel me-1"></i>Filtrer
+        </button>
+        {% if q or actif %}
+        <a href="{% url 'apps_enchere:admin_smart_bids' %}" class="btn-ghost" style="font-size:.82rem;width:auto"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Liste Smart Bids -->
+  {% if smart_bids %}
+  <div style="display:grid;gap:.75rem">
+    {% for sb in smart_bids %}
+    <div class="ycard fi" style="border:1px solid {% if sb.est_active %}rgba(99,102,241,.3){% else %}var(--border){% endif %}">
+      <div class="row align-items-center g-3">
+
+        <!-- Utilisateur -->
+        <div class="col-12 col-md-3">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--indigo-d);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--indigo);flex-shrink:0">
+              {{ sb.utilisateur.username|first|upper }}
+            </div>
+            <div>
+              <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ sb.utilisateur.username }}</div>
+              <div style="font-size:.7rem;color:var(--muted)">{{ sb.date_activation|date:"d M Y" }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enchère -->
+        <div class="col-12 col-md-3">
+          <a href="{% url 'apps_enchere:enchere_detail' sb.enchere.pk %}" style="text-decoration:none">
+            <div style="font-size:.8rem;font-weight:600;color:var(--saffron);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">
+              {{ sb.enchere.titre }}
+            </div>
+          </a>
+          <div style="font-size:.7rem;color:var(--muted)">
+            Prix actuel : <strong>{{ sb.enchere.prix_actuel|floatformat:0 }} F</strong>
+          </div>
+          <div style="font-size:.7rem;color:var(--muted)">
+            {% if sb.enchere.statut == 'en_cours' %}<span style="color:var(--jade)">● En cours</span>
+            {% elif sb.enchere.statut == 'terminee' %}<span style="color:var(--muted)">Terminée</span>
+            {% elif sb.enchere.statut == 'annulee' %}<span style="color:var(--ember)">Annulée</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Config -->
+        <div class="col-6 col-md-2">
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:.2rem">Budget max</div>
+          <div style="font-family:var(--fm);font-size:.95rem;font-weight:800;color:var(--indigo)">{{ sb.prix_max|floatformat:0 }} F</div>
+          {% if sb.budget_journalier %}
+          <div style="font-size:.7rem;color:var(--muted)">J. : {{ sb.budget_journalier|floatformat:0 }} F</div>
+          {% endif %}
+        </div>
+
+        <!-- Stratégie + priorité -->
+        <div class="col-6 col-md-2 text-center">
+          <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.68rem;margin-bottom:.3rem;display:inline-block">
+            {% if sb.strategie == 'progressive' %}📈 Progressive
+            {% elif sb.strategie == 'aggressive' %}⚡ Agressive
+            {% elif sb.strategie == 'last_second' %}⏱️ Dernière sec.
+            {% else %}{{ sb.strategie }}{% endif %}
+          </span>
+          <div style="font-size:.7rem;color:var(--muted)">Priorité {{ sb.priorite }}/10</div>
+        </div>
+
+        <!-- Statut -->
+        <div class="col-12 col-md-2 d-flex align-items-center justify-content-md-end gap-2">
+          {% if sb.est_active %}
+          <span class="chip" style="background:rgba(16,185,129,.12);color:var(--jade);font-size:.72rem">
+            <i class="bi bi-circle-fill me-1" style="font-size:.45rem;animation:pulse 1.2s infinite"></i>Actif
+          </span>
+          {% else %}
+          <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.72rem">
+            <i class="bi bi-pause-circle me-1"></i>Inactif
+          </span>
+          {% endif %}
+        </div>
+
+      </div>
+
+      {% if sb.depense_jour and sb.budget_journalier %}
+      <div class="mt-2 pt-2" style="border-top:1px solid var(--border)">
+        <div class="d-flex justify-content-between" style="font-size:.7rem;color:var(--muted);margin-bottom:.25rem">
+          <span>Budget journalier</span>
+          <span>{{ sb.depense_jour|floatformat:0 }} / {{ sb.budget_journalier|floatformat:0 }} FCFA</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="height:100%;background:linear-gradient(90deg,var(--indigo),var(--jade));border-radius:2px;width:{% widthratio sb.depense_jour sb.budget_journalier 100 %}%"></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if smart_bids.has_other_pages %}
+  <nav class="mt-4 d-flex justify-content-center fi">
+    <ul class="pagination" style="gap:.4rem">
+      {% if smart_bids.has_previous %}<li><a class="cpill" href="?page={{ smart_bids.previous_page_number }}&q={{ q }}&actif={{ actif }}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+      {% for num in smart_bids.paginator.page_range %}
+        {% if smart_bids.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+        {% elif num|add:"-2" <= smart_bids.number and num|add:"2" >= smart_bids.number %}<li><a class="cpill" href="?page={{ num }}&q={{ q }}&actif={{ actif }}">{{ num }}</a></li>{% endif %}
+      {% endfor %}
+      {% if smart_bids.has_next %}<li><a class="cpill" href="?page={{ smart_bids.next_page_number }}&q={{ q }}&actif={{ actif }}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-5 text-center fi" style="border:1px solid var(--border)">
+    <i class="bi bi-robot" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+    <div style="font-size:1rem;font-weight:700;color:var(--text)">Aucun Smart Bid trouvé</div>
+  </div>
+  {% endif %}
+
+</div>
+
+<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}</style>
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

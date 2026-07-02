@@ -1,0 +1,209 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes enchères — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_enchere:encheres_liste' %}" class="cpill">
+          <i class="bi bi-hammer me-1"></i>Enchères
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">Mes enchères</span>
+      </div>
+      <a href="{% url 'apps_enchere:creer_enchere' %}" class="btn-gold" style="font-size:.8rem">
+        <i class="bi bi-plus-lg me-1"></i>Nouvelle enchère
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Filtres statut -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_enchere:mes_encheres' %}" class="cpill {% if not statut %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Toutes
+      </a>
+      {% for val, label in statuts %}
+      <a href="?statut={{ val }}" class="cpill {% if statut == val %}on{% endif %}">
+        {% if val == 'en_cours' %}<i class="bi bi-broadcast"></i>
+        {% elif val == 'a_venir' %}<i class="bi bi-clock"></i>
+        {% elif val == 'terminee' %}<i class="bi bi-flag"></i>
+        {% elif val == 'annulee' %}<i class="bi bi-x-circle"></i>
+        {% endif %}{{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🔨 Vendeur</div>
+        <h2 class="sec-title">Mes <span class="ac">enchères</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ encheres.paginator.count }} enchère{{ encheres.paginator.count|pluralize }}</span>
+    </div>
+
+    {% if encheres %}
+    <div class="d-flex flex-column gap-3">
+      {% for enc in encheres %}
+      <div class="ycard fi" style="border:1px solid var(--border)" id="enc-{{ enc.pk }}">
+        <div class="row align-items-center gy-3">
+
+          <!-- Image -->
+          <div class="col-auto">
+            <div style="width:72px;height:72px;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--border);flex-shrink:0">
+              {% if enc.image_couverture %}
+              <img src="{{ enc.image_couverture.url }}" alt="{{ enc.titre }}" style="width:100%;height:100%;object-fit:cover">
+              {% elif enc.produit.image_principale %}
+              <img src="{{ enc.produit.image_principale }}" alt="{{ enc.titre }}" style="width:100%;height:100%;object-fit:cover">
+              {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-hammer" style="color:var(--muted);font-size:1.5rem"></i>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Infos -->
+          <div class="col">
+            <a href="{% url 'apps_enchere:enchere_detail' enc.pk %}" style="text-decoration:none">
+              <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.2rem">{{ enc.titre }}</div>
+            </a>
+            <div style="font-size:.72rem;color:var(--muted)">
+              <i class="bi bi-calendar3 me-1"></i>{{ enc.date_debut|date:"d M Y" }}
+              →
+              {{ enc.date_fin|date:"d M Y à H:i" }}
+            </div>
+            <div class="d-flex gap-2 mt-1 flex-wrap">
+              <!-- Statut -->
+              {% if enc.statut == 'en_cours' %}
+              <span class="chip" style="background:rgba(16,185,129,.12);color:var(--jade);font-size:.68rem">
+                <i class="bi bi-circle-fill me-1" style="font-size:.45rem;animation:pulse 1.2s infinite"></i>En cours
+              </span>
+              {% elif enc.statut == 'a_venir' %}
+              <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.68rem">
+                <i class="bi bi-clock me-1"></i>À venir
+              </span>
+              {% elif enc.statut == 'prolongee' %}
+              <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.68rem">
+                <i class="bi bi-arrow-clockwise me-1"></i>Prolongée
+              </span>
+              {% elif enc.statut == 'terminee' %}
+              <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.68rem">
+                <i class="bi bi-flag me-1"></i>Terminée
+              </span>
+              {% elif enc.statut == 'annulee' %}
+              <span class="chip chip-ember" style="font-size:.68rem">
+                <i class="bi bi-x-circle me-1"></i>Annulée
+              </span>
+              {% endif %}
+              <!-- Offres -->
+              <span class="chip" style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);font-size:.68rem">
+                <i class="bi bi-people me-1"></i>{{ enc.nb_offres }} offre{{ enc.nb_offres|pluralize }}
+              </span>
+              <!-- Gagnant -->
+              {% if enc.gagnant %}
+              <span class="chip" style="background:rgba(16,185,129,.12);color:var(--jade);font-size:.68rem">
+                <i class="bi bi-trophy me-1"></i>{{ enc.gagnant.username }}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Prix + Actions -->
+          <div class="col-auto text-end">
+            <div style="font-size:.68rem;color:var(--muted)">Prix actuel</div>
+            <div style="font-family:var(--fm);font-size:1.1rem;font-weight:900;color:var(--indigo)">
+              {{ enc.prix_actuel|floatformat:0 }} F
+            </div>
+            <div style="font-size:.7rem;color:var(--muted)">
+              Départ : {{ enc.prix_depart|floatformat:0 }} F
+            </div>
+          </div>
+
+          <!-- Boutons action -->
+          <div class="col-12 d-flex gap-2 flex-wrap pt-0" style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.25rem">
+            <a href="{% url 'apps_enchere:enchere_detail' enc.pk %}" class="btn-ghost" style="font-size:.76rem;padding:.3rem .7rem;width:auto">
+              <i class="bi bi-eye me-1"></i>Voir
+            </a>
+            {% if enc.nb_offres == 0 and enc.statut in 'en_cours,a_venir' %}
+            <a href="{% url 'apps_enchere:modifier_enchere' enc.pk %}" class="btn-ghost" style="font-size:.76rem;padding:.3rem .7rem;width:auto">
+              <i class="bi bi-pencil me-1"></i>Modifier
+            </a>
+            {% endif %}
+            {% if enc.statut == 'en_cours' or enc.statut == 'prolongee' %}
+            <form method="post" action="{% url 'apps_enchere:terminer_enchere_manuelle' enc.pk %}"
+                  onsubmit="return confirm('Clôturer cette enchère maintenant ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-ghost" style="font-size:.76rem;padding:.3rem .7rem;width:auto;color:var(--jade);border-color:rgba(16,185,129,.3)">
+                <i class="bi bi-flag me-1"></i>Clôturer
+              </button>
+            </form>
+            {% endif %}
+            {% if enc.statut != 'terminee' and enc.statut != 'annulee' %}
+            <form method="post" action="{% url 'apps_enchere:annuler_enchere' enc.pk %}"
+                  onsubmit="return confirm('Annuler cette enchère ?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-ghost" style="font-size:.76rem;padding:.3rem .7rem;width:auto;color:var(--ember);border-color:rgba(239,68,68,.3)">
+                <i class="bi bi-x-circle me-1"></i>Annuler
+              </button>
+            </form>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if encheres.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if encheres.has_previous %}
+        <li><a class="cpill" href="?page={{ encheres.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for num in encheres.paginator.page_range %}
+          {% if encheres.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= encheres.number and num|add:"2" >= encheres.number %}
+          <li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if encheres.has_next %}
+        <li><a class="cpill" href="?page={{ encheres.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-hammer" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+        {% if statut %}Aucune enchère avec ce statut{% else %}Vous n'avez pas encore créé d'enchère{% endif %}
+      </div>
+      <a href="{% url 'apps_enchere:creer_enchere' %}" class="btn-gold mt-2">
+        <i class="bi bi-plus-lg me-1"></i>Créer ma première enchère
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}</style>
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

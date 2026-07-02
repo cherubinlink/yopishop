@@ -1,0 +1,313 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════
+   ADMIN ENCHÈRES LISTE
+══════════════════════════════════════════════ */
+.ael-wrap { padding: 2rem 0 4rem; min-height: 80vh; }
+
+.ael-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.5rem; }
+.ael-title { font-family: var(--fg); font-size: 1.5rem; font-weight: 800; color: var(--text); }
+
+.btn-cron {
+  background: var(--indigo-d); color: var(--indigo); border: 1.5px solid rgba(124,111,255,.3);
+  border-radius: 10px; padding: .5rem 1.1rem; font-size: .8rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: .45rem; text-decoration: none;
+}
+.btn-cron:hover { background: var(--indigo); color: #fff; }
+
+/* Stats */
+.ael-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+@media (max-width: 991px) { .ael-stats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 575px) { .ael-stats { grid-template-columns: repeat(2, 1fr); } }
+.ael-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem; }
+.ael-stat-n { font-family: var(--fm); font-size: 1.4rem; font-weight: 800; line-height: 1; margin-bottom: .2rem; }
+.ael-stat-l { font-size: .66rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+
+/* Filtres / recherche */
+.ael-filters { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
+.ael-search-input {
+  flex: 1; min-width: 200px; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text); font-family: var(--fd); font-size: .85rem;
+  padding: .55rem .9rem; outline: none; transition: border-color .2s;
+}
+.ael-search-input:focus { border-color: var(--saffron); }
+.ael-pill { padding: .35rem .9rem; border-radius: 99px; font-size: .78rem; font-weight: 600; border: 1.5px solid var(--border); color: var(--muted); text-decoration: none; white-space: nowrap; }
+.ael-pill.on, .ael-pill:hover { border-color: var(--saffron); color: var(--saffron); background: var(--saffron-d); }
+
+/* Table card */
+.ael-table-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.ael-table-head {
+  display: flex; align-items: center; gap: 1rem; padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--border); font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+}
+.ael-row {
+  display: flex; align-items: center; gap: 1rem; padding: .85rem 1.25rem;
+  border-bottom: 1px solid var(--border); transition: background .15s;
+}
+.ael-row:last-child { border-bottom: none; }
+.ael-row:hover { background: rgba(255,255,255,.02); }
+
+.ael-col-produit { flex: 2.2; min-width: 0; display: flex; align-items: center; gap: .7rem; }
+.ael-img { width: 42px; height: 42px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: var(--surface); }
+.ael-img img { width: 100%; height: 100%; object-fit: cover; }
+.ael-titre { font-size: .85rem; font-weight: 700; color: var(--text); }
+.ael-vendeur { font-size: .72rem; color: var(--muted); }
+
+.ael-col-type { flex: 1.1; }
+.ael-type-badge { font-size: .68rem; font-weight: 700; padding: .2rem .6rem; border-radius: 99px; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
+
+.ael-col-statut { flex: 1; }
+.ael-statut-badge { font-size: .68rem; font-weight: 700; padding: .2rem .65rem; border-radius: 99px; white-space: nowrap; }
+.sb-a_venir   { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+.sb-en_cours  { background: var(--ember-d); color: var(--ember); animation: livepulse 2s infinite; }
+.sb-prolongee { background: var(--indigo-d); color: var(--indigo); }
+.sb-terminee  { background: var(--jade-d); color: var(--jade); }
+.sb-annulee   { background: rgba(255,90,71,.08); color: var(--ember); }
+@keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+.ael-col-prix { flex: 1.1; text-align: right; }
+.ael-prix-actuel { font-family: var(--fm); font-size: .9rem; font-weight: 800; color: var(--saffron); }
+.ael-prix-depart { font-size: .68rem; color: var(--muted); }
+
+.ael-col-offres { flex: .7; text-align: center; }
+.ael-offres-n { font-family: var(--fm); font-size: .9rem; font-weight: 700; color: var(--text); }
+.ael-offres-l { font-size: .65rem; color: var(--muted); }
+
+.ael-col-fin { flex: 1.1; }
+.ael-fin-date { font-size: .76rem; color: var(--text-2); }
+.ael-fin-relative { font-size: .68rem; color: var(--muted); }
+
+.ael-col-actions { flex: .8; text-align: right; flex-shrink: 0; }
+.ael-btn-view {
+  display: inline-flex; align-items: center; gap: .3rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: .35rem .7rem;
+  font-size: .74rem; color: var(--text-2); text-decoration: none;
+}
+.ael-btn-view:hover { border-color: var(--saffron); color: var(--saffron); }
+
+.ael-gagnant { font-size: .68rem; color: var(--jade); margin-top: .15rem; display: flex; align-items: center; gap: .25rem; }
+
+/* Empty */
+.ael-empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+.ael-empty i { font-size: 2.8rem; opacity: .35; display: block; margin-bottom: .85rem; }
+
+/* Pagination */
+.yopi-pager { display: flex; justify-content: center; gap: .35rem; margin-top: 1.5rem; flex-wrap: wrap; }
+.yopi-pager a, .yopi-pager span {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 36px; padding: 0 .5rem; border-radius: 8px;
+  font-size: .8rem; font-weight: 600; text-decoration: none;
+  border: 1.5px solid var(--border); color: var(--muted); transition: all .2s;
+}
+.yopi-pager a:hover { border-color: var(--saffron); color: var(--saffron); background: var(--saffron-d); }
+.yopi-pager .current { background: var(--saffron); color: #0A0B1A; border-color: var(--saffron); }
+
+/* Responsive: masquer colonnes sur mobile */
+@media (max-width: 860px) {
+  .ael-col-type, .ael-col-offres { display: none; }
+  .ael-table-head { display: none; }
+}
+</style>
+
+
+<div class="ael-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Gestion des enchères</span>
+      </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}var(--jade-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>{{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:1rem">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- En-tête -->
+    <div class="ael-header fi">
+      <div>
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem">Administration</div>
+        <h1 class="ael-title"><i class="bi bi-hammer" style="color:var(--saffron)"></i> Gestion des enchères</h1>
+      </div>
+      <a href="{% url 'apps_enchere:cron_terminer_encheres_expirees' %}" class="btn-cron"
+         onclick="return confirm('Clôturer toutes les enchères expirées maintenant ?')">
+        <i class="bi bi-clock-history"></i> Clôturer les expirées
+      </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="ael-stats fi">
+      <div class="ael-stat">
+        <div class="ael-stat-n" style="color:var(--text)">{{ encheres.paginator.count }}</div>
+        <div class="ael-stat-l">Total</div>
+      </div>
+      <div class="ael-stat">
+        <div class="ael-stat-n" style="color:var(--ember)">{{ stats.en_cours|default:0 }}</div>
+        <div class="ael-stat-l">En cours</div>
+      </div>
+      <div class="ael-stat">
+        <div class="ael-stat-n" style="color:var(--saffron)">{{ stats.a_venir|default:0 }}</div>
+        <div class="ael-stat-l">À venir</div>
+      </div>
+      <div class="ael-stat">
+        <div class="ael-stat-n" style="color:var(--jade)">{{ stats.terminee|default:0 }}</div>
+        <div class="ael-stat-l">Terminées</div>
+      </div>
+      <div class="ael-stat">
+        <div class="ael-stat-n" style="color:var(--ember)">{{ stats.annulee|default:0 }}</div>
+        <div class="ael-stat-l">Annulées</div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <form method="get" class="ael-filters fi">
+      <input type="text" name="q" class="ael-search-input" placeholder="Titre, vendeur..." value="{{ q }}">
+      <a href="?{% if q %}q={{ q }}{% endif %}" class="ael-pill {% if not statut %}on{% endif %}">Tous</a>
+      {% for val, lbl in statuts %}
+      <a href="?statut={{ val }}{% if q %}&q={{ q }}{% endif %}" class="ael-pill {% if statut == val %}on{% endif %}">{{ lbl }}</a>
+      {% endfor %}
+      <button type="submit" class="ael-pill" style="cursor:pointer;border:1.5px solid var(--saffron);color:var(--saffron)">
+        <i class="bi bi-search"></i>
+      </button>
+    </form>
+
+    <!-- Tableau -->
+    <div class="ael-table-card fi">
+
+      <div class="ael-table-head">
+        <div class="ael-col-produit">Produit / Vendeur</div>
+        <div class="ael-col-type">Type</div>
+        <div class="ael-col-statut">Statut</div>
+        <div class="ael-col-prix" style="text-align:right">Prix actuel</div>
+        <div class="ael-col-offres">Offres</div>
+        <div class="ael-col-fin">Fin</div>
+        <div class="ael-col-actions"></div>
+      </div>
+
+      {% if encheres %}
+      {% for e in encheres %}
+      <div class="ael-row">
+
+        <!-- Produit -->
+        <div class="ael-col-produit">
+          <div class="ael-img">
+            {% if e.produit.image_principale %}
+            <img src="{{ e.produit.image_principale }}" alt="{{ e.titre }}">
+            {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-hammer" style="font-size:.9rem"></i></div>
+            {% endif %}
+          </div>
+          <div style="min-width:0">
+            <div class="ael-titre">{{ e.titre|truncatechars:42 }}</div>
+            <div class="ael-vendeur"><i class="bi bi-shop"></i> {{ e.vendeur.username }}</div>
+            {% if e.gagnant %}
+            <div class="ael-gagnant"><i class="bi bi-trophy-fill"></i> {{ e.gagnant.username }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Type -->
+        <div class="ael-col-type">
+          <span class="ael-type-badge">{{ e.get_type_enchere_display }}</span>
+        </div>
+
+        <!-- Statut -->
+        <div class="ael-col-statut">
+          <span class="ael-statut-badge sb-{{ e.statut }}">
+            {% if e.statut == 'en_cours' %}<i class="bi bi-circle-fill" style="font-size:.5rem"></i> {% endif %}
+            {{ e.get_statut_display }}
+          </span>
+        </div>
+
+        <!-- Prix -->
+        <div class="ael-col-prix">
+          <div class="ael-prix-actuel">{{ e.prix_actuel|floatformat:0 }} {{ e.devise }}</div>
+          <div class="ael-prix-depart">Départ : {{ e.prix_depart|floatformat:0 }}</div>
+        </div>
+
+        <!-- Offres -->
+        <div class="ael-col-offres">
+          <div class="ael-offres-n">{{ e.nb_offres }}</div>
+          <div class="ael-offres-l">offres</div>
+        </div>
+
+        <!-- Fin -->
+        <div class="ael-col-fin">
+          <div class="ael-fin-date">{{ e.date_fin|date:"d M Y à H:i" }}</div>
+          <div class="ael-fin-relative">
+            {% if e.statut == 'en_cours' or e.statut == 'prolongee' %}
+            {{ e.date_fin|timeuntil }}
+            {% else %}
+            {{ e.date_fin|timesince }}
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="ael-col-actions">
+          <a href="{% url 'apps_enchere:enchere_detail' e.pk %}" class="ael-btn-view">
+            <i class="bi bi-eye"></i> Voir
+          </a>
+        </div>
+
+      </div>
+      {% endfor %}
+
+      <!-- Pagination -->
+      {% if encheres.has_other_pages %}
+      <div class="yopi-pager" style="padding:1rem">
+        {% if encheres.has_previous %}
+        <a href="?statut={{ statut }}&q={{ q }}&page={{ encheres.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>
+        {% endif %}
+        {% for num in encheres.paginator.page_range %}
+          {% if encheres.number == num %}
+          <span class="current">{{ num }}</span>
+          {% elif num > encheres.number|add:'-3' and num < encheres.number|add:'3' %}
+          <a href="?statut={{ statut }}&q={{ q }}&page={{ num }}">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if encheres.has_next %}
+        <a href="?statut={{ statut }}&q={{ q }}&page={{ encheres.next_page_number }}"><i class="bi bi-chevron-right"></i></a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="ael-empty">
+        <i class="bi bi-hammer"></i>
+        Aucune enchère trouvée{% if q or statut %} pour ces critères{% endif %}.
+      </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+</div>
+
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target)}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}

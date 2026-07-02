@@ -1,0 +1,207 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes offres — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_enchere:encheres_liste' %}" class="cpill">
+          <i class="bi bi-hammer me-1"></i>Enchères
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">Mes offres</span>
+      </div>
+      <a href="{% url 'apps_enchere:mes_smart_bids' %}" class="btn-ghost" style="font-size:.8rem">
+        <i class="bi bi-robot me-1"></i>Smart Bids
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Filtres -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_enchere:mes_offres' %}" class="cpill {% if not statut %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Toutes
+      </a>
+      <a href="?statut=en_cours" class="cpill {% if statut == 'en_cours' %}on{% endif %}">
+        <i class="bi bi-broadcast"></i>En cours
+      </a>
+      <a href="?statut=gagnees" class="cpill {% if statut == 'gagnees' %}on{% endif %}" style="{% if statut == 'gagnees' %}color:var(--jade){% endif %}">
+        <i class="bi bi-trophy"></i>Gagnées
+      </a>
+      <a href="?statut=perdues" class="cpill {% if statut == 'perdues' %}on{% endif %}" style="{% if statut == 'perdues' %}color:var(--ember){% endif %}">
+        <i class="bi bi-x-circle"></i>Perdues
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys bg-surface">
+  <div class="container">
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4 fi">
+      <div class="col-6 col-md-3">
+        <div class="ycard p-3 text-center" style="border:1px solid var(--border)">
+          <div style="font-family:var(--fm);font-size:1.6rem;font-weight:900;color:var(--saffron)">{{ stats.total }}</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Offres totales</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="ycard p-3 text-center" style="border:1px solid var(--border)">
+          <div style="font-family:var(--fm);font-size:1.6rem;font-weight:900;color:var(--indigo)">{{ stats.en_cours }}</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En cours</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="ycard p-3 text-center" style="border:1px solid var(--border)">
+          <div style="font-family:var(--fm);font-size:1.6rem;font-weight:900;color:var(--jade)">{{ stats.gagnees }}</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Enchères gagnées</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="ycard p-3 text-center" style="border:1px solid var(--border)">
+          <div style="font-family:var(--fm);font-size:1.1rem;font-weight:900;color:var(--text)">{{ stats.depense_totale|floatformat:0 }}</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">FCFA dépensés</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">🔨 Historique</div>
+        <h2 class="sec-title">Mes <span class="ac">offres</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ offres.paginator.count }} offre{{ offres.paginator.count|pluralize }}</span>
+    </div>
+
+    {% if offres %}
+    <div class="d-flex flex-column gap-3">
+      {% for offre in offres %}
+      {% with enc=offre.enchere %}
+      <a href="{% url 'apps_enchere:enchere_detail' enc.pk %}"
+         class="ycard fi d-block text-decoration-none"
+         style="border:1px solid {% if enc.pk in en_tete_ids %}rgba(99,102,241,.4){% else %}var(--border){% endif %};transition:border-color .2s"
+         onmouseover="this.style.borderColor='var(--saffron)'"
+         onmouseout="this.style.borderColor='{% if enc.pk in en_tete_ids %}rgba(99,102,241,.4){% else %}var(--border){% endif %}'">
+        <div class="row align-items-center gy-3">
+
+          <!-- Image enchère -->
+          <div class="col-auto">
+            <div style="width:60px;height:60px;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--border);flex-shrink:0;position:relative">
+              {% if enc.image_couverture %}
+              <img src="{{ enc.image_couverture.url }}" alt="{{ enc.titre }}" style="width:100%;height:100%;object-fit:cover">
+              {% elif enc.produit.image_principale %}
+              <img src="{{ enc.produit.image_principale }}" alt="{{ enc.titre }}" style="width:100%;height:100%;object-fit:cover">
+              {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-hammer" style="color:var(--muted)"></i>
+              </div>
+              {% endif %}
+              {% if offre.est_offre_auto %}
+              <div style="position:absolute;bottom:2px;right:2px;background:var(--indigo);border-radius:3px;padding:1px 3px">
+                <i class="bi bi-robot" style="color:#fff;font-size:.5rem"></i>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Infos enchère -->
+          <div class="col">
+            <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px">
+              {{ enc.titre }}
+            </div>
+            <div style="font-size:.72rem;color:var(--muted)">
+              <i class="bi bi-calendar3 me-1"></i>{{ offre.date_creation|date:"d M Y à H:i" }}
+              {% if offre.est_offre_auto %}
+              &nbsp;·&nbsp;<span style="color:var(--indigo)"><i class="bi bi-robot me-1"></i>Auto (Smart Bid)</span>
+              {% endif %}
+            </div>
+            <div class="d-flex gap-2 mt-1 flex-wrap">
+              <!-- Statut enchère -->
+              {% if enc.statut == 'en_cours' or enc.statut == 'prolongee' %}
+              <span class="chip" style="background:rgba(16,185,129,.12);color:var(--jade);font-size:.65rem">
+                <i class="bi bi-circle-fill me-1" style="font-size:.4rem;animation:pulse 1.2s infinite"></i>En cours
+              </span>
+              {% elif enc.statut == 'terminee' %}
+                {% if enc.gagnant == request.user %}
+                <span class="chip chip-jade" style="font-size:.65rem"><i class="bi bi-trophy-fill me-1"></i>Gagnée 🎉</span>
+                {% else %}
+                <span class="chip chip-ember" style="font-size:.65rem"><i class="bi bi-x-circle me-1"></i>Perdue</span>
+                {% endif %}
+              {% elif enc.statut == 'annulee' %}
+              <span class="chip" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.65rem">Annulée</span>
+              {% endif %}
+              <!-- En tête ? -->
+              {% if enc.pk in en_tete_ids %}
+              <span class="chip" style="background:var(--indigo-d);color:var(--indigo);font-size:.65rem">
+                <i class="bi bi-crown me-1"></i>Meilleur enchérisseur
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Montant offre / prix actuel -->
+          <div class="col-auto text-end">
+            <div style="font-size:.68rem;color:var(--muted)">Mon offre</div>
+            <div style="font-family:var(--fm);font-size:1.05rem;font-weight:900;color:{% if enc.pk in en_tete_ids %}var(--jade){% else %}var(--saffron){% endif %}">
+              {{ offre.montant|floatformat:0 }} F
+            </div>
+            <div style="font-size:.7rem;color:var(--muted)">
+              Actuel : {{ enc.prix_actuel|floatformat:0 }} F
+            </div>
+          </div>
+
+          <div class="col-auto d-none d-md-block">
+            <i class="bi bi-chevron-right" style="color:var(--muted)"></i>
+          </div>
+
+        </div>
+      </a>
+      {% endwith %}
+      {% endfor %}
+    </div>
+
+    {% if offres.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if offres.has_previous %}<li><a class="cpill" href="?page={{ offres.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+        {% for num in offres.paginator.page_range %}
+          {% if offres.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= offres.number and num|add:"2" >= offres.number %}<li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}">{{ num }}</a></li>{% endif %}
+        {% endfor %}
+        {% if offres.has_next %}<li><a class="cpill" href="?page={{ offres.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-hammer" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+        {% if statut %}Aucune offre dans cette catégorie{% else %}Vous n'avez encore placé aucune offre{% endif %}
+      </div>
+      <a href="{% url 'apps_enchere:encheres_liste' %}" class="btn-gold mt-2">
+        <i class="bi bi-hammer me-1"></i>Découvrir les enchères
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}</style>
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

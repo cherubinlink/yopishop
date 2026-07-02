@@ -305,6 +305,49 @@
               {% endfor %}
             </div>
 
+             <!-- ═══ CODE PROMO ═══ -->
+            <div class="co-card" style="padding:1rem 1.1rem;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border)">
+              <div id="codePromoForm">
+                <label class="co-label" style="margin-bottom:.5rem">
+                  <i class="bi bi-tag-fill" style="color:var(--saffron)"></i> Code promo
+                </label>
+                <div class="d-flex gap-2">
+                  <input type="text" id="inputCodePromo" placeholder="Ex: YOPI20"
+                    class="co-input" style="text-transform:uppercase;flex:1"
+                    autocomplete="off">
+                  <button type="button" id="btnAppliquerCode"
+                    style="background:var(--saffron);color:#0A0B1A;border:none;border-radius:8px;
+                           padding:.6rem 1.1rem;font-size:.82rem;font-weight:700;cursor:pointer;
+                           white-space:nowrap;flex-shrink:0">
+                    Appliquer
+                  </button>
+                </div>
+                <div id="codePromoMessage" style="font-size:.76rem;margin-top:.5rem;display:none"></div>
+              </div>
+
+              <!-- Code appliqué (masqué par défaut) -->
+              <div id="codePromoApplique" style="display:none">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <div>
+                    <div style="font-size:.82rem;font-weight:700;color:var(--jade)">
+                      <i class="bi bi-check-circle-fill me-1"></i>
+                      <span id="codeAppliqueNom"></span>
+                    </div>
+                    <div style="font-size:.74rem;color:var(--muted)" id="codeAppliqueDetail"></div>
+                  </div>
+                  <button type="button" id="btnRetirerCode"
+                    style="background:none;border:1px solid rgba(239,68,68,.3);color:var(--ember);
+                           border-radius:8px;padding:.35rem .7rem;font-size:.75rem;cursor:pointer;
+                           white-space:nowrap;flex-shrink:0">
+                    <i class="bi bi-x-lg"></i> Retirer
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Champs cachés transmis au formulaire principal -->
+            <input type="hidden" name="code_promo" id="hiddenCodePromo" value="">
+
             <!-- Totaux -->
             <div style="margin-bottom:1rem">
               <div class="co-total-row"><span class="lbl">Sous-total</span><span class="val">{{ sous_total|floatformat:0 }} FCFA</span></div>
@@ -468,6 +511,122 @@ document.querySelectorAll('.tranche-option').forEach(opt => {
     document.getElementById('inputNbTranches').value = val;
     document.getElementById('bnplSubmitLabel').textContent = `Commander en ${val}× sans frais`;
   });
+});
+
+/* ── Code promo ── */
+const SOUS_TOTAL = {{ sous_total|floatformat:"0" }};
+const csrf = () => document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+document.getElementById('btnAppliquerCode').addEventListener('click', async function () {
+  const inputEl = document.getElementById('inputCodePromo');
+  const code = inputEl.value.trim().toUpperCase();
+  const msgEl = document.getElementById('codePromoMessage');
+
+  if (!code) {
+    msgEl.textContent = 'Veuillez saisir un code.';
+    msgEl.style.color = 'var(--ember)';
+    msgEl.style.display = 'block';
+    return;
+  }
+
+  this.disabled = true;
+  this.textContent = '...';
+
+  try {
+    const fd = new FormData();
+    fd.append('code', code);
+    fd.append('montant', SOUS_TOTAL);
+
+    const r = await fetch('/codes-promo/ajax/appliquer/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd
+    });
+
+    if (!r.ok) {
+      msgEl.textContent = `Erreur ${r.status}`;
+      msgEl.style.color = 'var(--ember)';
+      msgEl.style.display = 'block';
+      this.disabled = false;
+      this.textContent = 'Appliquer';
+      return;
+    }
+
+    const d = await r.json();
+
+    if (d.success) {
+      // Masquer le formulaire, afficher le bandeau code appliqué
+      document.getElementById('codePromoForm').style.display = 'none';
+      document.getElementById('codePromoApplique').style.display = 'block';
+      document.getElementById('codeAppliqueNom').textContent = `${d.code} — ${d.nom}`;
+      document.getElementById('hiddenCodePromo').value = d.code;
+
+      if (d.livraison_gratuite) {
+        document.getElementById('codeAppliqueDetail').textContent = 'Livraison gratuite appliquée';
+        document.getElementById('recapLivraison').textContent = 'Gratuite';
+        document.getElementById('recapLivraison').style.color = 'var(--jade)';
+      } else {
+        document.getElementById('codeAppliqueDetail').textContent = `${d.reduction.toLocaleString('fr')} FCFA de réduction`;
+        document.getElementById('recapReductionRow').style.display = 'flex';
+        document.getElementById('recapReduction').textContent = `-${d.reduction.toLocaleString('fr')} FCFA`;
+
+        const nouveauTotal = SOUS_TOTAL - d.reduction;
+        document.getElementById('recapSousTotal').textContent = SOUS_TOTAL.toLocaleString('fr') + ' FCFA';
+        document.getElementById('recapTotalFinal').textContent = nouveauTotal.toLocaleString('fr') + ' FCFA';
+
+        // Mettre à jour les badges de prix sur les boutons de paiement
+        document.querySelectorAll('.price-badge').forEach(el => {
+          el.textContent = nouveauTotal.toLocaleString('fr') + ' F';
+        });
+      }
+
+    } else {
+      msgEl.textContent = d.message || 'Code invalide.';
+      msgEl.style.color = 'var(--ember)';
+      msgEl.style.display = 'block';
+      this.disabled = false;
+      this.textContent = 'Appliquer';
+    }
+
+  } catch (err) {
+    console.error('Erreur code promo:', err);
+    msgEl.textContent = 'Erreur réseau, réessayez.';
+    msgEl.style.color = 'var(--ember)';
+    msgEl.style.display = 'block';
+    this.disabled = false;
+    this.textContent = 'Appliquer';
+  }
+});
+
+/* ── Retirer le code promo ── */
+document.getElementById('btnRetirerCode').addEventListener('click', async function () {
+  try {
+    const r = await fetch('/codes-promo/ajax/retirer/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    const d = await r.json();
+
+    if (d.success) {
+      // Réinitialiser l'affichage
+      document.getElementById('codePromoForm').style.display = 'block';
+      document.getElementById('codePromoApplique').style.display = 'none';
+      document.getElementById('inputCodePromo').value = '';
+      document.getElementById('hiddenCodePromo').value = '';
+      document.getElementById('codePromoMessage').style.display = 'none';
+      document.getElementById('recapReductionRow').style.display = 'none';
+      document.getElementById('recapSousTotal').textContent = SOUS_TOTAL.toLocaleString('fr') + ' FCFA';
+      document.getElementById('recapTotalFinal').textContent = SOUS_TOTAL.toLocaleString('fr') + ' FCFA';
+      document.getElementById('recapLivraison').textContent = 'Calculée selon la ville';
+      document.getElementById('recapLivraison').style.color = 'var(--muted)';
+
+      document.querySelectorAll('.price-badge').forEach(el => {
+        el.textContent = SOUS_TOTAL.toLocaleString('fr') + ' F';
+      });
+    }
+  } catch (err) {
+    console.error('Erreur retrait code:', err);
+  }
 });
 </script>
 {% endblock %}
