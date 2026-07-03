@@ -1,0 +1,659 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.ao-wrap { padding: 2rem 0 4rem; min-height: 80vh; }
+
+/* ── Hero ── */
+.ao-hero {
+  background: linear-gradient(135deg, #0e1038 0%, #1a1050 45%, #0e2444 100%);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 1.75rem 2rem; margin-bottom: 1.5rem;
+  position: relative; overflow: hidden;
+}
+.ao-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 55% 70% at 85% 30%, rgba(124,111,255,.2) 0%, transparent 60%);
+  pointer-events: none;
+}
+.ao-statut-badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .72rem; font-weight: 700; padding: .25rem .8rem;
+  border-radius: 99px; margin-bottom: .75rem;
+}
+.sb-ouvert { background: var(--jade-d); color: var(--jade); border: 1px solid rgba(0,200,150,.25); }
+.sb-ferme  { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.sb-adjuge { background: var(--saffron-d); color: var(--saffron); border: 1px solid rgba(247,183,49,.25); }
+.sb-annule { background: var(--ember-d); color: var(--ember); border: 1px solid rgba(255,90,71,.25); }
+
+.ao-title { font-family: var(--fg); font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: .4rem; }
+.ao-meta  { font-size: .8rem; color: var(--muted); display: flex; gap: 1rem; flex-wrap: wrap; }
+.ao-meta i { color: var(--saffron); }
+
+/* ── Info card ── */
+.ao-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.3rem 1.4rem; margin-bottom: 1.25rem; }
+.ao-card-title { font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .85rem; display: flex; align-items: center; gap: .4rem; }
+.ao-card-title i { color: var(--saffron); }
+
+.ao-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+@media(max-width:575px){ .ao-info-grid { grid-template-columns: 1fr; } }
+.ao-info-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .75rem 1rem; }
+.ao-info-lbl  { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .2rem; }
+.ao-info-val  { font-size: .9rem; font-weight: 700; color: var(--text); }
+
+/* ── Timer ── */
+.ao-timer {
+  display: flex; align-items: center; gap: .6rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: .6rem 1rem; margin-bottom: 1.25rem;
+}
+.ao-timer-val { font-family: var(--fm); font-size: 1rem; font-weight: 800; color: var(--ember); margin-left: auto; }
+
+/* ── Formulaire soumission offre ── */
+.ao-form-card {
+  background: var(--jade-d); border: 1.5px solid rgba(0,200,150,.25);
+  border-radius: var(--r); padding: 1.4rem 1.5rem; margin-bottom: 1.25rem;
+}
+.ao-form-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+.ao-input {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--fd);
+  font-size: .86rem; padding: .6rem .9rem; outline: none; transition: border-color .2s;
+}
+.ao-input:focus { border-color: var(--jade); }
+.ao-input::placeholder { color: var(--muted); }
+.ao-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); display: block; margin-bottom: .4rem; }
+.ao-label .req { color: var(--ember); }
+.ao-hint { font-size: .7rem; color: var(--muted); margin-top: .3rem; }
+.ao-field { margin-bottom: .85rem; }
+
+/* Prix avec devise */
+.ao-prix-input-wrap { position: relative; }
+.ao-prix-suffix {
+  position: absolute; right: .9rem; top: 50%; transform: translateY(-50%);
+  font-size: .76rem; font-weight: 700; color: var(--muted); pointer-events: none;
+}
+
+.btn-soumettre {
+  width: 100%; background: linear-gradient(90deg, var(--jade), #00e0a8);
+  color: #0A0B1A; border: none; border-radius: 10px; padding: .75rem;
+  font-size: .9rem; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  transition: opacity .2s, transform .2s;
+}
+.btn-soumettre:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+.btn-soumettre:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Mon offre existante */
+.ao-mon-offre {
+  background: var(--jade-d); border: 1px solid rgba(0,200,150,.25);
+  border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: 1.25rem;
+  display: flex; align-items: center; gap: .9rem;
+}
+.ao-mon-offre-montant { font-family: var(--fm); font-size: 1.3rem; font-weight: 800; color: var(--jade); line-height: 1; }
+
+/* Offres liste */
+.ao-offre-row {
+  display: flex; align-items: center; gap: .9rem; padding: .85rem 1.3rem;
+  border-bottom: 1px solid var(--border); transition: background .15s;
+}
+.ao-offre-row:last-child { border-bottom: none; }
+.ao-offre-row:hover { background: rgba(255,255,255,.02); }
+.ao-offre-row.selected { background: var(--jade-d); border-left: 3px solid var(--jade); }
+.ao-offre-rank {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 800;
+  background: var(--surface); color: var(--muted); border: 1.5px solid var(--border);
+}
+.ao-offre-rank.rank-1 { background: var(--jade); color: #0A0B1A; border-color: var(--jade); }
+.ao-offre-vendor { flex: 1; min-width: 0; }
+.ao-offre-vendor-name { font-size: .87rem; font-weight: 700; color: var(--text); }
+.ao-offre-delai  { font-size: .72rem; color: var(--muted); }
+.ao-offre-montant { font-family: var(--fm); font-size: 1rem; font-weight: 800; color: var(--jade); }
+.ao-offre-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+
+.btn-adj {
+  background: var(--saffron); color: #0A0B1A; border: none;
+  border-radius: 8px; padding: .4rem .9rem; font-size: .78rem; font-weight: 700;
+  cursor: pointer; transition: opacity .2s;
+}
+.btn-adj:hover { opacity: .9; }
+
+.ao-b2b-badge { font-size: .68rem; font-weight: 700; padding: .2rem .7rem; border-radius: 99px; background: var(--indigo-d); color: var(--indigo); border: 1px solid rgba(124,111,255,.25); }
+
+/* Toast notification */
+.ao-toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 1rem 1.3rem; max-width: 360px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  display: flex; align-items: flex-start; gap: .75rem;
+  transform: translateY(120%); transition: transform .3s ease; pointer-events: none;
+}
+.ao-toast.show { transform: translateY(0); pointer-events: auto; }
+.ao-toast.success { border-color: rgba(0,200,150,.35); }
+.ao-toast.error   { border-color: rgba(255,90,71,.35); }
+.ao-toast-ico { font-size: 1.1rem; flex-shrink: 0; }
+.ao-toast-msg { font-size: .83rem; color: var(--text); line-height: 1.4; }
+</style>
+
+<div class="ao-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none"><i class="bi bi-house-fill"></i> Accueil</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'apps_enchere:appels_offre_liste' %}" style="color:var(--muted);text-decoration:none">Appels d'offre</a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">{{ ao.titre|truncatechars:35 }}</span>
+      </div>
+    </nav>
+
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}var(--jade-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>{{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+
+    <div class="row g-4">
+
+      <!-- ═══ Colonne principale ═══ -->
+      <div class="col-lg-7">
+
+        <!-- Hero -->
+        <div class="ao-hero fi">
+          <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+            <div>
+              <span class="ao-statut-badge sb-{{ ao.statut }}">
+                {% if ao.statut == 'ouvert' %}<i class="bi bi-circle-fill" style="font-size:.5rem"></i> Ouvert
+                {% elif ao.statut == 'adjuge' %}<i class="bi bi-trophy-fill"></i> Adjugé
+                {% elif ao.statut == 'annule' %}<i class="bi bi-x-circle"></i> Annulé
+                {% else %}<i class="bi bi-lock-fill"></i> Fermé{% endif %}
+              </span>
+              {% if ao.est_b2b %}<span class="ao-b2b-badge ms-2"><i class="bi bi-building"></i> B2B</span>{% endif %}
+              <h1 class="ao-title">{{ ao.titre }}</h1>
+              <div class="ao-meta">
+                <a href=""><span><i class="bi bi-person"></i> {{ ao.acheteur.username }}</span></a>
+                <span><i class="bi bi-tag"></i> {{ ao.categorie.nom }}</span>
+                <span><i class="bi bi-calendar3"></i> Expire {{ ao.date_limite|date:"d M Y à H:i" }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timer -->
+        {% if est_ouvert %}
+        <div class="ao-timer fi">
+          <i class="bi bi-clock-history" style="color:var(--ember)"></i>
+          <span style="font-size:.82rem;color:var(--muted)">Clôture dans</span>
+          <span class="ao-timer-val" id="aoTimerVal" data-fin="{{ ao.date_limite|date:'c' }}">--:--:--</span>
+        </div>
+        {% endif %}
+
+        <!-- Infos AO -->
+        <div class="ao-card fi">
+          <div class="ao-card-title"><i class="bi bi-file-text"></i> Détails du besoin</div>
+          <p style="font-size:.86rem;color:var(--text-2);line-height:1.7;margin-bottom:1rem">{{ ao.description }}</p>
+          <div class="ao-info-grid">
+            <div class="ao-info-item">
+              <div class="ao-info-lbl">Budget maximum</div>
+              <div class="ao-info-val" style="color:var(--saffron)">{{ ao.budget_max|floatformat:0 }} FCFA</div>
+            </div>
+            <div class="ao-info-item">
+              <div class="ao-info-lbl">Quantité souhaitée</div>
+              <div class="ao-info-val">{{ ao.quantite }} unité{{ ao.quantite|pluralize }}</div>
+            </div>
+            <div class="ao-info-item">
+              <div class="ao-info-lbl">Nombre d'offres</div>
+              <div class="ao-info-val" id="aoNbOffres">{{ nb_offres }}</div>
+            </div>
+            <div class="ao-info-item">
+              <div class="ao-info-lbl">Meilleure offre</div>
+              <div class="ao-info-val" style="color:var(--jade)" id="aoMeilleureOffre">
+                {% if meilleure_offre %}{{ meilleure_offre.montant|floatformat:0 }} FCFA{% else %}—{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Liste des offres (acheteur / admin voient tout) -->
+        <div class="ao-card fi">
+          <div class="ao-card-title"><i class="bi bi-list-ul"></i>
+            Offres reçues ({{ nb_offres }})
+            {% if not est_acheteur and not est_admin and nb_offres > 1 %}
+            <span style="font-size:.68rem;font-weight:400;color:var(--muted)">&nbsp;— seule la meilleure est affichée</span>
+            {% endif %}
+          </div>
+
+          {% if offres %}
+          {% for offre in offres %}
+          <div class="ao-offre-row {% if offre.est_selectionnee %}selected{% endif %}">
+            <div class="ao-offre-rank {% if forloop.first %}rank-1{% endif %}">
+              {% if forloop.first %}<i class="bi bi-trophy-fill" style="font-size:.7rem"></i>{% else %}{{ forloop.counter }}{% endif %}
+            </div>
+            <div class="ao-offre-vendor">
+              <div class="ao-offre-vendor-name">
+                {% if est_acheteur or est_admin %}{{ offre.vendeur.username }}
+                {% elif forloop.first %}Meilleure offre{% else %}Vendeur #{{ forloop.counter }}{% endif %}
+                {% if offre.est_selectionnee %}
+                <span style="font-size:.65rem;background:var(--jade);color:#0A0B1A;padding:1px 7px;border-radius:99px;font-weight:700;margin-left:.4rem">Retenue</span>
+                {% endif %}
+              </div>
+              <div class="ao-offre-delai">
+                <i class="bi bi-truck"></i> {{ offre.delai_livraison }} j
+                {% if offre.garantie %} · {{ offre.garantie }}{% endif %}
+              </div>
+              {% if est_acheteur or est_admin %}
+              <div style="font-size:.76rem;color:var(--text-2);margin-top:.25rem">{{ offre.description|truncatechars:80 }}</div>
+              {% endif %}
+            </div>
+            <div class="ao-offre-montant">{{ offre.montant|floatformat:0 }} F</div>
+
+            {% if est_acheteur and ao.statut == 'ouvert' and not offre.est_selectionnee %}
+            <div class="ao-offre-actions">
+              <form method="POST" action="{% url 'apps_enchere:adjuger_appel_offre' ao.pk %}"
+                    onsubmit="return confirm('Retenir l\'offre de {{ offre.vendeur.username }} pour {{ offre.montant|floatformat:0 }} FCFA ?')">
+                {% csrf_token %}
+                <input type="hidden" name="offre_id" value="{{ offre.pk }}">
+                <button type="submit" class="btn-adj"><i class="bi bi-check-lg"></i> Retenir</button>
+              </form>
+            </div>
+            {% elif offre.est_selectionnee %}
+            <i class="bi bi-patch-check-fill" style="color:var(--jade);font-size:1.1rem;flex-shrink:0"></i>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% else %}
+          <div style="text-align:center;padding:2rem 1rem;color:var(--muted);font-size:.84rem">
+            <i class="bi bi-inbox" style="font-size:1.8rem;opacity:.4;display:block;margin-bottom:.6rem"></i>
+            Aucune offre pour le moment. Soyez le premier à proposer !
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <!-- ═══ Colonne latérale ═══ -->
+      <div class="col-lg-5">
+
+        <!-- Mon offre existante -->
+        {% if mon_offre %}
+        <div class="ao-mon-offre fi">
+          <div>
+            <div class="ao-mon-offre-montant">{{ mon_offre.montant|floatformat:0 }} FCFA</div>
+            <div style="font-size:.76rem;color:var(--muted);margin-top:.2rem">Mon offre — {{ mon_offre.delai_livraison }}j de délai</div>
+            <div style="font-size:.74rem;color:var(--text-2);margin-top:.25rem">{{ mon_offre.description|truncatechars:60 }}</div>
+          </div>
+          {% if est_ouvert %}
+          <div style="margin-left:auto;display:flex;flex-direction:column;gap:.4rem">
+            <a href="#" onclick="toggleFormModif(event)"
+               class="btn-ghost" style="font-size:.76rem;padding:.3rem .75rem">
+              <i class="bi bi-pencil"></i> Modifier
+            </a>
+            <form method="POST" action="{% url 'apps_enchere:retirer_offre_vendeur' offre_pk=mon_offre.pk %}"
+                  onsubmit="return confirm('Retirer votre offre ?')">
+              {% csrf_token %}
+              <button type="submit" style="background:none;border:none;color:var(--ember);font-size:.76rem;cursor:pointer;padding:.3rem .5rem">
+                <i class="bi bi-x-circle"></i> Retirer
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Formulaire modification (masqué par défaut) -->
+        {% if est_ouvert %}
+        <div id="formModif" style="display:none" class="ao-card fi">
+          <div class="ao-card-title"><i class="bi bi-pencil"></i> Modifier mon offre</div>
+          <form method="POST" action="{% url 'apps_enchere:modifier_offre_vendeur' mon_offre.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="ao-field">
+              <label class="ao-label">Montant <span class="req">*</span></label>
+              <div class="ao-prix-input-wrap">
+                <input type="number" name="montant" class="ao-input" style="padding-right:3.5rem"
+                       min="1" step="100" required value="{{ mon_offre.montant }}" placeholder="Ex: 25000">
+                <span class="ao-prix-suffix">FCFA</span>
+              </div>
+            </div>
+            <div class="ao-field">
+              <label class="ao-label">Description <span class="req">*</span></label>
+              <textarea name="description" rows="2" class="ao-input" required>{{ mon_offre.description }}</textarea>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="ao-field">
+                  <label class="ao-label">Délai (jours)</label>
+                  <input type="number" name="delai_livraison" class="ao-input" min="1" value="{{ mon_offre.delai_livraison }}">
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="ao-field">
+                  <label class="ao-label">Garantie</label>
+                  <input type="text" name="garantie" class="ao-input" value="{{ mon_offre.garantie }}" placeholder="Ex: 6 mois">
+                </div>
+              </div>
+            </div>
+            <button type="submit" class="btn-soumettre" style="background:var(--indigo);color:#fff">
+              <i class="bi bi-check-lg"></i> Enregistrer
+            </button>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- Formulaire soumission nouvelle offre -->
+        {% elif peut_soumettre %}
+        <div class="ao-form-card fi">
+          <div class="ao-form-title">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(0,200,150,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi bi-send-fill" style="color:var(--jade)"></i>
+            </div>
+            Soumettre une offre
+          </div>
+
+          <div class="ao-field">
+            <label class="ao-label">Votre prix <span class="req">*</span></label>
+            <div class="ao-prix-input-wrap">
+              
+              <input type="number" name="montant" id="inputMontant"
+                     class="ao-input" style="padding-right:3.5rem"
+                     min="100" step="100" required
+                     placeholder="Ex: 25 000"
+                     oninput="mettreAJourSimu(this.value)">
+              <span class="ao-prix-suffix">FCFA</span>
+            </div>
+            <div class="ao-hint" id="hintMontant">
+              Budget max acheteur : <strong style="color:var(--saffron)">{{ ao.budget_max|floatformat:0 }} FCFA</strong>
+            </div>
+          </div>
+
+          <div class="ao-field">
+            <label class="ao-label">Description de votre offre <span class="req">*</span></label>
+            <textarea name="description" id="inputDescription" rows="3" class="ao-input" required
+                      placeholder="Détaillez ce que vous proposez : qualité, matériaux, conditions…"></textarea>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="ao-field">
+                <label class="ao-label">Délai livraison (jours) <span class="req">*</span></label>
+                <input type="number" name="delai_livraison" id="inputDelai"
+                       class="ao-input" min="1" step="1" required
+                       value="7" placeholder="7">
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="ao-field">
+                <label class="ao-label">Garantie</label>
+                <input type="text" name="garantie" id="inputGarantie"
+                       class="ao-input" placeholder="Ex: 6 mois">
+              </div>
+            </div>
+          </div>
+
+          <div class="ao-field">
+            <label class="ao-label">Pièce jointe</label>
+            <input type="file" id="inputFichier" class="ao-input" style="padding:.4rem .7rem"
+                   accept=".pdf,.jpg,.jpeg,.png,.docx">
+            <div class="ao-hint">PDF, image ou Word — max 5 Mo</div>
+          </div>
+
+          <!-- Récap avant soumission -->
+          <div id="simuOffre" style="display:none;background:rgba(0,200,150,.07);border:1px solid rgba(0,200,150,.2);border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:var(--text-2);margin-bottom:.75rem">
+            <i class="bi bi-info-circle me-1" style="color:var(--jade)"></i>
+            Offre de <strong id="simuMontant" style="color:var(--jade)">—</strong>
+            pour {{ ao.quantite }} unité{{ ao.quantite|pluralize }}
+            → <strong id="simuUnitaire" style="color:var(--jade)">—</strong> / unité
+          </div>
+
+          <button type="button" id="btnSoumettre" class="btn-soumettre">
+            <i class="bi bi-send-fill"></i> Envoyer mon offre
+          </button>
+        </div>
+
+        {% elif not request.user.is_authenticated %}
+        <div class="ao-card fi" style="text-align:center;padding:2rem 1rem">
+          <i class="bi bi-box-arrow-in-right" style="font-size:1.8rem;color:var(--saffron);margin-bottom:.75rem;display:block"></i>
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.35rem">Connectez-vous pour proposer</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">Vous devez être vendeur pour répondre à cet appel d'offre.</div>
+          <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" class="btn-gold" style="font-size:.85rem">
+            <i class="bi bi-box-arrow-in-right"></i> Se connecter
+          </a>
+        </div>
+
+        {% elif not est_ouvert %}
+        <div class="ao-card fi" style="text-align:center;padding:2rem 1rem">
+          <i class="bi bi-lock-fill" style="font-size:1.8rem;color:var(--muted);margin-bottom:.75rem;display:block;opacity:.4"></i>
+          <div style="font-size:.88rem;font-weight:700;color:var(--text)">Appel d'offre clôturé</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:.35rem">{{ ao.get_statut_display }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Annuler (acheteur uniquement) -->
+        {% if est_acheteur and ao.statut == 'ouvert' %}
+        <form method="POST" action="{% url 'apps_enchere:annuler_appel_offre' ao.pk %}"
+              class="fi" onsubmit="return confirm('Annuler définitivement cet appel d\'offre ?')">
+          {% csrf_token %}
+          <button type="submit" class="btn-ghost" style="width:100%;font-size:.82rem;margin-top:.5rem;color:var(--ember)">
+            <i class="bi bi-x-circle"></i> Annuler l'appel d'offre
+          </button>
+        </form>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="ao-toast" id="aoToast">
+  <span class="ao-toast-ico" id="aoToastIco"></span>
+  <span class="ao-toast-msg" id="aoToastMsg"></span>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+"use strict";
+
+const CSRF    = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const AO_PK  = "{{ ao.pk }}";
+const BUDGET  = {{ ao.budget_max|floatformat:0 }};
+const QTE     = {{ ao.quantite }};
+const URL_AO  = "{% url 'apps_enchere:soumettre_offre_vendeur' ao.pk %}";
+const URL_ETAT = "{% url 'apps_enchere:ajax_etat_appel_offre' ao.pk %}";
+
+/* ══════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════ */
+function showToast(msg, type='success'){
+  const t   = document.getElementById('aoToast');
+  const ico = document.getElementById('aoToastIco');
+  const txt = document.getElementById('aoToastMsg');
+  t.className = `ao-toast ${type}`;
+  ico.innerHTML = type === 'success'
+    ? '<i class="bi bi-check-circle-fill" style="color:var(--jade)"></i>'
+    : '<i class="bi bi-x-circle-fill" style="color:var(--ember)"></i>';
+  txt.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+/* ══════════════════════════════════════════
+   TIMER
+══════════════════════════════════════════ */
+function fmt(ms){
+  if(ms <= 0) return 'Terminé';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor(ms % 3600000 / 60000);
+  const s = Math.floor(ms % 60000 / 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+const timerEl = document.getElementById('aoTimerVal');
+if(timerEl){
+  const fin = new Date(timerEl.dataset.fin);
+  setInterval(() => {
+    const reste = fin - new Date();
+    timerEl.textContent = fmt(reste);
+    timerEl.style.color = reste < 300000 ? 'var(--ember)' : 'var(--text)';
+  }, 1000);
+}
+
+/* ══════════════════════════════════════════
+   RÉCAP OFFRE
+══════════════════════════════════════════ */
+function mettreAJourSimu(val){
+  const montant = parseFloat(val) || 0;
+  const simu    = document.getElementById('simuOffre');
+  const hint    = document.getElementById('hintMontant');
+  if(!simu) return;
+
+  if(montant <= 0){ simu.style.display = 'none'; return; }
+  if(montant > BUDGET){
+    if(hint){
+      hint.innerHTML = `<span style="color:var(--ember)"><i class="bi bi-exclamation-triangle-fill"></i> Dépasse le budget max de ${BUDGET.toLocaleString('fr')} FCFA</span>`;
+    }
+  } else {
+    if(hint){
+      hint.innerHTML = `Budget max acheteur : <strong style="color:var(--saffron)">${BUDGET.toLocaleString('fr')} FCFA</strong>`;
+    }
+  }
+
+  simu.style.display = 'block';
+  document.getElementById('simuMontant').textContent  = `${Math.round(montant).toLocaleString('fr')} FCFA`;
+  document.getElementById('simuUnitaire').textContent = QTE > 0
+    ? `${Math.round(montant / QTE).toLocaleString('fr')} FCFA`
+    : `${Math.round(montant).toLocaleString('fr')} FCFA`;
+}
+
+/* ══════════════════════════════════════════
+   SOUMISSION OFFRE — CORRECTION BUG
+   ─────────────────────────────────────────
+   PROBLÈME ORIGINAL : le FormData était
+   construit depuis un <form> qui n'englobait
+   pas les champs individuels, ou les noms
+   de champs ne correspondaient pas à ce que
+   la vue attendait.
+
+   SOLUTION : on construit le FormData
+   manuellement depuis les inputs par ID,
+   avec les noms EXACTS lus par la vue :
+     - 'montant'         ← views_inversee.py ligne 381
+     - 'description'     ← ligne 382
+     - 'delai_livraison' ← ligne 383
+     - 'garantie'        ← ligne 384
+     - 'pieces_jointes'  ← ligne 402
+
+   ⚠️ Ne jamais encapsuler dans un <form>
+      qui aurait son propre submit handler.
+══════════════════════════════════════════ */
+document.getElementById('btnSoumettre')?.addEventListener('click', async function(){
+  const montant  = document.getElementById('inputMontant')?.value?.trim();
+  const desc     = document.getElementById('inputDescription')?.value?.trim();
+  const delai    = document.getElementById('inputDelai')?.value?.trim();
+  const garantie = document.getElementById('inputGarantie')?.value?.trim();
+  const fichier  = document.getElementById('inputFichier')?.files?.[0];
+
+  /* Validation côté client */
+  if(!montant || parseFloat(montant) <= 0){
+    showToast('Veuillez saisir un montant valide.', 'error'); return;
+  }
+  if(parseFloat(montant) > BUDGET){
+    showToast(`Votre offre dépasse le budget max (${BUDGET.toLocaleString('fr')} FCFA).`, 'error'); return;
+  }
+  if(!desc){
+    showToast('La description est requise.', 'error'); return;
+  }
+  if(!delai || parseInt(delai) < 1){
+    showToast('Le délai de livraison doit être ≥ 1 jour.', 'error'); return;
+  }
+
+  this.disabled = true;
+  this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Envoi en cours...';
+
+  /*
+    FormData avec les noms exacts attendus par la vue.
+    Le champ s'appelle 'montant' (pas 'montant_offert').
+  */
+  const fd = new FormData();
+  fd.append('montant',         montant);         // ← NOM CRITIQUE
+  fd.append('description',     desc);
+  fd.append('delai_livraison', delai);
+  if(garantie) fd.append('garantie', garantie);
+  if(fichier)  fd.append('pieces_jointes', fichier);
+
+  try {
+    const r = await fetch(URL_AO, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken':      CSRF,
+        'X-Requested-With': 'XMLHttpRequest',
+        /* PAS de Content-Type ici — le navigateur le gère pour FormData */
+      },
+      body: fd,
+    });
+
+    const d = await r.json();
+
+    if(d.success){
+      showToast(d.message, 'success');
+      /* Mise à jour compteur */
+      const nbEl = document.getElementById('aoNbOffres');
+      if(nbEl) nbEl.textContent = d.nb_offres;
+      /* Recharger la page après 1.5s pour afficher l'offre */
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast(d.message || 'Une erreur est survenue.', 'error');
+      this.disabled = false;
+      this.innerHTML = '<i class="bi bi-send-fill"></i> Envoyer mon offre';
+    }
+  } catch(err){
+    showToast('Erreur réseau. Veuillez réessayer.', 'error');
+    this.disabled = false;
+    this.innerHTML = '<i class="bi bi-send-fill"></i> Envoyer mon offre';
+  }
+});
+
+/* ══════════════════════════════════════════
+   TOGGLE FORM MODIFICATION
+══════════════════════════════════════════ */
+function toggleFormModif(e){
+  e.preventDefault();
+  const f = document.getElementById('formModif');
+  if(f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+/* ══════════════════════════════════════════
+   POLLING ÉTAT (toutes les 15s)
+══════════════════════════════════════════ */
+{% if est_ouvert %}
+async function pollEtat(){
+  try{
+    const r = await fetch(URL_ETAT);
+    const d = await r.json();
+    const nbEl  = document.getElementById('aoNbOffres');
+    const moEl  = document.getElementById('aoMeilleureOffre');
+    if(nbEl) nbEl.textContent = d.nb_offres;
+    if(moEl && d.meilleure_offre)
+      moEl.textContent = `${Math.round(d.meilleure_offre).toLocaleString('fr')} FCFA`;
+    if(d.doit_recharger) location.reload();
+  } catch {}
+}
+setInterval(pollEtat, 15000);
+{% endif %}
+
+/* ══════════════════════════════════════════
+   FADE IN
+══════════════════════════════════════════ */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); }});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}

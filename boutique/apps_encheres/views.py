@@ -29,18 +29,40 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.core.paginator import Paginator
-from django.db.models import Q, Max, Sum
+from django.db.models import Q, Max, Sum, Count
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
  
 from .models import (
-    Enchere, OffreEnchere, ConfigSmartBid, EnchereFlash
+    Enchere, OffreEnchere, ConfigSmartBid, EnchereFlash, 
+    EnchereGroupe, ParticipantEnchereGroupe,AppelOffre, OffreVendeur
 )
-from apps_core.models import Produit
+from apps_core.models import Produit, Categorie
 
 
+# ---------------------------------------------------------------------------
+# Constantes partagées
+# ---------------------------------------------------------------------------
  
+DUREES_CLASSIQUES = [
+    (1,   '1 heure'),
+    (2,   '2 heures'),
+    (3,   '3 heures'),
+    (6,   '6 heures'),
+    (12,  '12 heures'),
+    (24,  '24 heures'),
+    (48,  '48 heures'),
+]
+ 
+DUREES_FLASH = [
+    (5,   '⚡ 5 min'),
+    (10,  '⚡ 10 min'),
+    (30,  '⚡ 30 min'),
+    (60,  '⚡ 1 heure'),
+    (120, '⚡ 2 heures'),
+]
+
 # =============================================================================
 # HELPERS
 # =============================================================================
@@ -128,53 +150,98 @@ def encheres_liste(request):
 
 
 
+ 
+# ===========================================================================
+# VUE : Détail d'une enchère
+# ===========================================================================
+ 
 def enchere_detail(request, pk):
     enchere = get_object_or_404(
-        Enchere.objects.select_related('produit', 'vendeur', 'gagnant'),
+        Enchere.objects.select_related(
+            'produit', 'vendeur', 'gagnant',
+            'config_flash', 'config_groupe',
+        ),
         pk=pk
     )
-
+ 
     if not request.user.is_authenticated or request.user != enchere.vendeur:
         Enchere.objects.filter(pk=pk).update(nb_vues=enchere.nb_vues + 1)
-
+ 
     offres_recentes = enchere.offres.select_related('encherisseur').order_by(
         '-montant', '-date_creation'
     )[:20]
-
+ 
     meilleure_offre   = offres_recentes.first() if offres_recentes else None
     je_suis_meilleur  = (
         request.user.is_authenticated and meilleure_offre and
         meilleure_offre.encherisseur == request.user
     )
-
+ 
     ma_derniere_offre = None
+    smart_bid_actif   = None
+    user_a_like       = False
+ 
+    # ── Données Groupe ──
+    config_groupe          = getattr(enchere, 'config_groupe', None)
+    ma_participation_groupe = None
+    participants_groupe     = []
+    nb_participants_confirmes = 0
+    quantite_restante       = None
+    progression_groupe      = 0
+ 
+    if config_groupe:
+        participants_groupe = config_groupe.participants.select_related(
+            'utilisateur'
+        ).order_by('-a_confirme', '-date_adhesion')
+ 
+        nb_participants_confirmes = participants_groupe.filter(a_confirme=True).count()
+        quantite_reservee         = sum(
+            p.quantite_souhaitee for p in participants_groupe.filter(a_confirme=True)
+        )
+        quantite_restante = max(0, config_groupe.quantite_totale - quantite_reservee)
+ 
+        if config_groupe.nb_participants_min > 0:
+            progression_groupe = min(
+                100,
+                round(nb_participants_confirmes / config_groupe.nb_participants_min * 100)
+            )
+ 
+        if request.user.is_authenticated:
+            ma_participation_groupe = participants_groupe.filter(
+                utilisateur=request.user
+            ).first()
+ 
     if request.user.is_authenticated:
         ma_derniere_offre = enchere.offres.filter(
             encherisseur=request.user
         ).order_by('-montant').first()
-
-    # Smart Bid actif de l'utilisateur sur cette enchère
-    smart_bid_actif = None
-    user_a_like     = False
-    if request.user.is_authenticated:
         smart_bid_actif = _get_smart_bid(request.user, enchere)
         user_a_like     = request.session.get(f'enchere_like_{pk}', False)
-
+ 
     offre_minimum = enchere.prix_actuel + enchere.increment_minimum
-
+ 
     context = {
-        'enchere':           enchere,
-        'offres_recentes':   offres_recentes,      # ← renommé
-        'meilleure_offre':   meilleure_offre,
-        'je_suis_meilleur':  je_suis_meilleur,
-        'ma_derniere_offre': ma_derniere_offre,
-        'offre_minimum':     offre_minimum,        # ← ajouté
-        'est_active':        enchere.est_active(),
-        'smart_bid_actif':   smart_bid_actif,      # ← ajouté
-        'user_a_like':       user_a_like,          # ← ajouté
-        'page_titre':        enchere.titre,
+        'enchere':             enchere,
+        'offres_recentes':     offres_recentes,
+        'meilleure_offre':     meilleure_offre,
+        'je_suis_meilleur':    je_suis_meilleur,
+        'ma_derniere_offre':   ma_derniere_offre,
+        'offre_minimum':       offre_minimum,
+        'est_active':          enchere.est_active(),
+        'smart_bid_actif':     smart_bid_actif,
+        'user_a_like':         user_a_like,
+        # ── Groupe ──
+        'config_groupe':             config_groupe,
+        'participants_groupe':        participants_groupe,
+        'ma_participation_groupe':    ma_participation_groupe,
+        'nb_participants_confirmes':  nb_participants_confirmes,
+        'quantite_restante':          quantite_restante,
+        'progression_groupe':         progression_groupe,
+        'page_titre':                 enchere.titre,
     }
     return render(request, 'apps_enchere/enchere_detail.html', context)
+ 
+ 
 
 
 
@@ -387,229 +454,357 @@ def mes_encheres(request):
 
 
 
+
 @login_required
 def creer_enchere(request):
+    """
+    Création d'une enchère.
+    Types supportés :
+      - 'classique' → enchère standard
+      - 'flash'     → durée courte + timer géant (crée EnchereFlash)
+      - 'groupe'    → lot partagé entre plusieurs acheteurs (crée EnchereGroupe)
+    """
     if not request.user.peut_vendre:
         messages.warning(request, "Vous devez être vendeur pour créer une enchère.")
         return redirect('apps_core:devenir_vendeur')
-
+ 
     mes_produits = _produits_eligibles_enchere(request.user)
-
+ 
     if not mes_produits.exists():
-        messages.info(request, "Aucun produit éligible.")
+        messages.info(
+            request,
+            "Aucun produit éligible. Activez « Autoriser les enchères » "
+            "sur un produit actif sans enchère existante."
+        )
         return redirect('apps_core:mes_produits')
-
+ 
     if request.method == 'POST':
         produit_id = request.POST.get('produit')
-        produit    = mes_produits.filter(pk=produit_id).first()
+        produit = mes_produits.filter(pk=produit_id).first()
         if not produit:
-            messages.error(request, "Produit invalide.")
+            messages.error(
+                request,
+                "Produit invalide : vous ne pouvez enchérir que sur "
+                "vos propres produits éligibles."
+            )
             return redirect('apps_enchere:creer_enchere')
-
+ 
         try:
-            type_enchere  = request.POST.get('type_enchere', 'classique')
-            titre         = request.POST.get('titre', '').strip() or produit.titre
-            description   = request.POST.get('description', '').strip() or produit.description_courte
-            prix_depart   = Decimal(request.POST.get('prix_depart', '0'))
-            prix_reserve  = request.POST.get('prix_reserve', '').strip()
-            prix_achat    = request.POST.get('prix_achat_immediat', '').strip()
-            increment     = Decimal(request.POST.get('increment_minimum', '500'))
-            extension_auto = request.POST.get('extension_automatique') == 'on'
-
-            # ── Flash ou durée classique ──────────────────────────────────
-            est_flash    = request.POST.get('est_flash') == '1'
-            duree_minutes = int(request.POST.get('duree_minutes', 30)) if est_flash else None
-            duree_heures  = int(request.POST.get('duree_heures', 24))           if not est_flash else None
-
+            type_enchere     = request.POST.get('type_enchere', 'classique')
+            titre            = request.POST.get('titre', '').strip() or produit.titre
+            description      = request.POST.get('description', '').strip() or produit.description_courte
+            prix_depart      = Decimal(request.POST.get('prix_depart', '0'))
+            prix_reserve_str = request.POST.get('prix_reserve', '').strip()
+            prix_achat_str   = request.POST.get('prix_achat_immediat', '').strip()
+            increment        = Decimal(request.POST.get('increment_minimum', '500'))
+            extension_auto   = request.POST.get('extension_automatique') == 'on'
+ 
             if prix_depart <= 0:
                 raise ValueError("Le prix de départ doit être positif.")
-
-            if est_flash:
-                durees_valides = [c[0] for c in EnchereFlash.DUREE_CHOICES]
-                if duree_minutes not in durees_valides:
-                    raise ValueError("Durée flash invalide.")
-            else:
-                if duree_heures < 1 or duree_heures > 720:
-                    raise ValueError("Durée invalide (1h–30 jours).")
-
-            prix_reserve_dec    = Decimal(prix_reserve) if prix_reserve else None
-            prix_achat_immediat = Decimal(prix_achat)   if prix_achat   else None
-
+ 
+            prix_reserve        = Decimal(prix_reserve_str) if prix_reserve_str else None
+            prix_achat_immediat = Decimal(prix_achat_str)   if prix_achat_str   else None
+ 
             if prix_achat_immediat and prix_achat_immediat <= prix_depart:
-                raise ValueError("Le prix d'achat immédiat doit être > prix de départ.")
-
+                raise ValueError(
+                    "Le prix d'achat immédiat doit être supérieur au prix de départ."
+                )
+ 
+            # ── Durée selon le type ──
+            date_debut = timezone.now()
+ 
+            if type_enchere == 'flash':
+                duree_minutes = int(request.POST.get('duree_minutes', 30))
+                if duree_minutes not in [5, 10, 30, 60, 120]:
+                    duree_minutes = 30
+                date_fin = date_debut + timezone.timedelta(minutes=duree_minutes)
+ 
+            elif type_enchere == 'groupe':
+                duree_heures = int(request.POST.get('duree_heures', 24))
+                if duree_heures < 1 or duree_heures > 48:
+                    raise ValueError("Durée invalide pour une enchère groupe (1h à 48h).")
+                date_fin = date_debut + timezone.timedelta(hours=duree_heures)
+ 
+            else:  # classique
+                duree_heures = int(request.POST.get('duree_heures', 24))
+                if duree_heures < 1 or duree_heures > 48:
+                    raise ValueError("Durée invalide (1h à 48h).")
+                date_fin = date_debut + timezone.timedelta(hours=duree_heures)
+ 
         except (ValueError, InvalidOperation, TypeError) as e:
             messages.error(request, f"Erreur de saisie : {e}")
             return redirect('apps_enchere:creer_enchere')
+ 
+        # ── Création de l'enchère principale ──
+        enchere = Enchere.objects.create(
+            produit=produit,
+            vendeur=request.user,
+            type_enchere=type_enchere,
+            titre=titre,
+            description=description,
+            prix_depart=prix_depart,
+            prix_reserve=prix_reserve,
+            prix_actuel=prix_depart,
+            prix_achat_immediat=prix_achat_immediat,
+            date_debut=date_debut,
+            date_fin=date_fin,
+            increment_minimum=increment,
+            extension_automatique=extension_auto,
+            statut='en_cours',
+        )
+ 
+        image = request.FILES.get('image_couverture')
+        if image:
+            enchere.image_couverture = image
+            enchere.save(update_fields=['image_couverture'])
+ 
+        # ── Config Flash ──
+        if type_enchere == 'flash':
+            try:
+                extension_sec    = int(request.POST.get('extension_par_offre_secondes', 30))
+                timer_geant      = request.POST.get('afficher_timer_geant') == 'on'
+                couleur_urgence  = request.POST.get('couleur_urgence', '#FF0000').strip() or '#FF0000'
+                nb_max_str       = request.POST.get('nb_acheteurs_max', '').strip()
+                nb_acheteurs_max = int(nb_max_str) if nb_max_str else None
+ 
+                EnchereFlash.objects.create(
+                    enchere=enchere,
+                    duree_minutes=duree_minutes,
+                    extension_par_offre_secondes=max(0, min(120, extension_sec)),
+                    afficher_timer_geant=timer_geant,
+                    couleur_urgence=couleur_urgence,
+                    nb_acheteurs_max=nb_acheteurs_max,
+                )
+            except (ValueError, TypeError):
+                pass
+ 
+        # ── Config Groupe ──
+        elif type_enchere == 'groupe':
+            try:
+                qte_totale      = int(request.POST.get('quantite_totale', 0))
+                qte_min_pp      = int(request.POST.get('quantite_min_par_participant', 1))
+                qte_max_pp_str  = request.POST.get('quantite_max_par_participant', '').strip()
+                nb_part_min     = int(request.POST.get('nb_participants_min', 2))
+                nb_part_max_str = request.POST.get('nb_participants_max', '').strip()
+ 
+                if qte_totale < 1:
+                    raise ValueError("La quantité totale doit être ≥ 1.")
+                if qte_min_pp < 1:
+                    raise ValueError("La quantité minimum par participant doit être ≥ 1.")
+                if nb_part_min < 2:
+                    raise ValueError("Il faut au moins 2 participants.")
+ 
+                qte_max_pp  = int(qte_max_pp_str)  if qte_max_pp_str  else None
+                nb_part_max = int(nb_part_max_str)  if nb_part_max_str else None
+ 
+                if qte_max_pp and qte_max_pp < qte_min_pp:
+                    raise ValueError("La quantité max par participant doit être ≥ quantité min.")
+                if nb_part_max and nb_part_max < nb_part_min:
+                    raise ValueError("Le nb max de participants doit être ≥ nb min.")
+ 
+                EnchereGroupe.objects.create(
+                    enchere=enchere,
+                    quantite_totale=qte_totale,
+                    quantite_min_par_participant=qte_min_pp,
+                    quantite_max_par_participant=qte_max_pp,
+                    nb_participants_min=nb_part_min,
+                    nb_participants_max=nb_part_max,
+                )
+            except (ValueError, TypeError) as e:
+                # Supprimer l'enchère créée si la config groupe échoue
+                enchere.delete()
+                messages.error(request, f"Erreur configuration groupe : {e}")
+                return redirect('apps_enchere:creer_enchere')
+ 
+        messages.success(request, f"Enchère « {enchere.titre} » créée et lancée !")
+        return redirect('apps_enchere:enchere_detail', pk=enchere.pk)
+ 
+    return render(request, 'apps_enchere/enchere_form.html', {
+        'mes_produits': mes_produits,
+        'types':        Enchere.TYPE_CHOICES,
+        'mode':         'creation',
+        'page_titre':   'Créer une enchère',
+        'durees':       DUREES_CLASSIQUES,
+        'flash_durees': DUREES_FLASH,
+    })
+ 
+ 
+ 
+ 
 
-        date_debut = timezone.now()
-        if est_flash:
-            date_fin = date_debut + timezone.timedelta(minutes=duree_minutes)
-        else:
-            date_fin = date_debut + timezone.timedelta(hours=duree_heures)
-
-        with transaction.atomic():
-            enchere = Enchere.objects.create(
-                produit=produit,
-                vendeur=request.user,
-                type_enchere=type_enchere,
-                titre=titre,
-                description=description,
-                prix_depart=prix_depart,
-                prix_reserve=prix_reserve_dec,
-                prix_actuel=prix_depart,
-                prix_achat_immediat=prix_achat_immediat,
-                date_debut=date_debut,
-                date_fin=date_fin,
-                increment_minimum=increment,
-                extension_automatique=extension_auto,
-                statut='en_cours',
-            )
-
+# ===========================================================================
+# VUE : Modifier une enchère existante
+# ===========================================================================
+ 
+@login_required
+def modifier_enchere(request, pk):
+    """
+    Modification d'une enchère existante.
+    - Si des offres ou participants existent → champs sensibles figés.
+    - Config Flash/Groupe modifiables si aucune offre/participant.
+    """
+    enchere = get_object_or_404(Enchere, pk=pk, vendeur=request.user)
+ 
+    if enchere.statut not in ('en_cours', 'prolongee', 'planifiee'):
+        messages.error(request, "Cette enchère ne peut plus être modifiée.")
+        return redirect('apps_enchere:enchere_detail', pk=pk)
+ 
+    a_des_offres    = enchere.nb_offres > 0
+    est_flash       = enchere.type_enchere == 'flash'
+    est_groupe      = enchere.type_enchere == 'groupe'
+    config_flash    = getattr(enchere, 'config_flash',  None)
+    config_groupe   = getattr(enchere, 'config_groupe', None)
+ 
+    # Vérifier les participants groupe
+    a_des_participants = False
+    if est_groupe and config_groupe:
+        a_des_participants = config_groupe.participants.filter(a_confirme=True).exists()
+ 
+    fige = a_des_offres or a_des_participants
+ 
+    if request.method == 'POST':
+        try:
+            titre       = request.POST.get('titre', '').strip()
+            description = request.POST.get('description', '').strip()
+ 
+            if not titre:
+                raise ValueError("Le titre est requis.")
+ 
+            # Champs figés si offres ou participants
+            if not fige:
+                prix_depart_str  = request.POST.get('prix_depart', '').strip()
+                prix_reserve_str = request.POST.get('prix_reserve', '').strip()
+                type_enchere     = request.POST.get('type_enchere', enchere.type_enchere)
+                prix_depart      = Decimal(prix_depart_str) if prix_depart_str else enchere.prix_depart
+                if prix_depart <= 0:
+                    raise ValueError("Le prix de départ doit être positif.")
+                prix_reserve = Decimal(prix_reserve_str) if prix_reserve_str else None
+            else:
+                prix_depart  = enchere.prix_depart
+                prix_reserve = enchere.prix_reserve
+                type_enchere = enchere.type_enchere
+ 
+            # Toujours modifiables
+            prix_achat_str      = request.POST.get('prix_achat_immediat', '').strip()
+            prix_achat_immediat = Decimal(prix_achat_str) if prix_achat_str else None
+            if prix_achat_immediat and prix_achat_immediat <= enchere.prix_actuel:
+                raise ValueError(
+                    f"Le prix d'achat immédiat doit dépasser le prix actuel "
+                    f"({enchere.prix_actuel:,.0f} {enchere.devise})."
+                )
+ 
+            increment      = Decimal(request.POST.get('increment_minimum', str(enchere.increment_minimum)))
+            extension_auto = request.POST.get('extension_automatique') == 'on'
+ 
+            # Extension de durée (classique et groupe seulement)
+            if not est_flash:
+                heures_sup_str = request.POST.get('heures_supplementaires', '').strip()
+                if heures_sup_str:
+                    heures_sup = int(heures_sup_str)
+                    if 1 <= heures_sup <= 48:
+                        enchere.date_fin += timezone.timedelta(hours=heures_sup)
+ 
+            enchere.titre               = titre
+            enchere.description         = description
+            enchere.prix_depart         = prix_depart
+            enchere.prix_reserve        = prix_reserve
+            enchere.prix_achat_immediat = prix_achat_immediat
+            enchere.increment_minimum   = increment
+            enchere.extension_automatique = extension_auto
+            enchere.type_enchere        = type_enchere
+ 
+            enchere.save(update_fields=[
+                'titre', 'description', 'prix_depart', 'prix_reserve',
+                'prix_achat_immediat', 'increment_minimum',
+                'extension_automatique', 'type_enchere', 'date_fin',
+            ])
+ 
             image = request.FILES.get('image_couverture')
             if image:
                 enchere.image_couverture = image
                 enchere.save(update_fields=['image_couverture'])
-
-            # ── Créer la config Flash si besoin ───────────────────────────
-            if est_flash:
-                EnchereFlash.objects.create(
-                    enchere=enchere,
-                    duree_minutes=duree_minutes,
-                    extension_par_offre_secondes=int(
-                        request.POST.get('extension_par_offre_secondes', 30)
-                    ),
-                    afficher_timer_geant=request.POST.get('afficher_timer_geant') == 'on',
-                    couleur_urgence=request.POST.get('couleur_urgence', '#FF0000'),
-                    nb_acheteurs_max=(
-                        int(request.POST.get('nb_acheteurs_max'))
-                        if request.POST.get('nb_acheteurs_max', '').strip()
-                        else None
-                    ),
-                )
-
-        messages.success(request, f"Enchère « {enchere.titre} » créée et lancée !")
-        return redirect('apps_enchere:enchere_detail', pk=enchere.pk)
-
-    return render(request, 'apps_enchere/enchere_form.html', {
-        'mes_produits':    mes_produits,
-        'types':           Enchere.TYPE_CHOICES,
-        'durees_flash':    EnchereFlash.DUREE_CHOICES,
-        # Durées des enchères classiques (en heures)
-        'durees_classiques': [
-            (1, '1 heure'),
-            (2, '2 heures'),
-            (3, '3 heures'),
-            (4, '4 heures'),
-            (5, '5 heures'),
-            (6, '6 heures'),
-            (7, '7 heures'),
-            (8, '8 heures'),
-            (9, '9 heures'),
-            (10, '10 heures'),
-            (11, '11 heures'),
-            (12, '12 heures'),
-            (24, '1 jour'),
-            (48, '2 jours'),
-            (72, '3 jours'),
-            (168, '7 jours'),
-            (336, '14 jours'),
-            (720, '30 jours'),
-        ],
-        'mode':            'creation',
-        'page_titre':      'Créer une enchère',
-    })
-
  
+            # Mise à jour config Flash
+            if type_enchere == 'flash' and not fige:
+                try:
+                    extension_sec   = int(request.POST.get('extension_par_offre_secondes', 30))
+                    timer_geant     = request.POST.get('afficher_timer_geant') == 'on'
+                    couleur_urgence = request.POST.get('couleur_urgence', '#FF0000').strip() or '#FF0000'
+                    nb_max_str      = request.POST.get('nb_acheteurs_max', '').strip()
+                    nb_acheteurs_max = int(nb_max_str) if nb_max_str else None
  
-@login_required
-def modifier_enchere(request, pk):
-    enchere = get_object_or_404(Enchere, pk=pk)
-
-    if not _peut_gerer_enchere(request.user, enchere):
-        messages.error(request, "Vous ne pouvez modifier que vos propres enchères.")
-        return redirect('apps_enchere:mes_encheres')
-
-    if enchere.nb_offres > 0:
-        messages.warning(request, "Impossible de modifier une enchère avec des offres.")
-        return redirect('apps_enchere:enchere_detail', pk=pk)
-
-    # Config Flash existante
-    config_flash = getattr(enchere, 'config_flash', None)
-
-    if request.method == 'POST':
-        try:
-            enchere.titre       = request.POST.get('titre', enchere.titre).strip()
-            enchere.description = request.POST.get('description', enchere.description).strip()
-
-            increment_str = request.POST.get('increment_minimum', '')
-            if increment_str:
-                enchere.increment_minimum = Decimal(increment_str)
-
-            prix_achat_str = request.POST.get('prix_achat_immediat', '').strip()
-            enchere.prix_achat_immediat = Decimal(prix_achat_str) if prix_achat_str else None
-
-            enchere.extension_automatique = request.POST.get('extension_automatique') == 'on'
-
-            # Durée — flash ou classique
-            if config_flash:
-                duree_minutes = int(request.POST.get('duree_flash', config_flash.duree_minutes))
-                durees_valides = [c[0] for c in EnchereFlash.DUREE_CHOICES]
-                if duree_minutes not in durees_valides:
-                    raise ValueError("Durée flash invalide.")
-                enchere.date_fin = timezone.now() + timezone.timedelta(minutes=duree_minutes)
-
-                # Mettre à jour la config flash
-                config_flash.duree_minutes             = duree_minutes
-                config_flash.extension_par_offre_secondes = int(
-                    request.POST.get('extension_par_offre_secondes', config_flash.extension_par_offre_secondes)
-                )
-                config_flash.afficher_timer_geant = request.POST.get('afficher_timer_geant') == 'on'
-                config_flash.couleur_urgence      = request.POST.get('couleur_urgence', config_flash.couleur_urgence)
-                nb_max = request.POST.get('nb_acheteurs_max', '').strip()
-                config_flash.nb_acheteurs_max     = int(nb_max) if nb_max else None
-                config_flash.save()
-            else:
-                duree_heures = request.POST.get('duree_heures', '')
-                if duree_heures:
-                    enchere.date_fin = timezone.now() + timezone.timedelta(hours=int(duree_heures))
-
-            enchere.save()
-            messages.success(request, "Enchère mise à jour.")
+                    if config_flash:
+                        config_flash.extension_par_offre_secondes = max(0, min(120, extension_sec))
+                        config_flash.afficher_timer_geant = timer_geant
+                        config_flash.couleur_urgence = couleur_urgence
+                        config_flash.nb_acheteurs_max = nb_acheteurs_max
+                        config_flash.save()
+                    else:
+                        duree_minutes = int(request.POST.get('duree_minutes', 30))
+                        EnchereFlash.objects.create(
+                            enchere=enchere,
+                            duree_minutes=duree_minutes,
+                            extension_par_offre_secondes=max(0, min(120, extension_sec)),
+                            afficher_timer_geant=timer_geant,
+                            couleur_urgence=couleur_urgence,
+                            nb_acheteurs_max=nb_acheteurs_max,
+                        )
+                except (ValueError, TypeError):
+                    pass
+ 
+            # Mise à jour config Groupe
+            elif type_enchere == 'groupe' and not fige:
+                try:
+                    qte_totale      = int(request.POST.get('quantite_totale', 0))
+                    qte_min_pp      = int(request.POST.get('quantite_min_par_participant', 1))
+                    qte_max_pp_str  = request.POST.get('quantite_max_par_participant', '').strip()
+                    nb_part_min     = int(request.POST.get('nb_participants_min', 2))
+                    nb_part_max_str = request.POST.get('nb_participants_max', '').strip()
+ 
+                    qte_max_pp  = int(qte_max_pp_str)  if qte_max_pp_str  else None
+                    nb_part_max = int(nb_part_max_str)  if nb_part_max_str else None
+ 
+                    if config_groupe:
+                        config_groupe.quantite_totale               = qte_totale
+                        config_groupe.quantite_min_par_participant   = qte_min_pp
+                        config_groupe.quantite_max_par_participant   = qte_max_pp
+                        config_groupe.nb_participants_min            = nb_part_min
+                        config_groupe.nb_participants_max            = nb_part_max
+                        config_groupe.save()
+                    else:
+                        EnchereGroupe.objects.create(
+                            enchere=enchere,
+                            quantite_totale=qte_totale,
+                            quantite_min_par_participant=qte_min_pp,
+                            quantite_max_par_participant=qte_max_pp,
+                            nb_participants_min=nb_part_min,
+                            nb_participants_max=nb_part_max,
+                        )
+                except (ValueError, TypeError) as e:
+                    messages.warning(request, f"Enchère mise à jour mais erreur config groupe : {e}")
+ 
+            messages.success(request, f"Enchère « {enchere.titre} » mise à jour.")
             return redirect('apps_enchere:enchere_detail', pk=pk)
-
+ 
         except (ValueError, InvalidOperation, TypeError) as e:
             messages.error(request, f"Erreur : {e}")
-
+ 
     return render(request, 'apps_enchere/enchere_form.html', {
-        'enchere':      enchere,
-        'config_flash': config_flash,
-        'durees_flash': EnchereFlash.DUREE_CHOICES,
-        # Durées des enchères classiques (en heures)
-        'durees_classiques': [
-            (1, '1 heure'),
-            (2, '2 heures'),
-            (3, '3 heures'),
-            (4, '4 heures'),
-            (5, '5 heures'),
-            (6, '6 heures'),
-            (7, '7 heures'),
-            (8, '8 heures'),
-            (9, '9 heures'),
-            (10, '10 heures'),
-            (11, '11 heures'),
-            (12, '12 heures'),
-            (24, '1 jour'),
-            (48, '2 jours'),
-            (72, '3 jours'),
-            (168, '7 jours'),
-            (336, '14 jours'),
-            (720, '30 jours'),
-        ],
-        'mode':         'edition',
-        'page_titre':   f"Modifier — {enchere.titre}",
+        'enchere':       enchere,
+        'config_flash':  config_flash,
+        'config_groupe': config_groupe,
+        'types':         Enchere.TYPE_CHOICES,
+        'a_des_offres':  a_des_offres,
+        'a_des_participants': a_des_participants,
+        'fige':          fige,
+        'est_flash':     est_flash,
+        'est_groupe':    est_groupe,
+        'mode':          'edition',
+        'page_titre':    f"Modifier — {enchere.titre}",
+        'durees':        DUREES_CLASSIQUES,
+        'flash_durees':  DUREES_FLASH,
     })
-
+ 
  
 @login_required
 @require_POST
@@ -682,6 +877,37 @@ def terminer_enchere_manuelle(request, pk):
         messages.info(request, "Enchère clôturée sans offre gagnante.")
  
     return redirect('apps_enchere:mes_encheres')
+
+
+@require_GET
+def ajax_etat_enchere(request, pk):
+    enchere   = get_object_or_404(Enchere, pk=pk)
+    meilleure = _meilleure_offre(enchere)
+
+    # ← Récupérer les 20 dernières offres pour l'historique
+    offres_qs = enchere.offres.select_related('encherisseur').order_by(
+        '-montant', '-date_creation'
+    )[:20]
+
+    offres_data = [{
+        'encherisseur': o.encherisseur.username,
+        'montant':      float(o.montant),
+        'est_auto':     o.est_offre_auto,
+        'est_immediat': o.est_achat_immediat,
+        'date':         o.date_creation.strftime('%d/%m/%Y %H:%M'),
+    } for o in offres_qs]
+
+    return JsonResponse({
+        'statut':                  enchere.statut,
+        'prix_actuel':             float(enchere.prix_actuel),
+        'nb_offres':               enchere.nb_offres,
+        'date_fin':                enchere.date_fin.isoformat(),
+        'temps_restant_secondes':  max(0, int((enchere.date_fin - timezone.now()).total_seconds())),
+        'est_active':              enchere.est_active(),
+        'meilleur_encherisseur':   meilleure.encherisseur.username if meilleure else None,
+        'montant_min_suivant':     float(enchere.prix_actuel + enchere.increment_minimum),
+        'offres':                  offres_data,   # ← ajouté
+    })
 
 
 
@@ -1646,6 +1872,661 @@ def admin_flash_liste(request):
         'statuts':    Enchere.STATUT_CHOICES,
         'page_titre': 'Gestion des enchères flash ⚡',
     })
+
+
+# =============================================================================
+# HELPERS
+# =============================================================================
+ 
+def _peut_gerer_groupe_enchere(user, config_groupe):
+    return user.is_staff or config_groupe.enchere.vendeur == user
+ 
+ 
+def _quantite_reservee(config_groupe):
+    """Total des quantités confirmées par les participants."""
+    return config_groupe.participants.filter(
+        a_confirme=True
+    ).aggregate(total=Sum('quantite_souhaitee'))['total'] or 0
+ 
+ 
+def _places_restantes(config_groupe):
+    return config_groupe.quantite_totale - _quantite_reservee(config_groupe)
+
+
+
+# ===========================================================================
+# VUE AJAX : Rejoindre / Quitter une enchère groupe
+# ===========================================================================
+ 
+@login_required
+@require_POST
+def ajax_rejoindre_enchere_groupe(request, pk):
+    """L'utilisateur réserve une quantité dans l'enchère groupe."""
+    enchere = get_object_or_404(Enchere, pk=pk, type_enchere='groupe')
+    config  = getattr(enchere, 'config_groupe', None)
+ 
+    if not config:
+        return JsonResponse({'success': False, 'message': 'Configuration groupe introuvable.'}, status=400)
+ 
+    if not enchere.est_active():
+        return JsonResponse({'success': False, 'message': 'Cette enchère n\'est plus active.'}, status=400)
+ 
+    if enchere.vendeur == request.user:
+        return JsonResponse({'success': False, 'message': 'Vous ne pouvez pas participer à votre propre enchère.'}, status=400)
+ 
+    # Vérifier si déjà participant
+    if config.participants.filter(utilisateur=request.user).exists():
+        return JsonResponse({'success': False, 'message': 'Vous participez déjà à cette enchère.'}, status=400)
+ 
+    try:
+        qte_souhaitee  = int(request.POST.get('quantite_souhaitee', config.quantite_min_par_participant))
+        montant_offert = Decimal(request.POST.get('montant_offert', str(enchere.prix_actuel)))
+ 
+        if qte_souhaitee < config.quantite_min_par_participant:
+            raise ValueError(f"Quantité minimum : {config.quantite_min_par_participant}")
+        if config.quantite_max_par_participant and qte_souhaitee > config.quantite_max_par_participant:
+            raise ValueError(f"Quantité maximum : {config.quantite_max_par_participant}")
+        if montant_offert < enchere.prix_actuel:
+            raise ValueError(f"Montant minimum : {enchere.prix_actuel:,.0f} {enchere.devise}")
+ 
+        # Vérifier la quantité restante
+        qte_reservee = sum(
+            p.quantite_souhaitee
+            for p in config.participants.filter(a_confirme=True)
+        )
+        if qte_souhaitee > (config.quantite_totale - qte_reservee):
+            raise ValueError(
+                f"Quantité insuffisante. Restant : {config.quantite_totale - qte_reservee}"
+            )
+ 
+        # Vérifier la limite de participants
+        nb_confirmes = config.participants.filter(a_confirme=True).count()
+        if config.nb_participants_max and nb_confirmes >= config.nb_participants_max:
+            raise ValueError("Le nombre maximum de participants est atteint.")
+ 
+        participant = ParticipantEnchereGroupe.objects.create(
+            enchere_groupe=config,
+            utilisateur=request.user,
+            quantite_souhaitee=qte_souhaitee,
+            montant_offert=montant_offert,
+            a_confirme=True,
+        )
+ 
+        nb_confirmes_new = config.participants.filter(a_confirme=True).count()
+        progression      = min(100, round(nb_confirmes_new / config.nb_participants_min * 100))
+ 
+        return JsonResponse({
+            'success':       True,
+            'message':       f"Vous participez pour {qte_souhaitee} unité(s) à {montant_offert:,.0f} {enchere.devise}.",
+            'nb_participants': nb_confirmes_new,
+            'progression':   progression,
+        })
+ 
+    except (ValueError, InvalidOperation, TypeError) as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+ 
+ 
+@login_required
+@require_POST
+def ajax_quitter_enchere_groupe(request, pk):
+    """L'utilisateur se retire de l'enchère groupe."""
+    enchere = get_object_or_404(Enchere, pk=pk, type_enchere='groupe')
+    config  = getattr(enchere, 'config_groupe', None)
+ 
+    if not config:
+        return JsonResponse({'success': False, 'message': 'Configuration groupe introuvable.'}, status=400)
+ 
+    participant = config.participants.filter(utilisateur=request.user).first()
+    if not participant:
+        return JsonResponse({'success': False, 'message': 'Vous ne participez pas à cette enchère.'}, status=400)
+ 
+    if participant.commande:
+        return JsonResponse({'success': False, 'message': 'Impossible de se retirer : commande déjà créée.'}, status=400)
+ 
+    participant.delete()
+ 
+    nb_confirmes = config.participants.filter(a_confirme=True).count()
+    progression  = min(100, round(nb_confirmes / config.nb_participants_min * 100))
+ 
+    return JsonResponse({
+        'success':         True,
+        'message':         'Vous avez quitté cette enchère groupe.',
+        'nb_participants': nb_confirmes,
+        'progression':     progression,
+    })
+
+
+# =============================================================================
+# HELPERS
+# =============================================================================
+
+def _est_ouvert(ao):
+    return ao.statut == 'ouvert' and timezone.now() < ao.date_limite
+
+
+def _peut_gerer_ao(user, ao):
+    return user.is_staff or ao.acheteur == user
+
+
+# =============================================================================
+# PUBLIC
+# =============================================================================
+ 
+def appels_offre_liste(request):
+    """
+    Liste publique des appels d'offre ouverts.
+    Filtres : categorie, b2b, q.
+    """
+    now = timezone.now()
+    qs  = AppelOffre.objects.filter(
+        statut='ouvert', date_limite__gt=now
+    ).select_related('acheteur', 'categorie').annotate(
+        nb_offres=Count('offres_vendeurs')
+    ).order_by('date_limite')
+ 
+    categorie_id = request.GET.get('categorie', '')
+    if categorie_id:
+        qs = qs.filter(categorie_id=categorie_id)
+ 
+    b2b = request.GET.get('b2b', '')
+    if b2b == '1':
+        qs = qs.filter(est_b2b=True)
+    elif b2b == '0':
+        qs = qs.filter(est_b2b=False)
+ 
+    q = request.GET.get('q', '')
+    if q:
+        qs = qs.filter(
+            Q(titre__icontains=q) | Q(description__icontains=q)
+        )
+ 
+    categories   = Categorie.objects.filter(est_active=True).order_by('nom')
+    paginator    = Paginator(qs, 20)
+    appels_offre = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/inversee/appels_offre_liste.html', {
+        'appels_offre': appels_offre,
+        'categories':   categories,
+        'categorie_id': categorie_id,
+        'b2b':          b2b,
+        'q':            q,
+        'nb_resultats': paginator.count,
+        'page_titre':   'Appels d\'offre — YopiShop',
+    })
+
+
+def appel_offre_detail(request, pk):
+    """
+    Page détail d'un appel d'offre.
+    L'acheteur voit toutes les offres classées par prix.
+    Les vendeurs ne voient que la meilleure offre (prix masqué pour les autres).
+    """
+    ao = get_object_or_404(
+        AppelOffre.objects.select_related('acheteur', 'categorie', 'offre_gagnante'),
+        pk=pk
+    )
+ 
+    est_acheteur = request.user.is_authenticated and ao.acheteur == request.user
+    est_admin    = request.user.is_authenticated and request.user.is_staff
+ 
+    # L'acheteur et l'admin voient toutes les offres classées par prix
+    if est_acheteur or est_admin:
+        offres = ao.offres_vendeurs.select_related('vendeur').order_by('montant')
+    else:
+        # Les autres vendeurs voient seulement la meilleure offre (anonymisée)
+        offres = ao.offres_vendeurs.select_related('vendeur').order_by('montant')[:1]
+ 
+    meilleure_offre = ao.offres_vendeurs.order_by('montant').first()
+    mon_offre       = None
+    if request.user.is_authenticated:
+        mon_offre = ao.offres_vendeurs.filter(vendeur=request.user).first()
+ 
+    peut_soumettre = (
+        request.user.is_authenticated and
+        request.user.peut_vendre and
+        ao.acheteur != request.user and
+        _est_ouvert(ao) and
+        mon_offre is None
+    )
+ 
+    return render(request, 'apps_enchere/inversee/appel_offre_detail.html', {
+        'ao':             ao,
+        'offres':         offres,
+        'meilleure_offre': meilleure_offre,
+        'mon_offre':      mon_offre,
+        'est_acheteur':   est_acheteur,
+        'est_admin':      est_admin,
+        'est_ouvert':     _est_ouvert(ao),
+        'peut_soumettre': peut_soumettre,
+        'nb_offres':      ao.offres_vendeurs.count(),
+        'page_titre':     ao.titre,
+    })
+
+
+@require_GET
+def ajax_etat_appel_offre(request, pk):
+    """Polling — nb offres, meilleure offre, temps restant."""
+    ao = get_object_or_404(AppelOffre, pk=pk)
+ 
+    meilleure = ao.offres_vendeurs.order_by('montant').first()
+    secondes  = max(0, int((ao.date_limite - timezone.now()).total_seconds()))
+ 
+    return JsonResponse({
+        'statut':           ao.statut,
+        'est_ouvert':       _est_ouvert(ao),
+        'nb_offres':        ao.offres_vendeurs.count(),
+        'meilleure_offre':  float(meilleure.montant) if meilleure else None,
+        'seconds_restants': secondes,
+        'date_limite':      ao.date_limite.isoformat(),
+        'doit_recharger':   ao.statut in ('adjuge', 'annule', 'ferme'),
+    })
+
+
+# =============================================================================
+# ACHETEUR
+# =============================================================================
+ 
+@login_required
+def creer_appel_offre(request):
+    """L'acheteur publie un besoin avec budget max."""
+    if request.method == 'POST':
+        try:
+            titre       = request.POST.get('titre', '').strip()
+            description = request.POST.get('description', '').strip()
+            categorie_id = request.POST.get('categorie')
+            budget_max  = Decimal(request.POST.get('budget_max', '0'))
+            quantite    = int(request.POST.get('quantite', 1))
+            duree_jours = int(request.POST.get('duree_jours', 7))
+            est_b2b     = request.POST.get('est_b2b') == 'on'
+ 
+            if not titre:
+                raise ValueError("Le titre est requis.")
+            if budget_max <= 0:
+                raise ValueError("Le budget maximum doit être positif.")
+            if quantite < 1:
+                raise ValueError("La quantité doit être ≥ 1.")
+            if duree_jours < 1 or duree_jours > 90:
+                raise ValueError("Durée invalide (1 à 90 jours).")
+ 
+            categorie = get_object_or_404(Categorie, pk=categorie_id)
+ 
+        except (ValueError, InvalidOperation, TypeError) as e:
+            messages.error(request, f"Erreur : {e}")
+            return redirect('apps_enchere:creer_appel_offre')
+ 
+        ao = AppelOffre.objects.create(
+            acheteur=request.user,
+            titre=titre,
+            description=description,
+            categorie=categorie,
+            budget_max=budget_max,
+            quantite=quantite,
+            date_limite=timezone.now() + timezone.timedelta(days=duree_jours),
+            est_b2b=est_b2b,
+        )
+ 
+        messages.success(request, f"Appel d'offre « {ao.titre} » publié !")
+        return redirect('apps_enchere:appel_offre_detail', pk=ao.pk)
+ 
+    categories = Categorie.objects.filter(est_active=True).order_by('nom')
+    return render(request, 'apps_enchere/inversee/appel_offre_form.html', {
+        'categories': categories,
+        'mode':       'creation',
+        'page_titre': 'Publier un appel d\'offre',
+    })
+ 
+
+
+@login_required
+def mes_appels_offre(request):
+    """Liste des appels d'offre créés par l'utilisateur connecté."""
+    qs = AppelOffre.objects.filter(
+        acheteur=request.user
+    ).select_related('categorie', 'offre_gagnante').annotate(
+        nb_offres=Count('offres_vendeurs')
+    ).order_by('-date_creation')
+ 
+    statut = request.GET.get('statut', '')
+    if statut:
+        qs = qs.filter(statut=statut)
+ 
+    stats = {
+        'total':   AppelOffre.objects.filter(acheteur=request.user).count(),
+        'ouverts': AppelOffre.objects.filter(acheteur=request.user, statut='ouvert').count(),
+        'adjuges': AppelOffre.objects.filter(acheteur=request.user, statut='adjuge').count(),
+    }
+ 
+    paginator    = Paginator(qs, 15)
+    appels_offre = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/inversee/mes_appels_offre.html', {
+        'appels_offre': appels_offre,
+        'stats':        stats,
+        'statut':       statut,
+        'statuts':      AppelOffre.STATUT_CHOICES,
+        'page_titre':   'Mes appels d\'offre',
+    })
+
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def adjuger_appel_offre(request, pk):
+    """
+    L'acheteur sélectionne une offre gagnante et crée la commande.
+    Crée automatiquement une Commande + ArticleCommande.
+    """
+    ao = get_object_or_404(AppelOffre, pk=pk, acheteur=request.user)
+ 
+    if ao.statut != 'ouvert':
+        messages.error(request, "Cet appel d'offre n'est plus ouvert.")
+        return redirect('apps_enchere:appel_offre_detail', pk=pk)
+ 
+    offre_id = request.POST.get('offre_id')
+    offre    = get_object_or_404(OffreVendeur, pk=offre_id, appel_offre=ao)
+ 
+    # Vérifier que l'offre respecte le budget
+    if offre.montant > ao.budget_max:
+        messages.error(request, f"Cette offre ({offre.montant:,.0f} FCFA) dépasse votre budget ({ao.budget_max:,.0f} FCFA).")
+        return redirect('apps_enchere:appel_offre_detail', pk=pk)
+ 
+    # Créer la commande
+    from apps_marketplace.models import Commande, ArticleCommande
+    adresse = getattr(request.user, 'adresse', '') or 'Adresse à compléter'
+ 
+    commande = Commande.objects.create(
+        utilisateur=request.user,
+        source='b2b' if ao.est_b2b else 'web',
+        adresse_facturation=adresse,
+        adresse_livraison=adresse,
+        sous_total=offre.montant,
+        montant_total=offre.montant,
+        notes=f"Appel d'offre : {ao.titre}",
+    )
+ 
+    # Clôturer l'AO
+    offre.est_selectionnee = True
+    offre.save(update_fields=['est_selectionnee'])
+ 
+    ao.statut        = 'adjuge'
+    ao.offre_gagnante = offre
+    ao.save()
+ 
+    # Notifier le vendeur gagnant
+    try:
+        from apps_core.views_notifications import creer_notification
+        creer_notification(
+            utilisateur=offre.vendeur,
+            type_notification='commande',
+            titre="🎉 Votre offre a été retenue !",
+            message=f"Votre proposition de {offre.montant:,.0f} FCFA pour « {ao.titre} » a été sélectionnée.",
+            lien='/commandes/',
+        )
+        # Notifier les autres vendeurs (refus)
+        from apps_core.views_notifications import creer_notification_masse
+        perdants = [o.vendeur for o in ao.offres_vendeurs.exclude(pk=offre.pk)]
+        if perdants:
+            creer_notification_masse(
+                utilisateurs_qs=perdants,
+                type_notification='enchere',
+                titre="Appel d'offre clôturé",
+                message=f"L'appel d'offre « {ao.titre} » a été attribué à un autre vendeur.",
+                lien=f"/encheres/inversee/{ao.pk}/",
+            )
+    except Exception:
+        pass
+ 
+    messages.success(request, f"Offre de {offre.vendeur.username} retenue ! Commande #{commande.numero_commande} créée.")
+    return redirect('apps_enchere:appel_offre_detail', pk=pk)
+ 
+
+@login_required
+@require_POST
+def annuler_appel_offre(request, pk):
+    """L'acheteur annule son appel d'offre."""
+    ao = get_object_or_404(AppelOffre, pk=pk, acheteur=request.user)
+ 
+    if ao.statut == 'adjuge':
+        messages.error(request, "Impossible d'annuler un appel d'offre déjà adjugé.")
+        return redirect('apps_enchere:appel_offre_detail', pk=pk)
+ 
+    ao.statut = 'annule'
+    ao.save(update_fields=['statut'])
+ 
+    # Notifier les vendeurs ayant soumis une offre
+    try:
+        from apps_core.views_notifications import creer_notification_masse
+        vendeurs = [o.vendeur for o in ao.offres_vendeurs.all()]
+        if vendeurs:
+            creer_notification_masse(
+                utilisateurs_qs=vendeurs,
+                type_notification='enchere',
+                titre="Appel d'offre annulé",
+                message=f"L'appel d'offre « {ao.titre} » a été annulé par l'acheteur.",
+                lien=f"/encheres/inversee/{ao.pk}/",
+            )
+    except Exception:
+        pass
+ 
+    messages.success(request, "Appel d'offre annulé.")
+    return redirect('apps_enchere:mes_appels_offre')
+
+
+
+# =============================================================================
+# VENDEUR
+# =============================================================================
+ 
+@login_required
+@require_POST
+def soumettre_offre_vendeur(request, ao_pk):
+    """Le vendeur soumet son prix pour un appel d'offre."""
+    ao = get_object_or_404(AppelOffre, pk=ao_pk)
+ 
+    if not request.user.peut_vendre:
+        return JsonResponse({'success': False, 'message': "Réservé aux vendeurs."}, status=403)
+ 
+    if ao.acheteur == request.user:
+        return JsonResponse({'success': False, 'message': "Vous ne pouvez pas répondre à votre propre AO."}, status=400)
+ 
+    if not _est_ouvert(ao):
+        return JsonResponse({'success': False, 'message': "Cet appel d'offre est fermé."}, status=400)
+ 
+    if ao.offres_vendeurs.filter(vendeur=request.user).exists():
+        return JsonResponse({'success': False, 'message': "Vous avez déjà soumis une offre pour cet AO."}, status=400)
+ 
+    try:
+        montant         = Decimal(request.POST.get('montant', '0'))
+        description     = request.POST.get('description', '').strip()
+        delai_livraison = int(request.POST.get('delai_livraison', 7))
+        garantie        = request.POST.get('garantie', '').strip()
+ 
+        if montant <= 0:
+            raise ValueError("Le montant doit être positif.")
+        if montant > ao.budget_max:
+            raise ValueError(f"Votre offre dépasse le budget maximum ({ao.budget_max:,.0f} FCFA).")
+        if not description:
+            raise ValueError("La description est requise.")
+        if delai_livraison < 1:
+            raise ValueError("Le délai de livraison doit être ≥ 1 jour.")
+ 
+    except (ValueError, InvalidOperation, TypeError) as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+ 
+    piece = request.FILES.get('pieces_jointes')
+    offre = OffreVendeur.objects.create(
+        appel_offre=ao,
+        vendeur=request.user,
+        montant=montant,
+        description=description,
+        delai_livraison=delai_livraison,
+        garantie=garantie,
+        pieces_jointes=piece,
+    )
+ 
+    # Notifier l'acheteur
+    try:
+        from apps_core.views_notifications import creer_notification
+        creer_notification(
+            utilisateur=ao.acheteur,
+            type_notification='enchere',
+            titre="Nouvelle offre sur votre appel d'offre",
+            message=f"{request.user.username} a proposé {montant:,.0f} FCFA pour « {ao.titre} ».",
+            lien=f"/encheres/inversee/{ao.pk}/",
+        )
+    except Exception:
+        pass
+ 
+    return JsonResponse({
+        'success':  True,
+        'message':  f"Offre de {montant:,.0f} FCFA soumise avec succès.",
+        'offre_id': offre.pk,
+        'montant':  float(offre.montant),
+        'nb_offres': ao.offres_vendeurs.count(),
+    })
+
+
+@login_required
+@require_POST
+def modifier_offre_vendeur(request, offre_pk):
+    """Le vendeur modifie son offre avant clôture de l'AO."""
+    offre = get_object_or_404(OffreVendeur, pk=offre_pk, vendeur=request.user)
+ 
+    if not _est_ouvert(offre.appel_offre):
+        messages.error(request, "L'appel d'offre est clôturé, modification impossible.")
+        return redirect('apps_enchere:appel_offre_detail', pk=offre.appel_offre.pk)
+ 
+    try:
+        montant = Decimal(request.POST.get('montant', str(offre.montant)))
+        if montant <= 0:
+            raise ValueError("Montant invalide.")
+        if montant > offre.appel_offre.budget_max:
+            raise ValueError(f"Dépasse le budget maximum ({offre.appel_offre.budget_max:,.0f} FCFA).")
+ 
+        offre.montant          = montant
+        offre.description      = request.POST.get('description', offre.description).strip()
+        offre.delai_livraison  = int(request.POST.get('delai_livraison', offre.delai_livraison))
+        offre.garantie         = request.POST.get('garantie', offre.garantie).strip()
+ 
+        piece = request.FILES.get('pieces_jointes')
+        if piece:
+            offre.pieces_jointes = piece
+ 
+        offre.save()
+        messages.success(request, "Offre mise à jour.")
+ 
+    except (ValueError, InvalidOperation, TypeError) as e:
+        messages.error(request, f"Erreur : {e}")
+ 
+    return redirect('apps_enchere:appel_offre_detail', pk=offre.appel_offre.pk)
+ 
+
+
+@login_required
+@require_POST
+def retirer_offre_vendeur(request, offre_pk):
+    """Le vendeur retire sa proposition avant clôture."""
+    offre = get_object_or_404(OffreVendeur, pk=offre_pk, vendeur=request.user)
+ 
+    if not _est_ouvert(offre.appel_offre):
+        messages.error(request, "L'appel d'offre est clôturé.")
+        return redirect('apps_enchere:appel_offre_detail', pk=offre.appel_offre.pk)
+ 
+    ao_pk = offre.appel_offre.pk
+    offre.delete()
+    messages.success(request, "Votre offre a été retirée.")
+    return redirect('apps_enchere:appel_offre_detail', pk=ao_pk)
+
+
+@login_required
+def mes_offres_vendeur(request):
+    """Liste de toutes les offres soumises par le vendeur."""
+    if not request.user.peut_vendre:
+        messages.warning(request, "Réservé aux vendeurs.")
+        return redirect('apps_core:tableau_de_bord')
+ 
+    qs = OffreVendeur.objects.filter(
+        vendeur=request.user
+    ).select_related('appel_offre', 'appel_offre__acheteur', 'appel_offre__categorie').order_by('-date_soumission')
+ 
+    statut = request.GET.get('statut', '')
+    if statut:
+        qs = qs.filter(appel_offre__statut=statut)
+ 
+    stats = {
+        'total':       OffreVendeur.objects.filter(vendeur=request.user).count(),
+        'en_attente':  OffreVendeur.objects.filter(
+                           vendeur=request.user, appel_offre__statut='ouvert'
+                       ).count(),
+        'retenues':    OffreVendeur.objects.filter(
+                           vendeur=request.user, est_selectionnee=True
+                       ).count(),
+    }
+ 
+    paginator = Paginator(qs, 15)
+    offres    = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/inversee/mes_offres_vendeur.html', {
+        'offres':   offres,
+        'stats':    stats,
+        'statut':   statut,
+        'statuts':  AppelOffre.STATUT_CHOICES,
+        'page_titre': 'Mes offres vendeur',
+    })
+
+
+
+# =============================================================================
+# ADMIN
+# =============================================================================
+ 
+@login_required
+def admin_appels_offre_liste(request):
+    """Vue admin de tous les appels d'offre."""
+    if not request.user.is_staff:
+        messages.error(request, "Accès réservé aux administrateurs.")
+        return redirect('apps_core:accueil')
+ 
+    qs = AppelOffre.objects.select_related(
+        'acheteur', 'categorie', 'offre_gagnante'
+    ).annotate(nb_offres=Count('offres_vendeurs')).order_by('-date_creation')
+ 
+    statut = request.GET.get('statut', '')
+    if statut:
+        qs = qs.filter(statut=statut)
+ 
+    q = request.GET.get('q', '')
+    if q:
+        qs = qs.filter(Q(titre__icontains=q) | Q(acheteur__username__icontains=q))
+ 
+    now = timezone.now()
+    stats = {
+        'total':    AppelOffre.objects.count(),
+        'ouverts':  AppelOffre.objects.filter(statut='ouvert', date_limite__gt=now).count(),
+        'adjuges':  AppelOffre.objects.filter(statut='adjuge').count(),
+        'annules':  AppelOffre.objects.filter(statut='annule').count(),
+        'expirees': AppelOffre.objects.filter(statut='ouvert', date_limite__lte=now).count(),
+    }
+ 
+    paginator    = Paginator(qs, 25)
+    appels_offre = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/inversee/admin_appels_offre_liste.html', {
+        'appels_offre': appels_offre,
+        'stats':        stats,
+        'statut':       statut,
+        'q':            q,
+        'statuts':      AppelOffre.STATUT_CHOICES,
+        'page_titre':   'Gestion des appels d\'offre',
+    })
+ 
+ 
+ 
+ 
+ 
+ 
+
  
  
  

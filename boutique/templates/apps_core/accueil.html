@@ -144,6 +144,7 @@
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_paiements' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-credit-card me-1" style="color:var(--indigo)"></i>Mes paiements</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_retours' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes retours</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_offres' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes offres</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_appels_offre' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes appels offres</a></li>
            
      
             
@@ -153,6 +154,7 @@
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_marketplace:mes_codes_promo' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-percent" style="color:var(--indigo)"></i>Mes code promotions</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_encheres:mes_encheres' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-hammer" style="color:var(--indigo)"></i>Mes encheres</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_marketplace:mes_groupes_achat' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-people-fill" style="color:var(--indigo)"></i>Mes groupes</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_offres_vendeur' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-people-fill" style="color:var(--indigo)"></i>Mes offres vendeur</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:tableau_de_bord' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-shop" style="color:var(--jade)"></i>Tableau de bord</a></li>
             {% endif %}
             <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
@@ -370,6 +372,14 @@
               style="color:var(--text-2);font-size:.83rem">
               <i class="bi bi-people-fill" style="color:var(--indigo);font-size:.9rem"></i>
               Achat Groupe
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_enchere:appels_offre_liste' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-megaphone-fill" style="color:var(--indigo);font-size:.9rem"></i>
+              Appels offre
             </a>
           </li>
           <li>

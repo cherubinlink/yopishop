@@ -26,32 +26,19 @@
 }
 .ef-hint { font-size:.72rem;color:var(--muted);margin-top:.3rem; }
 
-/* ── Boutons sélecteur ── */
 .ef-sel-btn {
   font-size:.8rem;font-weight:600;border-radius:8px;
   padding:.45rem .9rem;cursor:pointer;transition:all .15s;
   border:1.5px solid var(--border);background:var(--surface);
   color:var(--muted);white-space:nowrap;
 }
-.ef-sel-btn.active-gold {
-  background:var(--saffron-d);border-color:var(--saffron);color:var(--saffron);
-}
-.ef-sel-btn.active-indigo {
-  background:rgba(99,102,241,.15);border-color:var(--indigo);color:var(--indigo);
-}
-.ef-sel-btn.active-ember {
-  background:rgba(239,68,68,.12);border-color:var(--ember);color:var(--ember);
-}
+.ef-sel-btn.active-gold   { background:var(--saffron-d);border-color:var(--saffron);color:var(--saffron); }
+.ef-sel-btn.active-indigo { background:rgba(99,102,241,.15);border-color:var(--indigo);color:var(--indigo); }
+.ef-sel-btn.active-ember  { background:rgba(239,68,68,.12);border-color:var(--ember);color:var(--ember); }
 .ef-sel-btn:hover:not(.active-gold):not(.active-indigo):not(.active-ember) {
   border-color:var(--saffron);color:var(--saffron);
 }
 
-/* ── Bloc flash ── */
-#bloc-flash {
-  border:1.5px solid rgba(239,68,68,.35);
-  border-radius:var(--r);padding:1.25rem 1.4rem;
-  background:var(--card);margin-bottom:1rem;
-}
 .flash-badge {
   display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;
   font-weight:700;padding:.25rem .7rem;border-radius:99px;
@@ -62,7 +49,6 @@
 
 <div class="container py-4" style="max-width:740px">
 
-  <!-- ── Breadcrumb ── -->
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
       <li class="breadcrumb-item">
@@ -77,27 +63,23 @@
     </ol>
   </nav>
 
-  <!-- ── Titre page ── -->
   <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0 0 1.5rem">
     {{ page_titre }}
   </h1>
 
-  {% if messages %}
-    {% for msg in messages %}
-    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
-      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
-      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
-      color:var(--text)">
-      {% if msg.tags == 'success' %}<i class="bi bi-check-circle-fill me-1" style="color:var(--jade)"></i>
-      {% elif msg.tags == 'error' %}<i class="bi bi-x-circle-fill me-1" style="color:var(--ember)"></i>
-      {% else %}<i class="bi bi-info-circle-fill me-1" style="color:var(--saffron)"></i>{% endif %}
-      {{ msg }}
-    </div>
-    {% endfor %}
-  {% endif %}
+  {% if messages %}{% for msg in messages %}
+  <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+    background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+    border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
+    color:var(--text)">
+    {% if msg.tags == 'success' %}<i class="bi bi-check-circle-fill me-1" style="color:var(--jade)"></i>
+    {% elif msg.tags == 'error' %}<i class="bi bi-x-circle-fill me-1" style="color:var(--ember)"></i>
+    {% else %}<i class="bi bi-info-circle-fill me-1" style="color:var(--saffron)"></i>{% endif %}
+    {{ msg }}
+  </div>
+  {% endfor %}{% endif %}
 
-  <!-- Avertissement offres existantes -->
-  {% if mode == 'edition' and a_des_offres %}
+  {% if mode == 'edition' and enchere.nb_offres > 0 %}
   <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;background:rgba(246,169,43,.1);border:1px solid rgba(246,169,43,.25);color:var(--text)">
     <i class="bi bi-lock-fill me-1" style="color:var(--saffron)"></i>
     Cette enchère a déjà des offres — prix de départ, prix de réserve et type sont figés.
@@ -107,43 +89,33 @@
   <form method="post" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
 
-    <!-- ════════════════════════════════════
-         1. PRODUIT
-    ════════════════════════════════════ -->
+    
+    <input type="hidden" name="est_flash" id="inputEstFlash"
+           value="{% if enchere.type_enchere == 'flash' %}1{% else %}0{% endif %}">
+
+    <!-- ═══ 1. PRODUIT ═══ -->
     {% if mode == 'creation' %}
     <div class="ef-card">
-      <div class="ef-section-title">
-        <i class="bi bi-box" style="color:var(--saffron)"></i>Produit mis aux enchères
-      </div>
-      <select name="produit" required class="ef-input"
-        style="cursor:pointer" onchange="prefillFromProduct(this)">
+      <div class="ef-section-title"><i class="bi bi-box" style="color:var(--saffron)"></i>Produit mis aux enchères</div>
+      <select name="produit" required class="ef-input" style="cursor:pointer" onchange="prefillFromProduct(this)">
         <option value="">— Choisir un produit éligible —</option>
         {% for p in mes_produits %}
-        <option value="{{ p.pk }}"
-          data-titre="{{ p.titre }}"
-          data-prix="{{ p.prix }}"
-          data-desc="{{ p.description_courte|default:'' }}">
+        <option value="{{ p.pk }}" data-titre="{{ p.titre }}" data-prix="{{ p.prix }}" data-desc="{{ p.description_courte|default:'' }}">
           {{ p.titre }} — {{ p.prix|floatformat:0 }} FCFA
         </option>
         {% endfor %}
       </select>
       <div class="ef-hint"><i class="bi bi-info-circle me-1"></i>Seuls les produits actifs avec « Autoriser les enchères » sont listés.</div>
     </div>
-
     {% else %}
-    <!-- Mode édition : produit figé -->
     <div class="ef-card">
-      <div class="ef-section-title">
-        <i class="bi bi-box" style="color:var(--saffron)"></i>Produit
-      </div>
+      <div class="ef-section-title"><i class="bi bi-box" style="color:var(--saffron)"></i>Produit</div>
       <div class="d-flex align-items-center gap-3">
         <div style="width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0">
           {% if enchere.produit.image_principale %}
-            <img src="{{ enchere.produit.image_principale }}" alt="" style="width:100%;height:100%;object-fit:cover">
+          <img src="{{ enchere.produit.image_principale }}" alt="" style="width:100%;height:100%;object-fit:cover">
           {% else %}
-            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
-              <i class="bi bi-image" style="color:var(--muted)"></i>
-            </div>
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted)"></i></div>
           {% endif %}
         </div>
         <div>
@@ -154,120 +126,91 @@
     </div>
     {% endif %}
 
-    <!-- ════════════════════════════════════
-         2. TYPE D'ENCHÈRE
-    ════════════════════════════════════ -->
+    <!-- ═══ 2. TYPE ═══ -->
     <div class="ef-card">
-      <div class="ef-section-title">
-        <i class="bi bi-hammer" style="color:var(--ember)"></i>Type d'enchère
-      </div>
+      <div class="ef-section-title"><i class="bi bi-hammer" style="color:var(--ember)"></i>Type d'enchère</div>
       <div class="d-flex gap-2 flex-wrap" id="type-selector">
         {% for val, label in types %}
         <button type="button"
           class="ef-sel-btn btn-type {% if enchere.type_enchere == val or mode == 'creation' and val == 'classique' %}active-gold{% endif %}"
           data-val="{{ val }}"
-          {% if mode == 'edition' and a_des_offres %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
-          {% if val == 'flash' %}<i class="bi bi-lightning-fill me-1"></i>{% elif val == 'classique' %}<i class="bi bi-hammer me-1"></i>{% endif %}
+          {% if mode == 'edition' and enchere.nb_offres > 0 %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+          {% if val == 'flash' %}<i class="bi bi-lightning-fill me-1"></i>
+          {% elif val == 'classique' %}<i class="bi bi-hammer me-1"></i>{% endif %}
           {{ label }}
         </button>
         {% endfor %}
       </div>
+      {# Champ hidden pour le type — mis à jour par JS #}
       <input type="hidden" name="type_enchere" id="inputTypeEnchere"
-        value="{{ enchere.type_enchere|default:'classique' }}">
+             value="{{ enchere.type_enchere|default:'classique' }}">
     </div>
 
-    <!-- ════════════════════════════════════
-         3. INFORMATIONS GÉNÉRALES
-    ════════════════════════════════════ -->
+    <!-- ═══ 3. INFOS GÉNÉRALES ═══ -->
     <div class="ef-card">
-      <div class="ef-section-title">
-        <i class="bi bi-info-circle" style="color:var(--indigo)"></i>Informations générales
-      </div>
-
+      <div class="ef-section-title"><i class="bi bi-info-circle" style="color:var(--indigo)"></i>Informations générales</div>
       <div class="mb-3">
         <label class="ef-label">Titre <span style="color:var(--ember)">*</span></label>
         <input type="text" name="titre" required id="inputTitre"
-          value="{{ enchere.titre|default:'' }}"
-          placeholder="Titre accrocheur pour votre enchère"
-          class="ef-input">
+               value="{{ enchere.titre|default:'' }}" placeholder="Titre accrocheur" class="ef-input">
       </div>
-
       <div class="mb-3">
         <label class="ef-label">Description</label>
         <textarea name="description" rows="3" id="inputDesc"
-          placeholder="État de l'article, caractéristiques, remarques…"
-          class="ef-input" style="resize:vertical">{{ enchere.description|default:'' }}</textarea>
+                  placeholder="État, caractéristiques, remarques…"
+                  class="ef-input" style="resize:vertical">{{ enchere.description|default:'' }}</textarea>
       </div>
-
       <div>
         <label class="ef-label">Image de couverture</label>
         <input type="file" name="image_couverture" accept="image/*" class="ef-input" style="padding:.4rem .7rem">
         {% if mode == 'edition' and enchere.image_couverture %}
-        <div class="ef-hint">
-          Image actuelle :
-          <a href="{{ enchere.image_couverture.url }}" target="_blank" style="color:var(--saffron)">voir</a>
-        </div>
+        <div class="ef-hint">Actuelle : <a href="{{ enchere.image_couverture.url }}" target="_blank" style="color:var(--saffron)">voir</a></div>
         {% endif %}
       </div>
     </div>
 
-    <!-- ════════════════════════════════════
-         4. PRIX
-    ════════════════════════════════════ -->
+    <!-- ═══ 4. PRIX ═══ -->
     <div class="ef-card">
-      <div class="ef-section-title">
-        <i class="bi bi-currency-exchange" style="color:var(--jade)"></i>Prix
-      </div>
+      <div class="ef-section-title"><i class="bi bi-currency-exchange" style="color:var(--jade)"></i>Prix</div>
       <div class="row g-3">
-
         <div class="col-12 col-sm-6">
           <label class="ef-label">Prix de départ <span style="color:var(--ember)">*</span></label>
           <input type="number" name="prix_depart" id="inputPrixDepart"
-            required min="1" step="1"
-            value="{{ enchere.prix_depart|default:'' }}"
-            placeholder="Ex : 5 000"
-            class="ef-input"
-            {% if mode == 'edition' and a_des_offres %}readonly{% endif %}
-            oninput="mettreAJourSimu()">
+                 required min="1" step="1"
+                 value="{{ enchere.prix_depart|default:'' }}"
+                 placeholder="Ex : 5 000" class="ef-input"
+                 {% if mode == 'edition' and enchere.nb_offres > 0 %}readonly{% endif %}
+                 oninput="mettreAJourSimu()">
         </div>
-
         <div class="col-12 col-sm-6">
           <label class="ef-label">Incrément minimum <span style="color:var(--ember)">*</span></label>
           <input type="number" name="increment_minimum"
-            required min="100" step="1"
-            value="{{ enchere.increment_minimum|default:'500' }}"
-            placeholder="500"
-            class="ef-input">
+                 required min="100" step="1"
+                 value="{{ enchere.increment_minimum|default:'500' }}"
+                 placeholder="500" class="ef-input">
         </div>
-
         <div class="col-12 col-sm-6">
-          <label class="ef-label">Prix de réserve <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
-          <input type="number" name="prix_reserve"
-            min="1" step="1"
-            value="{{ enchere.prix_reserve|default:'' }}"
-            placeholder="Montant minimum pour vendre"
-            class="ef-input"
-            {% if mode == 'edition' and a_des_offres %}readonly{% endif %}>
+          <label class="ef-label">Prix de réserve <span style="color:var(--muted);font-weight:400">(optionnel)</span></label>
+          <input type="number" name="prix_reserve" min="1" step="1"
+                 value="{{ enchere.prix_reserve|default:'' }}"
+                 placeholder="Minimum pour vendre" class="ef-input"
+                 {% if mode == 'edition' and enchere.nb_offres > 0 %}readonly{% endif %}>
           <div class="ef-hint">Si non atteint, la vente n'est pas conclue.</div>
         </div>
-
         <div class="col-12 col-sm-6">
-          <label class="ef-label">Prix d'achat immédiat <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
+          <label class="ef-label">Achat immédiat <span style="color:var(--muted);font-weight:400">(optionnel)</span></label>
           <input type="number" name="prix_achat_immediat" id="inputPrixAchat"
-            min="1" step="1"
-            value="{{ enchere.prix_achat_immediat|default:'' }}"
-            placeholder="Ex : 50 000"
-            class="ef-input">
+                 min="1" step="1"
+                 value="{{ enchere.prix_achat_immediat|default:'' }}"
+                 placeholder="Ex : 50 000" class="ef-input">
           <div class="ef-hint">Permet d'acheter sans attendre la fin.</div>
         </div>
-
       </div>
     </div>
 
-    <!-- ════════════════════════════════════
-         5A. DURÉE — CLASSIQUE
-         1h · 2h · 3h · 6h · 12h · 24h · 48h
-    ════════════════════════════════════ -->
+    <!-- ═══ 5A. DURÉE CLASSIQUE ═══
+         Visible uniquement si type != flash.
+         Le champ caché duree_heures est mis à jour par les boutons. -->
     <div id="bloc-duree-classique" class="ef-card">
       <div class="ef-section-title">
         <i class="bi bi-clock" style="color:var(--indigo)"></i>
@@ -277,53 +220,45 @@
       {% if mode == 'creation' %}
       <div class="mb-3">
         <label class="ef-label">Choisissez la durée <span style="color:var(--ember)">*</span></label>
-        <!-- ✅ Durées de 1h à 48h -->
         <div class="d-flex gap-2 flex-wrap" id="duree-btns">
-          {% for val, label in durees_classiques %}
-          <button type="button" class="ef-sel-btn btn-duree {% if val == 24 %}active-indigo{% endif %}"
-            data-h="{{ val }}">{{ label }}</button>
+          {% for val, label in durees %}
+          <button type="button"
+                  class="ef-sel-btn btn-duree {% if val == 24 %}active-indigo{% endif %}"
+                  data-h="{{ val }}">{{ label }}</button>
           {% endfor %}
         </div>
+        {# Ce champ hidden est soumis dans le POST et lu par la vue #}
         <input type="hidden" name="duree_heures" id="inputDuree" value="24">
       </div>
       {% else %}
       <div>
-        <label class="ef-label">
-          Ajouter des heures <span style="font-weight:400;color:var(--muted)">(max 168h = 7 jours)</span>
-        </label>
+        <label class="ef-label">Ajouter des heures <span style="color:var(--muted);font-weight:400">(max 168h)</span></label>
         <div class="d-flex align-items-center gap-2">
           <input type="number" name="heures_supplementaires"
-            min="1" max="168" step="1"
-            placeholder="Ex : 24"
-            class="ef-input" style="max-width:130px">
+                 min="1" max="168" step="1" placeholder="Ex : 24"
+                 class="ef-input" style="max-width:130px">
           <span style="font-size:.82rem;color:var(--muted)">heures supplémentaires</span>
         </div>
-        <div class="ef-hint">
-          <i class="bi bi-calendar3 me-1"></i>
-          Fin actuelle : <strong style="color:var(--text)">{{ enchere.date_fin|date:"d M Y à H:i" }}</strong>
-        </div>
+        <div class="ef-hint"><i class="bi bi-calendar3 me-1"></i>Fin actuelle : <strong style="color:var(--text)">{{ enchere.date_fin|date:"d M Y à H:i" }}</strong></div>
       </div>
       {% endif %}
 
-      <!-- Extension automatique (commune classique + flash) -->
       <div class="d-flex align-items-center gap-2 mt-3">
         <input type="checkbox" name="extension_automatique" id="chkExtension"
-          {% if enchere.extension_automatique or mode == 'creation' %}checked{% endif %}
-          style="accent-color:var(--jade);width:16px;height:16px;flex-shrink:0">
+               {% if enchere.extension_automatique or mode == 'creation' %}checked{% endif %}
+               style="accent-color:var(--jade);width:16px;height:16px;flex-shrink:0">
         <label for="chkExtension" style="font-size:.8rem;color:var(--text-2);cursor:pointer;margin:0">
-          Extension automatique de 10 min si une offre arrive dans les 5 dernières minutes
+          Extension automatique si une offre arrive dans les 5 dernières minutes
         </label>
       </div>
     </div>
 
-    <!-- ════════════════════════════════════
-         5B. CONFIG FLASH
-         Durées : 5 · 10 · 30 · 60 · 120 min (selon modèle EnchereFlash)
-    ════════════════════════════════════ -->
+    <!-- ═══ 5B. CONFIG FLASH ═══
+         Visible uniquement si type == flash.
+         Le champ hidden duree_minutes est mis à jour par les boutons. -->
     <div id="bloc-flash" style="display:none">
       <div style="border:1.5px solid rgba(239,68,68,.35);border-radius:var(--r);padding:1.25rem 1.4rem;background:var(--card);margin-bottom:1rem">
 
-        <!-- En-tête flash -->
         <div class="d-flex align-items-center gap-2 mb-3">
           <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <i class="bi bi-lightning-fill" style="color:var(--ember);font-size:1rem"></i>
@@ -336,75 +271,64 @@
         </div>
 
         <div class="row g-3">
-
-          <!-- Durée flash — ✅ Correspond exactement aux DUREE_CHOICES du modèle -->
           <div class="col-12">
-            <label class="ef-label">
-              Durée de l'enchère flash <span style="color:var(--ember)">*</span>
-              {% if mode == 'edition' and a_des_offres %}
-              <span style="font-weight:400;color:var(--muted)">(figée — offres existantes)</span>
-              {% endif %}
+            <label class="ef-label">Durée de l'enchère flash <span style="color:var(--ember)">*</span>
+              {% if mode == 'edition' and enchere.nb_offres > 0 %}
+              <span style="color:var(--muted);font-weight:400">(figée)</span>{% endif %}
             </label>
             <div class="d-flex gap-2 flex-wrap" id="flash-duree-btns">
-              {% for val, label in durees_flash %}
+              {% for val, label in flash_durees %}
               <button type="button"
-                class="ef-sel-btn btn-flash-duree {% if config_flash.duree_minutes == val or not config_flash and val == 30 %}active-ember{% endif %}"
-                data-val="{{ val }}"
-                {% if mode == 'edition' and a_des_offres %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+                      class="ef-sel-btn btn-flash-duree {% if config_flash.duree_minutes == val or not config_flash and val == 30 %}active-ember{% endif %}"
+                      data-val="{{ val }}"
+                      {% if mode == 'edition' and enchere.nb_offres > 0 %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
                 {{ label }}
               </button>
               {% endfor %}
             </div>
+            {# Ce champ hidden est soumis dans le POST et lu par la vue quand est_flash==1 #}
             <input type="hidden" name="duree_minutes" id="inputDureeFlash"
-              value="{{ config_flash.duree_minutes|default:30 }}">
+                   value="{{ config_flash.duree_minutes|default:30 }}">
           </div>
 
-          <!-- Extension par offre -->
           <div class="col-12 col-sm-6">
             <label class="ef-label">Extension par offre (secondes)</label>
             <input type="number" name="extension_par_offre_secondes"
-              min="0" max="120" step="5"
-              value="{{ config_flash.extension_par_offre_secondes|default:30 }}"
-              class="ef-input">
-            <div class="ef-hint">Secondes ajoutées dans la dernière minute à chaque offre (0 = désactivé)</div>
+                   min="0" max="120" step="5"
+                   value="{{ config_flash.extension_par_offre_secondes|default:30 }}"
+                   class="ef-input">
+            <div class="ef-hint">Secondes ajoutées dans la dernière minute à chaque offre</div>
           </div>
 
-          <!-- Limite de participants -->
           <div class="col-12 col-sm-6">
-            <label class="ef-label">Limite de participants <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
-            <input type="number" name="nb_acheteurs_max"
-              min="2" step="1"
-              value="{{ config_flash.nb_acheteurs_max|default:'' }}"
-              placeholder="Illimité"
-              class="ef-input">
+            <label class="ef-label">Limite participants <span style="color:var(--muted);font-weight:400">(optionnel)</span></label>
+            <input type="number" name="nb_acheteurs_max" min="2" step="1"
+                   value="{{ config_flash.nb_acheteurs_max|default:'' }}"
+                   placeholder="Illimité" class="ef-input">
           </div>
 
-          <!-- Couleur urgence -->
           <div class="col-12 col-sm-6">
-            <label class="ef-label">Couleur d'urgence <span style="font-weight:400;color:var(--muted)">(timer &lt; 60s)</span></label>
+            <label class="ef-label">Couleur d'urgence <span style="color:var(--muted);font-weight:400">(&lt; 60s)</span></label>
             <div class="d-flex align-items-center gap-2">
               <input type="color" name="couleur_urgence"
-                value="{{ config_flash.couleur_urgence|default:'#FF0000' }}"
-                style="width:44px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;padding:.2rem">
-              <span class="ef-hint" style="margin:0">Couleur du timer quand &lt; 60 secondes restantes</span>
+                     value="{{ config_flash.couleur_urgence|default:'#FF0000' }}"
+                     style="width:44px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;padding:.2rem">
+              <span class="ef-hint" style="margin:0">Couleur du timer quand &lt; 60s restantes</span>
             </div>
           </div>
 
-          <!-- Timer géant -->
           <div class="col-12 col-sm-6 d-flex align-items-center">
-            <div class="d-flex align-items-center gap-2" style="margin-top:.5rem">
+            <div class="d-flex align-items-center gap-2 mt-2">
               <input type="checkbox" name="afficher_timer_geant" id="chkTimerGeant"
-                {% if config_flash.afficher_timer_geant or not config_flash %}checked{% endif %}
-                style="accent-color:var(--ember);width:16px;height:16px;flex-shrink:0">
+                     {% if config_flash.afficher_timer_geant or not config_flash %}checked{% endif %}
+                     style="accent-color:var(--ember);width:16px;height:16px;flex-shrink:0">
               <label for="chkTimerGeant" style="font-size:.8rem;color:var(--text-2);cursor:pointer;margin:0">
                 Afficher le timer géant sur la page
               </label>
             </div>
           </div>
-
         </div>
 
-        <!-- Récapitulatif flash -->
         <div id="flash-recap" style="margin-top:1rem;padding:.65rem .9rem;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:.8rem;color:var(--text-2)">
           <i class="bi bi-lightning-fill me-1" style="color:var(--ember)"></i>
           Enchère de <strong id="flashRecapDuree" style="color:var(--ember)">30 minutes</strong>
@@ -413,11 +337,9 @@
       </div>
     </div>
 
-    <!-- ════════════════════════════════════
-         6. SIMULATION / RÉCAPITULATIF
-    ════════════════════════════════════ -->
+    <!-- ═══ 6. RÉCAPITULATIF CLASSIQUE ═══ -->
     <div id="bloc-simu" class="mb-3"
-      style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.2rem">
+         style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.2rem">
       <div style="font-size:.76rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.7rem">
         <i class="bi bi-calculator me-1" style="color:var(--indigo)"></i>Récapitulatif estimé
       </div>
@@ -437,19 +359,17 @@
       </div>
     </div>
 
-    <!-- ════════════════════════════════════
-         7. BOUTONS ACTION
-    ════════════════════════════════════ -->
+    <!-- ═══ 7. ACTIONS ═══ -->
     <div class="d-flex gap-3 mt-2">
       <a href="{% if mode == 'edition' %}{% url 'apps_enchere:enchere_detail' enchere.pk %}{% else %}{% url 'apps_enchere:mes_encheres' %}{% endif %}"
-        class="btn-ghost flex-grow-1 justify-content-center" style="font-size:.88rem">
+         class="btn-ghost flex-grow-1 justify-content-center" style="font-size:.88rem">
         Annuler
       </a>
       <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.9rem">
         {% if mode == 'edition' %}
-          <i class="bi bi-check-circle-fill me-1"></i>Enregistrer les modifications
+        <i class="bi bi-check-circle-fill me-1"></i>Enregistrer
         {% else %}
-          <i class="bi bi-hammer me-1"></i>Lancer l'enchère
+        <i class="bi bi-hammer me-1"></i>Lancer l'enchère
         {% endif %}
       </button>
     </div>
@@ -463,137 +383,122 @@
 <script>
 "use strict";
 
-/* ══════════════════════════════════════════
-   1. TYPE D'ENCHÈRE — bascule classique/flash
-══════════════════════════════════════════ */
+const LABELS_FLASH = { 5:'5 minutes', 10:'10 minutes', 30:'30 minutes', 60:'1 heure', 120:'2 heures' };
 const TYPE_INITIAL = "{{ enchere.type_enchere|default:'classique' }}";
 
+/* ══════════════════════════════════════════
+   BASCULE TYPE — classique ↔ flash
+   Met à jour les 3 champs cachés : type_enchere, est_flash, et
+   affiche/masque les blocs de durée correspondants.
+══════════════════════════════════════════ */
 function appliquerType(val) {
   const estFlash = val === 'flash';
 
-  // Mise à jour boutons
-  document.querySelectorAll('.btn-type').forEach(btn => {
-    btn.classList.remove('active-gold');
-    if (btn.dataset.val === val) btn.classList.add('active-gold');
+  // Boutons type
+  document.querySelectorAll('.btn-type').forEach(b => {
+    b.classList.toggle('active-gold', b.dataset.val === val);
   });
-  document.getElementById('inputTypeEnchere').value = val;
 
-  // Affichage blocs
-  const blocDuree = document.getElementById('bloc-duree-classique');
-  const blocFlash = document.getElementById('bloc-flash');
-  if (blocDuree) blocDuree.style.display = estFlash ? 'none' : 'block';
-  if (blocFlash) blocFlash.style.display = estFlash ? 'block' : 'none';
+  // Champs cachés transmis au POST
+  document.getElementById('inputTypeEnchere').value = val;
+  document.getElementById('inputEstFlash').value    = estFlash ? '1' : '0';
+
+  // Blocs visibles
+  const blocClassique = document.getElementById('bloc-duree-classique');
+  const blocFlash     = document.getElementById('bloc-flash');
+  if (blocClassique) blocClassique.style.display = estFlash ? 'none' : 'block';
+  if (blocFlash)     blocFlash.style.display     = estFlash ? 'block' : 'none';
 
   if (estFlash) mettreAJourRecapFlash();
   else          mettreAJourSimu();
 }
 
-// Boutons type
 document.querySelectorAll('.btn-type').forEach(btn => {
-  btn.addEventListener('click', function () {
+  btn.addEventListener('click', function() {
     if (this.disabled) return;
     appliquerType(this.dataset.val);
   });
 });
 
-// Init au chargement
+// Init
 appliquerType(TYPE_INITIAL);
 
 /* ══════════════════════════════════════════
-   2. DURÉE CLASSIQUE (1h → 48h)
+   DURÉE CLASSIQUE — boutons 1h…30j
 ══════════════════════════════════════════ */
 document.querySelectorAll('.btn-duree').forEach(btn => {
-  btn.addEventListener('click', function () {
-    document.querySelectorAll('.btn-duree').forEach(b => {
-      b.classList.remove('active-indigo');
-    });
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.btn-duree').forEach(b => b.classList.remove('active-indigo'));
     this.classList.add('active-indigo');
     const inp = document.getElementById('inputDuree');
-    if (inp) inp.value = this.dataset.h;
+    if (inp) inp.value = this.dataset.h;    // ← envoie duree_heures dans le POST
     mettreAJourSimu();
   });
 });
 
 /* ══════════════════════════════════════════
-   3. DURÉE FLASH (5 · 10 · 30 · 60 · 120 min)
+   DURÉE FLASH — boutons 5/10/30/60/120 min
+   Correction bug : sélecteur était '.flash-duree-btns' (classe container)
+   au lieu de '.btn-flash-duree' (classe des boutons eux-mêmes).
 ══════════════════════════════════════════ */
-document.querySelectorAll('.flash-duree-btns').forEach(btn => {
-  btn.addEventListener('click', function () {
+document.querySelectorAll('.btn-flash-duree').forEach(btn => {
+  btn.addEventListener('click', function() {
     if (this.disabled) return;
-    document.querySelectorAll('.flash-duree-btns').forEach(b => {
-      b.classList.remove('active-ember');
-    });
+    document.querySelectorAll('.btn-flash-duree').forEach(b => b.classList.remove('active-ember'));
     this.classList.add('active-ember');
     const inp = document.getElementById('inputDureeFlash');
-    if (inp) inp.value = this.dataset.val;
+    if (inp) inp.value = this.dataset.val;  // ← envoie duree_minutes dans le POST
     mettreAJourRecapFlash();
   });
 });
 
 /* ══════════════════════════════════════════
-   4. PRÉ-REMPLISSAGE depuis le produit
+   PRÉ-REMPLISSAGE depuis le produit sélectionné
 ══════════════════════════════════════════ */
 function prefillFromProduct(sel) {
   const opt = sel.options[sel.selectedIndex];
   if (!opt.value) return;
-  const titre = opt.dataset.titre || '';
-  const prix  = parseFloat(opt.dataset.prix) || 0;
-  const desc  = opt.dataset.desc  || '';
-
   const t = document.getElementById('inputTitre');
   const d = document.getElementById('inputDesc');
   const p = document.getElementById('inputPrixDepart');
-
-  if (t && !t.value) t.value = titre;
-  if (d && !d.value && desc) d.value = desc;
-  if (p && !p.value && prix > 0) {
-    p.value = Math.round(prix * 0.5); // départ à 50% du prix catalogue
-  }
+  if (t && !t.value) t.value = opt.dataset.titre || '';
+  if (d && !d.value) d.value = opt.dataset.desc  || '';
+  if (p && !p.value && opt.dataset.prix > 0)
+    p.value = Math.round(parseFloat(opt.dataset.prix) * 0.5);
   mettreAJourSimu();
 }
 
 /* ══════════════════════════════════════════
-   5. SIMULATION — récapitulatif classique
+   RÉCAPITULATIF — enchère classique
 ══════════════════════════════════════════ */
 function mettreAJourSimu() {
-  const depart  = parseFloat(document.getElementById('inputPrixDepart')?.value) || 0;
-  const dureeH  = parseInt(document.getElementById('inputDuree')?.value) || 24;
-  const achat   = parseFloat(document.getElementById('inputPrixAchat')?.value) || 0;
-  const bloc    = document.getElementById('bloc-simu');
+  const depart = parseFloat(document.getElementById('inputPrixDepart')?.value) || 0;
+  const dureeH = parseInt(document.getElementById('inputDuree')?.value) || 24;
+  const achat  = parseFloat(document.getElementById('inputPrixAchat')?.value) || 0;
+  const bloc   = document.getElementById('bloc-simu');
   if (!bloc) return;
-
   if (!depart) { bloc.style.display = 'none'; return; }
   bloc.style.display = 'block';
 
   const fin = new Date(Date.now() + dureeH * 3600000);
-  document.getElementById('simuDepart').textContent = `${Math.round(depart).toLocaleString('fr')} FCFA`;
-  document.getElementById('simuFin').textContent    = fin.toLocaleDateString('fr-FR', {
-    day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
-  });
+  document.getElementById('simuDepart').textContent =
+    `${Math.round(depart).toLocaleString('fr')} FCFA`;
+  document.getElementById('simuFin').textContent =
+    fin.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
   const wrapAchat = document.getElementById('simuPrixAchatWrap');
-  if (achat > 0 && wrapAchat) {
-    wrapAchat.style.display = 'block';
-    document.getElementById('simuPrixAchat').textContent = `${Math.round(achat).toLocaleString('fr')} FCFA`;
-  } else if (wrapAchat) {
-    wrapAchat.style.display = 'none';
+  if (wrapAchat) {
+    wrapAchat.style.display = achat > 0 ? 'block' : 'none';
+    if (achat > 0) document.getElementById('simuPrixAchat').textContent = `${Math.round(achat).toLocaleString('fr')} FCFA`;
   }
 }
 
 document.getElementById('inputPrixDepart')?.addEventListener('input', mettreAJourSimu);
-document.getElementById('inputPrixAchat')?.addEventListener('input',  mettreAJourSimu);
+document.getElementById('inputPrixAchat')?.addEventListener('input', mettreAJourSimu);
 
 /* ══════════════════════════════════════════
-   6. RÉCAPITULATIF FLASH
+   RÉCAPITULATIF — enchère flash
 ══════════════════════════════════════════ */
-const LABELS_FLASH = {
-  5:   '5 minutes',
-  10:  '10 minutes',
-  30:  '30 minutes',
-  60:  '1 heure',
-  120: '2 heures',
-};
-
 function mettreAJourRecapFlash() {
   const dureeMin = parseInt(document.getElementById('inputDureeFlash')?.value) || 30;
   const fin      = new Date(Date.now() + dureeMin * 60000);
@@ -603,7 +508,7 @@ function mettreAJourRecapFlash() {
   if (finEl)   finEl.textContent   = fin.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
 }
 
-/* Init simulation au chargement */
+// Inits
 mettreAJourSimu();
 mettreAJourRecapFlash();
 </script>

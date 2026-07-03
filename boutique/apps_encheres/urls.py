@@ -50,6 +50,61 @@ urlpatterns = [
     path('encheres/<uuid:pk>/smart-bid/status/',views.ajax_smart_bid_status,name='ajax_smart_bid_status',),
     path('encheres/smart-bids/<int:pk>/desactiver/',views.desactiver_smart_bid,name='desactiver_smart_bid',),
 
+
+    # =========================================================================
+    # PUBLIC
+    # =========================================================================
+
+    # Liste des appels d'offres
+    path('appels-offre/',views.appels_offre_liste,name='appels_offre_liste'),
+
+    # Détail d'un appel d'offre
+    path('appels-offre/<uuid:pk>/',views.appel_offre_detail, name='appel_offre_detail'),
+
+    # Etat AJAX
+    path('appels-offre/<uuid:pk>/ajax/',views.ajax_etat_appel_offre,name='ajax_etat_appel_offre'),
+
+
+    # =========================================================================
+    # ACHETEUR
+    # =========================================================================
+
+    # Publier un appel d'offre
+    path('appels-offre/creer/',views.creer_appel_offre,name='creer_appel_offre'),
+
+    # Mes appels d'offre
+    path('appels-offre/mes/',views.mes_appels_offre,name='mes_appels_offre'),
+
+    # Adjuger une offre
+    path('appels-offre/<uuid:pk>/adjuger/',views.adjuger_appel_offre,name='adjuger_appel_offre'),
+
+    # Annuler
+    path('appels-offre/<uuid:pk>/annuler/',views.annuler_appel_offre,name='annuler_appel_offre'),
+
+
+    # =========================================================================
+    # VENDEUR
+    # =========================================================================
+
+    # Soumettre une offre
+    path('appels-offre/<uuid:ao_pk>/soumettre/',views.soumettre_offre_vendeur,name='soumettre_offre_vendeur'),
+
+    # Modifier son offre
+    path('offres/<int:offre_pk>/modifier/',views.modifier_offre_vendeur,name='modifier_offre_vendeur'),
+
+    # Retirer son offre
+    path('offres/<int:offre_pk>/retirer/',views.retirer_offre_vendeur,name='retirer_offre_vendeur'),
+
+    # Mes offres
+    path('offres/mes/',views.mes_offres_vendeur,name='mes_offres_vendeur'),
+
+    # =========================================================================
+    # ADMIN
+    # =========================================================================
+
+    # Administration des appels d'offre
+    path('admin/appels-offre/',views.admin_appels_offre_liste,name='admin_appels_offre_liste'),
+
  
     
 ]

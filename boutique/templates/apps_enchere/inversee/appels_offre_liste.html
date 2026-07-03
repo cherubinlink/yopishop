@@ -1,0 +1,689 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- ========================================================= -->
+    <!-- BREADCRUMB -->
+    <!-- ========================================================= -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb"
+            style="background:none;padding:0;margin:0;font-size:.78rem;">
+            <li class="breadcrumb-item">
+                <a href="{% url 'apps_core:accueil' %}"
+                   style="color:var(--saffron);text-decoration:none">
+                    Accueil
+                </a>
+            </li>
+
+            <li class="breadcrumb-item active"
+                style="color:var(--muted)">
+                Appels d'offre
+            </li>
+        </ol>
+    </nav>
+
+    <!-- ========================================================= -->
+    <!-- HEADER -->
+    <!-- ========================================================= -->
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+
+        <div>
+
+            <h1
+                style="
+                font-family:var(--fm);
+                font-size:1.7rem;
+                font-weight:800;
+                background:var(--grad-a);
+                -webkit-background-clip:text;
+                background-clip:text;
+                -webkit-text-fill-color:transparent;
+                margin:0;
+            ">
+                <i class="bi bi-megaphone-fill"></i>
+                Appels d'offre
+            </h1>
+
+            <p
+                style="
+                color:var(--muted);
+                font-size:.82rem;
+                margin-top:.35rem;
+            ">
+                {{ nb_resultats }} appel{{ nb_resultats|pluralize }}
+                disponible{{ nb_resultats|pluralize }}
+            </p>
+
+        </div>
+
+        {% if user.is_authenticated %}
+        <a href="{% url 'apps_enchere:creer_appel_offre' %}"
+           class="btn-gold">
+
+            <i class="bi bi-plus-circle"></i>
+
+            Publier un appel d'offre
+
+        </a>
+        {% endif %}
+
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- FILTRES -->
+    <!-- ========================================================= -->
+
+    <form method="get"
+          class="ycard p-4 mb-4"
+          style="
+            background:var(--card);
+            border:1px solid var(--border);
+            border-radius:var(--r);
+          ">
+
+        <div class="row g-3">
+
+            <!-- Recherche -->
+
+            <div class="col-lg-5">
+
+                <label class="form-label fw-semibold">
+
+                    Recherche
+
+                </label>
+
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ q }}"
+                    class="form-control"
+                    placeholder="Titre ou description">
+
+            </div>
+
+            <!-- Catégorie -->
+
+            <div class="col-lg-3">
+
+                <label class="form-label fw-semibold">
+
+                    Catégorie
+
+                </label>
+
+                <select
+                    name="categorie"
+                    class="form-select">
+
+                    <option value="">Toutes les catégories</option>
+
+                    {% for cat in categories %}
+
+                    <option
+                        value="{{ cat.id }}"
+                        {% if categorie_id == cat.id|stringformat:"s" %}selected{% endif %}>
+
+                        {{ cat.nom }}
+
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+            <!-- Type -->
+
+            <div class="col-lg-2">
+
+                <label class="form-label fw-semibold">
+
+                    Type
+
+                </label>
+
+                <select
+                    name="b2b"
+                    class="form-select">
+
+                    <option value="">Tous</option>
+
+                    <option value="1"
+                        {% if b2b == "1" %}selected{% endif %}>
+
+                        B2B
+
+                    </option>
+
+                    <option value="0"
+                        {% if b2b == "0" %}selected{% endif %}>
+
+                        B2C
+
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- Bouton -->
+
+            <div class="col-lg-2 d-flex align-items-end">
+
+                <button
+                    class="btn-gold w-100"
+                    type="submit">
+
+                    <i class="bi bi-search"></i>
+
+                    Rechercher
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </form>
+
+    <!-- ========================================================= -->
+    <!-- RÉSULTATS -->
+    <!-- ========================================================= -->
+
+    {% if appels_offre %}
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+
+        <div
+            style="
+            font-size:.85rem;
+            color:var(--muted);
+        ">
+
+            <strong style="color:var(--saffron)">
+                {{ nb_resultats }}
+            </strong>
+
+            résultat{{ nb_resultats|pluralize }}
+
+        </div>
+
+        <div
+            style="
+            font-size:.75rem;
+            color:var(--muted);
+        ">
+
+            Les appels d'offre sont classés par date limite.
+
+        </div>
+
+    </div>
+
+    <div class="row g-4">{% for appel in appels_offre %}
+
+<div class="col-12">
+
+    <div class="ycard h-100"
+         style="
+            background:var(--card);
+            border:1px solid var(--border);
+            border-radius:var(--r);
+            overflow:hidden;
+            transition:.25s;
+         ">
+
+        <!-- ====================================== -->
+        <!-- HEADER -->
+        <!-- ====================================== -->
+
+        <div class="px-4 py-3"
+             style="
+                border-bottom:1px solid var(--border);
+                background:var(--surface);
+             ">
+
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+
+                <div>
+
+                    <h5 style="
+                        margin:0;
+                        font-weight:700;
+                        color:var(--text);
+                        font-size:1.05rem;
+                    ">
+
+                        {{ appel.titre }}
+
+                    </h5>
+
+                    <div
+                        style="
+                            margin-top:.45rem;
+                            font-size:.78rem;
+                            color:var(--muted);
+                        ">
+
+                        <i class="bi bi-person-circle me-1"></i>
+
+                        {{ appel.acheteur.username }}
+
+                        &nbsp;&nbsp;
+
+                        <i class="bi bi-calendar3 me-1"></i>
+
+                        {{ appel.date_creation|date:"d M Y H:i" }}
+
+                    </div>
+
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap">
+
+                    {% if appel.est_b2b %}
+                    <span class="chip"
+                          style="
+                            background:rgba(59,130,246,.12);
+                            color:#3b82f6;
+                          ">
+
+                        <i class="bi bi-building"></i>
+
+                        B2B
+
+                    </span>
+
+                    {% else %}
+
+                    <span class="chip"
+                          style="
+                            background:rgba(16,185,129,.12);
+                            color:var(--jade);
+                          ">
+
+                        <i class="bi bi-person"></i>
+
+                        B2C
+
+                    </span>
+
+                    {% endif %}
+
+                    <span class="chip"
+                          style="
+                          background:
+                          {% if appel.statut == 'ouvert' %}
+                          rgba(16,185,129,.12)
+                          {% else %}
+                          rgba(239,68,68,.12)
+                          {% endif %};
+
+                          color:
+                          {% if appel.statut == 'ouvert' %}
+                          var(--jade)
+                          {% else %}
+                          var(--ember)
+                          {% endif %};
+                          ">
+
+                        {{ appel.get_statut_display }}
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ====================================== -->
+        <!-- BODY -->
+        <!-- ====================================== -->
+
+        <div class="p-4">
+
+            <div
+                style="
+                    color:var(--text-2);
+                    line-height:1.7;
+                    font-size:.87rem;
+                ">
+
+                {{ appel.description|truncatechars:240 }}
+
+            </div>
+
+            <div class="row mt-4 g-3">
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div class="chip w-100 justify-content-center"
+                         style="
+                            padding:.75rem;
+                            background:rgba(246,169,43,.10);
+                            color:var(--saffron);
+                         ">
+
+                        <i class="bi bi-cash-stack me-2"></i>
+
+                        {{ appel.budget_max|floatformat:0 }} FCFA
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div class="chip w-100 justify-content-center"
+                         style="
+                            padding:.75rem;
+                            background:var(--surface);
+                         ">
+
+                        <i class="bi bi-box-seam me-2"></i>
+
+                        {{ appel.quantite }} unité{{ appel.quantite|pluralize }}
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div class="chip w-100 justify-content-center"
+                         style="
+                            padding:.75rem;
+                            background:var(--surface);
+                         ">
+
+                        <i class="bi bi-tag me-2"></i>
+
+                        {{ appel.categorie.nom }}
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div class="chip w-100 justify-content-center"
+                         style="
+                            padding:.75rem;
+                            background:rgba(99,102,241,.12);
+                            color:var(--indigo);
+                         ">
+
+                        <i class="bi bi-people me-2"></i>
+
+                        {{ appel.nb_offres }} offre{{ appel.nb_offres|pluralize }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- =========================== -->
+            <!-- DATE LIMITE -->
+            <!-- =========================== -->
+
+            <div
+                class="mt-4"
+                style="
+                    border-top:1px solid var(--border);
+                    padding-top:1rem;
+                ">
+
+                <div class="row align-items-center">
+
+                    <div class="col-lg-8">
+
+                        <div
+                            style="
+                                font-size:.83rem;
+                                color:var(--muted);
+                            ">
+
+                            <i class="bi bi-alarm"></i>
+
+                            Clôture le
+
+                            <strong style="color:var(--text)">
+
+                                {{ appel.date_limite|date:"d M Y à H:i" }}
+
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+
+                        <a href="{% url 'apps_enchere:appel_offre_detail' appel.pk %}"
+                           class="btn-gold">
+
+                            <i class="bi bi-eye"></i>
+
+                            Voir le détail
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+</div>    <!-- ========================================================= -->
+    <!-- PAGINATION -->
+    <!-- ========================================================= -->
+
+    {% if appels_offre.has_other_pages %}
+    <div class="d-flex justify-content-center mt-5">
+
+        <nav>
+
+            <ul class="pagination">
+
+                {% if appels_offre.has_previous %}
+
+                <li class="page-item">
+
+                    <a class="page-link"
+                       href="?page={{ appels_offre.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if categorie_id %}&categorie={{ categorie_id }}{% endif %}{% if b2b %}&b2b={{ b2b }}{% endif %}">
+
+                        <i class="bi bi-chevron-left"></i>
+
+                    </a>
+
+                </li>
+
+                {% endif %}
+
+
+                {% for page in appels_offre.paginator.page_range %}
+
+                    {% if page == appels_offre.number %}
+
+                        <li class="page-item active">
+
+                            <span class="page-link">
+
+                                {{ page }}
+
+                            </span>
+
+                        </li>
+
+                    {% elif page >= appels_offre.number|add:'-2' and page <= appels_offre.number|add:'2' %}
+
+                        <li class="page-item">
+
+                            <a class="page-link"
+                               href="?page={{ page }}{% if q %}&q={{ q }}{% endif %}{% if categorie_id %}&categorie={{ categorie_id }}{% endif %}{% if b2b %}&b2b={{ b2b }}{% endif %}">
+
+                                {{ page }}
+
+                            </a>
+
+                        </li>
+
+                    {% endif %}
+
+                {% endfor %}
+
+
+                {% if appels_offre.has_next %}
+
+                <li class="page-item">
+
+                    <a class="page-link"
+                       href="?page={{ appels_offre.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if categorie_id %}&categorie={{ categorie_id }}{% endif %}{% if b2b %}&b2b={{ b2b }}{% endif %}">
+
+                        <i class="bi bi-chevron-right"></i>
+
+                    </a>
+
+                </li>
+
+                {% endif %}
+
+            </ul>
+
+        </nav>
+
+    </div>
+
+    {% endif %}
+
+
+    {% else %}
+
+    <!-- ========================================================= -->
+    <!-- AUCUN RESULTAT -->
+    <!-- ========================================================= -->
+
+    <div class="ycard text-center py-5 px-4"
+         style="
+            background:var(--card);
+            border:1px solid var(--border);
+            border-radius:var(--r);
+         ">
+
+        <div
+            style="
+                width:90px;
+                height:90px;
+                margin:auto;
+                border-radius:50%;
+                background:rgba(246,169,43,.12);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+            ">
+
+            <i class="bi bi-search"
+               style="
+                    font-size:2.2rem;
+                    color:var(--saffron);
+               ">
+            </i>
+
+        </div>
+
+        <h3
+            style="
+                margin-top:1.5rem;
+                font-weight:700;
+                color:var(--text);
+            ">
+
+            Aucun appel d'offre trouvé
+
+        </h3>
+
+        <p
+            style="
+                color:var(--muted);
+                margin-top:.6rem;
+                max-width:550px;
+                margin-left:auto;
+                margin-right:auto;
+            ">
+
+            Aucun appel d'offre ne correspond à vos critères de recherche.
+            Essayez de modifier les filtres ou revenez plus tard.
+
+        </p>
+
+        <div class="mt-4">
+
+            <a href="{% url 'apps_enchere:appels_offre_liste' %}"
+               class="btn-gold">
+
+                <i class="bi bi-arrow-clockwise"></i>
+
+                Réinitialiser les filtres
+
+            </a>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+<style>
+
+.pagination .page-link{
+
+    background:var(--card);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:10px;
+    margin:0 3px;
+    min-width:42px;
+    text-align:center;
+    transition:.25s;
+
+}
+
+.pagination .page-link:hover{
+
+    background:rgba(246,169,43,.15);
+    color:var(--saffron);
+    border-color:var(--saffron);
+
+}
+
+.pagination .active .page-link{
+
+    background:var(--grad-a);
+    border-color:var(--saffron);
+    color:#111827;
+    font-weight:700;
+
+}
+
+</style>
+
+{% endblock %}

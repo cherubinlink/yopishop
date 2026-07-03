@@ -1,0 +1,206 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Mes offres soumises — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_enchere:appels_offre_liste' %}" class="cpill">
+          <i class="bi bi-arrow-left me-1"></i>Appels d'offre
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+          <i class="bi bi-send me-1" style="color:var(--saffron)"></i>Mes offres soumises
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtres statut -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_enchere:mes_offres_vendeur' %}" class="cpill {% if not statut %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Toutes
+      </a>
+      <a href="?statut=en_attente"  class="cpill {% if statut == 'en_attente' %}on{% endif %}">
+        <i class="bi bi-hourglass-split"></i>En attente
+      </a>
+      <a href="?statut=retenue" class="cpill {% if statut == 'retenue' %}on{% endif %}" style="{% if statut == 'retenue' %}color:var(--jade){% endif %}">
+        <i class="bi bi-trophy"></i>Retenues
+      </a>
+      <a href="?statut=rejetee" class="cpill {% if statut == 'rejetee' %}on{% endif %}" style="{% if statut == 'rejetee' %}color:var(--ember){% endif %}">
+        <i class="bi bi-x-circle"></i>Rejetées
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys bg-surface">
+  <div class="container">
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4 fi">
+      <div class="col-4">
+        <div class="ycard p-3 text-center" style="border:1px solid var(--border)">
+          <div style="font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--text)">{{ stats.total }}</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Total</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="ycard p-3 text-center" style="border:1px solid rgba(16,185,129,.3)">
+          <div style="font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--jade)">{{ stats.retenues }}</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Retenues</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="ycard p-3 text-center" style="border:1px solid rgba(246,169,43,.3)">
+          <div style="font-family:var(--fm);font-size:.95rem;font-weight:900;color:var(--saffron)">{{ stats.montant_retenu|floatformat:0 }}</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">FCFA retenus</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">📨 Vendeur</div>
+        <h2 class="sec-title">Mes <span class="ac">offres soumises</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ offres.paginator.count }} offre{{ offres.paginator.count|pluralize }}</span>
+    </div>
+
+    {% if offres %}
+    <div class="d-flex flex-column gap-3">
+      {% for offre in offres %}
+      <div class="ycard fi" style="border:1px solid {% if offre.est_retenue %}rgba(16,185,129,.3){% elif offre.statut == 'rejetee' %}rgba(239,68,68,.2){% else %}var(--border){% endif %}">
+        <div class="row align-items-center gy-3">
+
+          <!-- Icône statut -->
+          <div class="col-auto">
+            <div style="width:48px;height:48px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+                        background:{% if offre.est_retenue %}rgba(16,185,129,.12){% elif offre.statut == 'rejetee' %}var(--ember-d){% else %}var(--surface){% endif %};
+                        border:1px solid {% if offre.est_retenue %}rgba(16,185,129,.3){% elif offre.statut == 'rejetee' %}rgba(239,68,68,.2){% else %}var(--border){% endif %}">
+              {% if offre.est_retenue %}
+              <i class="bi bi-trophy-fill" style="color:var(--jade);font-size:1.2rem"></i>
+              {% elif offre.statut == 'rejetee' %}
+              <i class="bi bi-x-circle-fill" style="color:var(--ember);font-size:1.2rem"></i>
+              {% else %}
+              <i class="bi bi-send" style="color:var(--muted);font-size:1.1rem"></i>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Infos AO -->
+          <div class="col">
+            <a href="{% url 'apps_enchere:appel_offre_detail' offre.appel_offre.pk %}"
+               style="text-decoration:none">
+              <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.15rem">
+                {{ offre.appel_offre.titre }}
+              </div>
+            </a>
+            <div style="font-size:.72rem;color:var(--muted)">
+              <i class="bi bi-person me-1"></i>{{ offre.appel_offre.acheteur.get_full_name|default:offre.appel_offre.acheteur.username }}
+              &nbsp;·&nbsp;
+              <i class="bi bi-clock me-1"></i>Soumis le {{ offre.date_soumission|date:"d M Y" }}
+              {% if offre.delai_livraison %}
+              &nbsp;·&nbsp;<i class="bi bi-truck me-1"></i>{{ offre.delai_livraison }}j
+              {% endif %}
+            </div>
+            <!-- Statut AO -->
+            <div class="d-flex gap-2 mt-1 flex-wrap">
+              <span class="chip" style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);font-size:.65rem">
+                AO : {{ offre.appel_offre.get_statut_display }}
+              </span>
+              {% if offre.est_retenue %}
+              <span class="chip chip-jade" style="font-size:.65rem">
+                <i class="bi bi-trophy-fill me-1"></i>Mon offre a été retenue !
+              </span>
+              {% elif offre.statut == 'rejetee' %}
+              <span class="chip chip-ember" style="font-size:.65rem">
+                <i class="bi bi-x-circle me-1"></i>Offre rejetée
+              </span>
+              {% else %}
+              <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.65rem">
+                <i class="bi bi-hourglass-split me-1"></i>En attente de décision
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Montant -->
+          <div class="col-auto text-end">
+            <div style="font-size:.68rem;color:var(--muted)">Mon offre</div>
+            <div style="font-family:var(--fm);font-size:1.05rem;font-weight:900;color:{% if offre.est_retenue %}var(--jade){% else %}var(--saffron){% endif %}">
+              {{ offre.montant|floatformat:0 }} F
+            </div>
+            {% if offre.appel_offre.budget_max %}
+            <div style="font-size:.68rem;color:var(--muted)">
+              Budget : {{ offre.appel_offre.budget_max|floatformat:0 }} F
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Lien détail -->
+          <div class="col-auto">
+            <a href="{% url 'apps_enchere:appel_offre_detail' offre.appel_offre.pk %}"
+               class="btn-ghost" style="font-size:.75rem;padding:.3rem .65rem;width:auto">
+              <i class="bi bi-eye me-1"></i>Voir
+            </a>
+          </div>
+
+        </div>
+
+        <!-- Description offre -->
+        {% if offre.description %}
+        <div class="mt-2 pt-2" style="border-top:1px solid var(--border);font-size:.78rem;color:var(--text-2);line-height:1.55">
+          {{ offre.description|truncatechars:180 }}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if offres.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if offres.has_previous %}<li><a class="cpill" href="?page={{ offres.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+        {% for num in offres.paginator.page_range %}
+          {% if offres.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= offres.number and num|add:"2" >= offres.number %}<li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}">{{ num }}</a></li>{% endif %}
+        {% endfor %}
+        {% if offres.has_next %}<li><a class="cpill" href="?page={{ offres.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <i class="bi bi-send" style="font-size:3.5rem;color:var(--muted);display:block;margin-bottom:1.2rem"></i>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">
+        {% if statut %}Aucune offre dans cette catégorie{% else %}Vous n'avez encore soumis aucune offre{% endif %}
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+        Parcourez les appels d'offre disponibles et soumettez vos propositions.
+      </div>
+      <a href="{% url 'apps_appel_offre:appels_offre_liste' %}" class="btn-gold">
+        <i class="bi bi-search me-1"></i>Voir les appels d'offre
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

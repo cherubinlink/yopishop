@@ -1,0 +1,451 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.mao-wrap { padding: 2.5rem 0 4rem; min-height: 80vh; }
+
+/* ── Header ── */
+.mao-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: .75rem; margin-bottom: 1.5rem;
+}
+.mao-title {
+  font-family: var(--fg); font-size: 1.4rem; font-weight: 800; color: var(--text);
+}
+.mao-sub { font-size: .82rem; color: var(--muted); margin-top: .2rem; }
+
+.btn-creer-ao {
+  background: linear-gradient(90deg, var(--saffron), #f5b942);
+  color: #0A0B1A; border: none; border-radius: 10px;
+  padding: .55rem 1.2rem; font-size: .84rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: .45rem;
+  text-decoration: none; transition: opacity .2s;
+}
+.btn-creer-ao:hover { opacity: .9; color: #0A0B1A; }
+
+/* ── Stats ── */
+.mao-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+@media(max-width:575px){ .mao-stats { grid-template-columns: 1fr 1fr; } }
+.mao-stat {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem 1.1rem;
+}
+.mao-stat-n {
+  font-family: var(--fm); font-size: 1.5rem; font-weight: 800;
+  line-height: 1; margin-bottom: .2rem;
+}
+.mao-stat-l {
+  font-size: .68rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+
+/* ── Filtres ── */
+.mao-filters { display: flex; gap: .5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.mao-pill {
+  padding: .35rem .9rem; border-radius: 99px; font-size: .78rem;
+  font-weight: 600; border: 1.5px solid var(--border); color: var(--muted);
+  text-decoration: none; transition: all .2s;
+}
+.mao-pill.on, .mao-pill:hover {
+  border-color: var(--saffron); color: var(--saffron); background: var(--saffron-d);
+}
+
+/* ── Cards AO ── */
+.mao-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.2rem 1.4rem; margin-bottom: .85rem;
+  transition: border-color .2s, box-shadow .2s;
+}
+.mao-card:hover { border-color: rgba(247,183,49,.3); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+
+.mao-card-head {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: .75rem; flex-wrap: wrap;
+  margin-bottom: .75rem;
+}
+.mao-card-titre {
+  font-size: .95rem; font-weight: 700; color: var(--text);
+  text-decoration: none; display: block; margin-bottom: .2rem;
+}
+.mao-card-titre:hover { color: var(--saffron); }
+.mao-card-meta {
+  font-size: .76rem; color: var(--muted);
+  display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+}
+.mao-card-meta i { color: var(--saffron); font-size: .7rem; }
+
+/* ── Statut badge ── */
+.mao-statut {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .68rem; font-weight: 700; padding: .22rem .75rem;
+  border-radius: 99px; white-space: nowrap; flex-shrink: 0;
+}
+.ms-ouvert { background: var(--jade-d);    color: var(--jade);    border: 1px solid rgba(0,200,150,.25); }
+.ms-ferme  { background: var(--surface);   color: var(--muted);   border: 1px solid var(--border); }
+.ms-adjuge { background: var(--saffron-d); color: var(--saffron); border: 1px solid rgba(247,183,49,.25); }
+.ms-annule { background: var(--ember-d);   color: var(--ember);   border: 1px solid rgba(255,90,71,.25); }
+
+/* ── Progression offres ── */
+.mao-progress-bar {
+  height: 5px; background: var(--border); border-radius: 99px;
+  overflow: hidden; margin: .6rem 0 .3rem;
+}
+.mao-progress-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--jade), #00e0a8);
+  transition: width .6s ease;
+}
+
+/* ── Infos bas de card ── */
+.mao-card-foot {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding-top: .75rem; border-top: 1px solid var(--border);
+}
+.mao-kpi { text-align: center; }
+.mao-kpi-n {
+  font-family: var(--fm); font-size: 1rem; font-weight: 800;
+  color: var(--text); line-height: 1; margin-bottom: .1rem;
+}
+.mao-kpi-l { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+/* Meilleure offre highlight */
+.mao-best-offre {
+  display: flex; align-items: center; gap: .5rem;
+  background: var(--jade-d); border: 1px solid rgba(0,200,150,.2);
+  border-radius: 8px; padding: .35rem .75rem; margin-left: auto; flex-shrink: 0;
+}
+.mao-best-offre-val {
+  font-family: var(--fm); font-size: .9rem; font-weight: 800; color: var(--jade);
+}
+.mao-best-offre-lbl { font-size: .68rem; color: var(--muted); }
+
+/* Gagnant badge */
+.mao-gagnant {
+  display: flex; align-items: center; gap: .5rem;
+  background: var(--saffron-d); border: 1px solid rgba(247,183,49,.2);
+  border-radius: 8px; padding: .35rem .75rem; flex-shrink: 0;
+}
+.mao-gagnant-name { font-size: .82rem; font-weight: 700; color: var(--saffron); }
+
+/* ── Actions ── */
+.mao-actions { display: flex; gap: .4rem; margin-left: auto; flex-shrink: 0; }
+.mao-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: .35rem .75rem; font-size: .76rem;
+  color: var(--text-2); text-decoration: none; cursor: pointer;
+  transition: all .2s; display: inline-flex; align-items: center; gap: .3rem;
+}
+.mao-btn:hover { border-color: var(--saffron); color: var(--saffron); }
+.mao-btn-danger { color: var(--ember); border-color: rgba(255,90,71,.25); background: var(--ember-d); }
+.mao-btn-danger:hover { background: var(--ember); color: #fff; border-color: var(--ember); }
+
+/* ── Timer inline ── */
+.mao-timer {
+  font-family: var(--fm); font-size: .82rem; font-weight: 700;
+  color: var(--ember); display: flex; align-items: center; gap: .3rem;
+}
+
+/* ── Empty ── */
+.mao-empty {
+  text-align: center; padding: 4rem 1rem;
+  border: 1.5px dashed var(--border); border-radius: var(--r);
+}
+.mao-empty i { font-size: 2.8rem; color: var(--muted); opacity: .35; display: block; margin-bottom: 1rem; }
+
+/* ── Pagination ── */
+.yopi-pager { display: flex; justify-content: center; gap: .35rem; margin-top: 1.5rem; flex-wrap: wrap; }
+.yopi-pager a, .yopi-pager span {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 36px; padding: 0 .5rem; border-radius: 8px;
+  font-size: .8rem; font-weight: 600; text-decoration: none;
+  border: 1.5px solid var(--border); color: var(--muted); transition: all .2s;
+}
+.yopi-pager a:hover { border-color: var(--saffron); color: var(--saffron); background: var(--saffron-d); }
+.yopi-pager .current { background: var(--saffron); color: #0A0B1A; border-color: var(--saffron); }
+</style>
+
+<div class="mao-wrap">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-3 fi" aria-label="breadcrumb">
+      <div style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--muted);text-decoration:none">
+          <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <a href="{% url 'apps_enchere:appels_offre_liste' %}" style="color:var(--muted);text-decoration:none">
+          Appels d'offre
+        </a>
+        <i class="bi bi-chevron-right" style="font-size:.65rem;opacity:.5"></i>
+        <span style="color:var(--text)">Mes appels d'offre</span>
+      </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}{% for msg in messages %}
+    <div class="fi mb-3" style="background:{% if msg.tags == 'success' %}var(--jade-d){% else %}var(--ember-d){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,200,150,.25){% else %}rgba(255,90,71,.25){% endif %};border-radius:var(--r);padding:.85rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:{% if msg.tags == 'success' %}var(--jade){% else %}var(--ember){% endif %}">
+      <i class="bi {% if msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}"></i>
+      {{ msg }}
+      <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;opacity:.6">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+
+    <!-- Header -->
+    <div class="mao-header fi">
+      <div>
+        <div class="mao-title">
+          <i class="bi bi-megaphone-fill" style="color:var(--saffron)"></i>
+          Mes appels d'offre
+        </div>
+        <div class="mao-sub">
+          {{ appels_offre.paginator.count }} appel{{ appels_offre.paginator.count|pluralize }} d'offre
+        </div>
+      </div>
+      <a href="{% url 'apps_enchere:creer_appel_offre' %}" class="btn-creer-ao">
+        <i class="bi bi-plus-lg"></i> Publier un besoin
+      </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="mao-stats fi">
+      <div class="mao-stat">
+        <div class="mao-stat-n" style="color:var(--text)">{{ stats.total }}</div>
+        <div class="mao-stat-l">Total</div>
+      </div>
+      <div class="mao-stat">
+        <div class="mao-stat-n" style="color:var(--jade)">{{ stats.ouverts }}</div>
+        <div class="mao-stat-l">Ouverts</div>
+      </div>
+      <div class="mao-stat">
+        <div class="mao-stat-n" style="color:var(--saffron)">{{ stats.adjuges }}</div>
+        <div class="mao-stat-l">Adjugés</div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="mao-filters fi">
+      <a href="?" class="mao-pill {% if not statut %}on{% endif %}">Tous</a>
+      {% for val, lbl in statuts %}
+      <a href="?statut={{ val }}" class="mao-pill {% if statut == val %}on{% endif %}">
+        {{ lbl }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- Liste des AO -->
+    {% if appels_offre %}
+
+    {% for ao in appels_offre %}
+    <div class="mao-card fi">
+
+      <!-- En-tête de la card -->
+      <div class="mao-card-head">
+        <div style="flex:1;min-width:0">
+
+          <!-- Titre cliquable -->
+          <a href="{% url 'apps_enchere:appel_offre_detail' ao.pk %}" class="mao-card-titre">
+            {{ ao.titre }}
+          </a>
+
+          <!-- Méta infos -->
+          <div class="mao-card-meta">
+            <span><i class="bi bi-tag"></i> {{ ao.categorie.nom }}</span>
+            <span><i class="bi bi-boxes"></i> {{ ao.quantite }} unité{{ ao.quantite|pluralize }}</span>
+            <span><i class="bi bi-calendar3"></i> Expire {{ ao.date_limite|date:"d M Y" }}</span>
+            {% if ao.est_b2b %}
+            <span style="background:var(--indigo-d);color:var(--indigo);border:1px solid rgba(124,111,255,.25);font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:99px">
+              <i class="bi bi-building"></i> B2B
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Statut + timer -->
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0">
+          <span class="mao-statut ms-{{ ao.statut }}">
+            {% if ao.statut == 'ouvert' %}<i class="bi bi-circle-fill" style="font-size:.45rem"></i> Ouvert
+            {% elif ao.statut == 'ferme' %}<i class="bi bi-lock-fill"></i> Fermé
+            {% elif ao.statut == 'adjuge' %}<i class="bi bi-trophy-fill"></i> Adjugé
+            {% elif ao.statut == 'annule' %}<i class="bi bi-x-circle-fill"></i> Annulé
+            {% endif %}
+          </span>
+          {% if ao.statut == 'ouvert' %}
+          <div class="mao-timer">
+            <i class="bi bi-clock" style="font-size:.7rem"></i>
+            <span class="mao-timer-val" data-fin="{{ ao.date_limite|date:'c' }}">--:--:--</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Barre de progression des offres -->
+      {% if ao.statut == 'ouvert' and ao.nb_offres > 0 %}
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem">
+        <i class="bi bi-graph-up-arrow" style="color:var(--jade)"></i>
+        {{ ao.nb_offres }} offre{{ ao.nb_offres|pluralize }} reçue{{ ao.nb_offres|pluralize }}
+      </div>
+      {% endif %}
+
+      <!-- Pied de card : KPIs + actions -->
+      <div class="mao-card-foot">
+
+        <!-- Budget -->
+        <div class="mao-kpi">
+          <div class="mao-kpi-n" style="color:var(--saffron)">{{ ao.budget_max|floatformat:0 }} F</div>
+          <div class="mao-kpi-l">Budget max</div>
+        </div>
+
+        <div style="width:1px;height:28px;background:var(--border)"></div>
+
+        <!-- Nb offres -->
+        <div class="mao-kpi">
+          <div class="mao-kpi-n">{{ ao.nb_offres }}</div>
+          <div class="mao-kpi-l">Offre{{ ao.nb_offres|pluralize }}</div>
+        </div>
+
+        <div style="width:1px;height:28px;background:var(--border)"></div>
+
+        <!-- Date création -->
+        <div class="mao-kpi" style="display:none" data-show-desktop>
+          <div class="mao-kpi-n" style="font-family:var(--fd);font-size:.78rem">{{ ao.date_creation|date:"d M" }}</div>
+          <div class="mao-kpi-l">Publié</div>
+        </div>
+
+        <!-- Meilleure offre (si ouvert et offres) -->
+        {% if ao.statut == 'ouvert' and ao.nb_offres > 0 %}
+        <div class="mao-best-offre">
+          <div>
+            {% with meilleure=ao.offres_vendeurs.first %}
+            {% if meilleure %}
+            <div class="mao-best-offre-lbl">Meilleure offre</div>
+            <div class="mao-best-offre-val">{{ meilleure.montant|floatformat:0 }} FCFA</div>
+            {% endif %}
+            {% endwith %}
+          </div>
+          <i class="bi bi-trophy-fill" style="color:var(--jade);font-size:.85rem"></i>
+        </div>
+        {% endif %}
+
+        <!-- Offre gagnante (si adjugé) -->
+        {% if ao.statut == 'adjuge' and ao.offre_gagnante %}
+        <div class="mao-gagnant">
+          <i class="bi bi-patch-check-fill" style="color:var(--saffron)"></i>
+          <div>
+            <div class="mao-gagnant-name">{{ ao.offre_gagnante.vendeur.username }}</div>
+            <div style="font-size:.68rem;color:var(--muted)">{{ ao.offre_gagnante.montant|floatformat:0 }} FCFA</div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="mao-actions">
+          <a href="{% url 'apps_enchere:appel_offre_detail' ao.pk %}" class="mao-btn">
+            <i class="bi bi-eye"></i> Voir
+          </a>
+          {% if ao.statut == 'ouvert' %}
+          <form method="POST" action="{% url 'apps_enchere:annuler_appel_offre' ao.pk %}"
+                style="display:inline"
+                onsubmit="return confirm('Annuler définitivement cet appel d\'offre ?')">
+            {% csrf_token %}
+            <button type="submit" class="mao-btn mao-btn-danger">
+              <i class="bi bi-x-circle"></i>
+            </button>
+          </form>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if appels_offre.has_other_pages %}
+    <div class="yopi-pager">
+      {% if appels_offre.has_previous %}
+      <a href="?statut={{ statut }}&page={{ appels_offre.previous_page_number }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      {% endif %}
+
+      {% for num in appels_offre.paginator.page_range %}
+        {% if appels_offre.number == num %}
+        <span class="current">{{ num }}</span>
+        {% elif num > appels_offre.number|add:'-3' and num < appels_offre.number|add:'3' %}
+        <a href="?statut={{ statut }}&page={{ num }}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if appels_offre.has_next %}
+      <a href="?statut={{ statut }}&page={{ appels_offre.next_page_number }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- État vide -->
+    <div class="mao-empty fi">
+      <i class="bi bi-megaphone"></i>
+      <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.4rem">
+        {% if statut %}
+        Aucun appel d'offre avec ce statut
+        {% else %}
+        Vous n'avez pas encore publié d'appel d'offre
+        {% endif %}
+      </div>
+      <div style="font-size:.84rem;color:var(--muted);margin-bottom:1.25rem">
+        Publiez votre besoin et recevez des propositions de nos vendeurs.
+      </div>
+      <a href="{% url 'apps_enchere:creer_appel_offre' %}" class="btn-creer-ao" style="display:inline-flex">
+        <i class="bi bi-plus-lg"></i> Publier mon premier appel d'offre
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+
+/* ── Timers sur chaque AO ouvert ── */
+function fmt(ms){
+  if(ms <= 0) return 'Terminé';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor(ms % 3600000 / 60000);
+  const s = Math.floor(ms % 60000 / 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function majTimers(){
+  document.querySelectorAll('.mao-timer-val').forEach(el => {
+    const fin   = new Date(el.dataset.fin);
+    const reste = fin - new Date();
+    el.textContent   = fmt(reste);
+    el.style.color   = reste < 3600000 ? 'var(--ember)' : 'var(--text-2)';
+    el.parentElement.style.color = reste < 3600000 ? 'var(--ember)' : '';
+  });
+}
+setInterval(majTimers, 1000);
+majTimers();
+
+/* ── Fade-in au scroll ── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); }
+  });
+}, { threshold: .07 });
+document.querySelectorAll('.fi').forEach(el => io.observe(el));
+</script>
+{% endblock %}
+
+{% endblock %}
