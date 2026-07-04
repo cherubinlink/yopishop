@@ -36,9 +36,11 @@ from decimal import Decimal, InvalidOperation
  
 from .models import (
     Enchere, OffreEnchere, ConfigSmartBid, EnchereFlash, 
-    EnchereGroupe, ParticipantEnchereGroupe,AppelOffre, OffreVendeur
+    EnchereGroupe, ParticipantEnchereGroupe,AppelOffre, OffreVendeur,
+    SupportBattle, BattleAuction,
 )
 from apps_core.models import Produit, Categorie
+
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +157,15 @@ def encheres_liste(request):
 # VUE : Détail d'une enchère
 # ===========================================================================
  
+
 def enchere_detail(request, pk):
+    """
+    Page détail d'une enchère — tous types confondus.
+    Injecte automatiquement les configs spéciales dans le contexte :
+      - config_flash   si type == 'flash'
+      - config_groupe  si type == 'groupe'
+      - battle         si l'enchère est liée à un BattleAuction
+    """
     enchere = get_object_or_404(
         Enchere.objects.select_related(
             'produit', 'vendeur', 'gagnant',
@@ -164,15 +174,17 @@ def enchere_detail(request, pk):
         pk=pk
     )
  
+    # ── Vues ──────────────────────────────────────────────────────────────
     if not request.user.is_authenticated or request.user != enchere.vendeur:
         Enchere.objects.filter(pk=pk).update(nb_vues=enchere.nb_vues + 1)
  
+    # ── Offres ────────────────────────────────────────────────────────────
     offres_recentes = enchere.offres.select_related('encherisseur').order_by(
         '-montant', '-date_creation'
     )[:20]
  
-    meilleure_offre   = offres_recentes.first() if offres_recentes else None
-    je_suis_meilleur  = (
+    meilleure_offre  = offres_recentes.first() if offres_recentes else None
+    je_suis_meilleur = (
         request.user.is_authenticated and meilleure_offre and
         meilleure_offre.encherisseur == request.user
     )
@@ -181,13 +193,29 @@ def enchere_detail(request, pk):
     smart_bid_actif   = None
     user_a_like       = False
  
-    # ── Données Groupe ──
-    config_groupe          = getattr(enchere, 'config_groupe', None)
-    ma_participation_groupe = None
-    participants_groupe     = []
+    if request.user.is_authenticated:
+        ma_derniere_offre = enchere.offres.filter(
+            encherisseur=request.user
+        ).order_by('-montant').first()
+ 
+        # Smart Bid
+        try:
+            from .views import _get_smart_bid
+            smart_bid_actif = _get_smart_bid(request.user, enchere)
+        except Exception:
+            pass
+ 
+        user_a_like = request.session.get(f'enchere_like_{pk}', False)
+ 
+    offre_minimum = enchere.prix_actuel + enchere.increment_minimum
+ 
+    # ── Config Groupe ─────────────────────────────────────────────────────
+    config_groupe             = getattr(enchere, 'config_groupe', None)
+    ma_participation_groupe   = None
+    participants_groupe       = []
     nb_participants_confirmes = 0
-    quantite_restante       = None
-    progression_groupe      = 0
+    quantite_restante         = None
+    progression_groupe        = 0
  
     if config_groupe:
         participants_groupe = config_groupe.participants.select_related(
@@ -195,7 +223,7 @@ def enchere_detail(request, pk):
         ).order_by('-a_confirme', '-date_adhesion')
  
         nb_participants_confirmes = participants_groupe.filter(a_confirme=True).count()
-        quantite_reservee         = sum(
+        quantite_reservee = sum(
             p.quantite_souhaitee for p in participants_groupe.filter(a_confirme=True)
         )
         quantite_restante = max(0, config_groupe.quantite_totale - quantite_reservee)
@@ -211,25 +239,26 @@ def enchere_detail(request, pk):
                 utilisateur=request.user
             ).first()
  
-    if request.user.is_authenticated:
-        ma_derniere_offre = enchere.offres.filter(
-            encherisseur=request.user
-        ).order_by('-montant').first()
-        smart_bid_actif = _get_smart_bid(request.user, enchere)
-        user_a_like     = request.session.get(f'enchere_like_{pk}', False)
+    # ── Config Flash ──────────────────────────────────────────────────────
+    config_flash = getattr(enchere, 'config_flash', None)
  
-    offre_minimum = enchere.prix_actuel + enchere.increment_minimum
+    # ── Battle Auction ────────────────────────────────────────────────────
+    # get_battle_context retourne {} si l'enchère n'est pas dans une battle
+    # ou un dict complet avec battle, camp_actuel, adversaire, pct_a/b, etc.
+    battle_ctx = get_battle_context(enchere, request)
  
+    # ── Contexte final ────────────────────────────────────────────────────
     context = {
-        'enchere':             enchere,
-        'offres_recentes':     offres_recentes,
-        'meilleure_offre':     meilleure_offre,
-        'je_suis_meilleur':    je_suis_meilleur,
-        'ma_derniere_offre':   ma_derniere_offre,
-        'offre_minimum':       offre_minimum,
-        'est_active':          enchere.est_active(),
-        'smart_bid_actif':     smart_bid_actif,
-        'user_a_like':         user_a_like,
+        'enchere':            enchere,
+        'offres_recentes':    offres_recentes,
+        'meilleure_offre':    meilleure_offre,
+        'je_suis_meilleur':   je_suis_meilleur,
+        'ma_derniere_offre':  ma_derniere_offre,
+        'offre_minimum':      offre_minimum,
+        'est_active':         enchere.est_active(),
+        'smart_bid_actif':    smart_bid_actif,
+        'user_a_like':        user_a_like,
+ 
         # ── Groupe ──
         'config_groupe':             config_groupe,
         'participants_groupe':        participants_groupe,
@@ -237,8 +266,16 @@ def enchere_detail(request, pk):
         'nb_participants_confirmes':  nb_participants_confirmes,
         'quantite_restante':          quantite_restante,
         'progression_groupe':         progression_groupe,
-        'page_titre':                 enchere.titre,
+ 
+        # ── Flash ──
+        'config_flash': config_flash,
+ 
+        'page_titre': enchere.titre,
     }
+ 
+    # Fusion du contexte Battle (vide si pas de battle)
+    context.update(battle_ctx)
+ 
     return render(request, 'apps_enchere/enchere_detail.html', context)
  
  
@@ -2520,6 +2557,396 @@ def admin_appels_offre_liste(request):
         'statuts':      AppelOffre.STATUT_CHOICES,
         'page_titre':   'Gestion des appels d\'offre',
     })
+
+
+
+# =============================================================================
+# HELPER — Patch enchere_detail
+# =============================================================================
+ 
+def get_battle_context(enchere, request):
+    """
+    Retourne les données BattleAuction à injecter dans le contexte
+    de enchere_detail si l'enchère fait partie d'une battle.
+ 
+    Usage dans enchere_detail :
+        context.update(get_battle_context(enchere, request))
+    """
+    battle = None
+ 
+    # Chercher si l'enchère est camp A ou camp B
+    try:
+        battle = BattleAuction.objects.select_related(
+            'enchere_a', 'enchere_a__produit',
+            'enchere_b', 'enchere_b__produit',
+        ).get(Q(enchere_a=enchere) | Q(enchere_b=enchere))
+    except BattleAuction.DoesNotExist:
+        return {}
+ 
+    mon_camp    = None
+    a_supporte  = False
+    mon_support = None
+ 
+    if request.user.is_authenticated:
+        mon_support = SupportBattle.objects.filter(
+            battle=battle, utilisateur=request.user
+        ).first()
+        if mon_support:
+            mon_camp   = mon_support.camp
+            a_supporte = True
+ 
+    camp_actuel = 'a' if battle.enchere_a == enchere else 'b'
+    adversaire  = battle.enchere_b if camp_actuel == 'a' else battle.enchere_a
+ 
+    total_supporters = battle.nb_supporters_a + battle.nb_supporters_b
+    pct_a = round(battle.nb_supporters_a / total_supporters * 100) if total_supporters else 50
+    pct_b = 100 - pct_a
+ 
+    return {
+        'battle':          battle,
+        'camp_actuel':     camp_actuel,
+        'adversaire':      adversaire,
+        'mon_camp':        mon_camp,
+        'a_supporte':      a_supporte,
+        'mon_support':     mon_support,
+        'total_supporters': total_supporters,
+        'pct_a':           pct_a,
+        'pct_b':           pct_b,
+        'camp_gagnant':    battle.camp_gagnant(),
+    }
+
+
+# =============================================================================
+# PUBLIC
+# =============================================================================
+ 
+def battles_liste(request):
+    """Liste publique des battles actives et à venir."""
+    now = timezone.now()
+ 
+    qs = BattleAuction.objects.select_related(
+        'enchere_a', 'enchere_a__produit',
+        'enchere_b', 'enchere_b__produit',
+    ).filter(statut__in=['a_venir', 'en_cours']).order_by('date_fin')
+ 
+    q = request.GET.get('q', '')
+    if q:
+        qs = qs.filter(Q(titre__icontains=q) | Q(nom_camp_a__icontains=q) | Q(nom_camp_b__icontains=q))
+ 
+    # Battles terminées récentes (pour l'historique)
+    terminees = BattleAuction.objects.filter(
+        statut='termine'
+    ).select_related(
+        'enchere_a', 'enchere_a__produit',
+        'enchere_b', 'enchere_b__produit',
+    ).order_by('-date_fin')[:6]
+ 
+    paginator = Paginator(qs, 12)
+    battles   = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/battle/battles_liste.html', {
+        'battles':   battles,
+        'terminees': terminees,
+        'q':         q,
+        'nb_actives': qs.count(),
+        'page_titre': 'Battle Auctions ⚔️ — YopiShop',
+    })
+ 
+ 
+def battle_detail(request, pk):
+    battle = get_object_or_404(
+        BattleAuction.objects.select_related('enchere_a', 'enchere_b',
+                                              'enchere_a__produit', 'enchere_b__produit'),
+        pk=pk
+    )
+
+    # Récupérer le camp de l'utilisateur connecté
+    mon_camp       = None
+    mon_support    = None
+    if request.user.is_authenticated:
+        mon_support = SupportBattle.objects.filter(
+            battle=battle, utilisateur=request.user
+        ).first()
+        if mon_support:
+            mon_camp = mon_support.camp.upper()   # ← 'A' ou 'B' en majuscule pour le template
+
+    total  = battle.nb_supporters_a + battle.nb_supporters_b
+    pct_a  = round(battle.nb_supporters_a / total * 100) if total > 0 else 50
+    pct_b  = 100 - pct_a
+
+    # Offres récentes des deux camps pour le feed initial
+    from itertools import chain
+    offres_a = battle.enchere_a.offres.select_related('encherisseur').order_by('-date_creation')[:10]
+    offres_b = battle.enchere_b.offres.select_related('encherisseur').order_by('-date_creation')[:10]
+    offres_recentes = sorted(
+        chain(
+            [(o, 'A') for o in offres_a],
+            [(o, 'B') for o in offres_b],
+        ),
+        key=lambda x: x[0].date_creation, reverse=True
+    )[:20]
+
+    context = {
+        'battle':          battle,
+        'mon_camp':        mon_camp,       # ← 'A', 'B' ou None
+        'mon_support':     mon_support,
+        'pct_camp_a':      pct_a,
+        'pct_camp_b':      pct_b,
+        'offre_min_a':     battle.enchere_a.prix_actuel + battle.enchere_a.increment_minimum,
+        'offre_min_b':     battle.enchere_b.prix_actuel + battle.enchere_b.increment_minimum,
+        'offres_recentes': offres_recentes,
+        'page_titre':      battle.titre,
+    }
+    return render(request, 'apps_enchere/battle/battle_detail.html', context)
+
+
+@login_required
+@require_POST
+def ajax_choisir_camp(request, pk):
+    battle = get_object_or_404(BattleAuction, pk=pk)
+
+    if battle.statut != 'en_cours':
+        return JsonResponse({'success': False, 'message': 'Cette battle n\'est plus active.'}, status=400)
+
+    camp = request.POST.get('camp', '').lower()   # ← le modèle stocke 'a' ou 'b' en minuscule
+    if camp not in ('a', 'b'):
+        return JsonResponse({'success': False, 'message': 'Camp invalide.'}, status=400)
+
+    # Vérifier si déjà choisi
+    if SupportBattle.objects.filter(battle=battle, utilisateur=request.user).exists():
+        return JsonResponse({'success': False, 'message': 'Vous avez déjà choisi votre camp.'})
+
+    with transaction.atomic():
+        SupportBattle.objects.create(
+            battle=battle,
+            utilisateur=request.user,
+            camp=camp,
+        )
+        # Incrémenter le compteur
+        if camp == 'a':
+            BattleAuction.objects.filter(pk=battle.pk).update(
+                nb_supporters_a=battle.nb_supporters_a + 1
+            )
+        else:
+            BattleAuction.objects.filter(pk=battle.pk).update(
+                nb_supporters_b=battle.nb_supporters_b + 1
+            )
+
+    return JsonResponse({
+        'success':  True,
+        'camp':     camp,
+        'message':  f'Vous rejoignez le {battle.nom_camp_a if camp == "a" else battle.nom_camp_b} !',
+        'nb_camp_a': battle.nb_supporters_a + (1 if camp == 'a' else 0),
+        'nb_camp_b': battle.nb_supporters_b + (1 if camp == 'b' else 0),
+    })
+ 
+@require_GET
+def ajax_etat_battle(request, pk):
+    battle = get_object_or_404(
+        BattleAuction.objects.select_related('enchere_a', 'enchere_b'),
+        pk=pk
+    )
+
+    total = battle.nb_supporters_a + battle.nb_supporters_b
+    pct_a = round(battle.nb_supporters_a / total * 100) if total > 0 else 50
+    pct_b = 100 - pct_a
+
+    # Dernières offres des 2 enchères pour le feed
+    from .models import OffreEnchere
+    offres_a = OffreEnchere.objects.filter(enchere=battle.enchere_a).select_related('encherisseur').order_by('-date_creation')[:10]
+    offres_b = OffreEnchere.objects.filter(enchere=battle.enchere_b).select_related('encherisseur').order_by('-date_creation')[:10]
+
+    # Fusionner et trier par date
+    from itertools import chain
+    toutes = sorted(chain(
+        [{'username': o.encherisseur.username, 'montant': float(o.montant), 'camp': 'A', 'date': o.date_creation.strftime('%H:%M')} for o in offres_a],
+        [{'username': o.encherisseur.username, 'montant': float(o.montant), 'camp': 'B', 'date': o.date_creation.strftime('%H:%M')} for o in offres_b],
+    ), key=lambda x: x['date'], reverse=True)[:20]
+
+    return JsonResponse({
+        'statut':        battle.statut,
+        'prix_a':        float(battle.enchere_a.prix_actuel),
+        'prix_b':        float(battle.enchere_b.prix_actuel),
+        'nb_camp_a':     battle.nb_supporters_a,
+        'nb_camp_b':     battle.nb_supporters_b,
+        'nb_participants': total,
+        'pct_camp_a':    pct_a,
+        'pct_camp_b':    pct_b,
+        'offre_min_a':   float(battle.enchere_a.prix_actuel + battle.enchere_a.increment_minimum),
+        'offre_min_b':   float(battle.enchere_b.prix_actuel + battle.enchere_b.increment_minimum),
+        'feed':          list(toutes),
+    })
+
+# =============================================================================
+# ADMIN
+# =============================================================================
+ 
+@login_required
+def creer_battle(request):
+    """
+    Crée une Battle Auction en associant deux enchères existantes.
+    Les deux enchères doivent être actives (en_cours ou a_venir).
+    """
+    if not request.user.is_staff:
+        messages.error(request, "Accès réservé aux administrateurs.")
+        return redirect('apps_core:accueil')
+ 
+    # Enchères disponibles pour une battle
+    encheres_dispo = Enchere.objects.filter(
+        statut__in=['a_venir', 'en_cours'],
+        battle_camp_a__isnull=True,
+        battle_camp_b__isnull=True,
+    ).select_related('produit', 'vendeur').order_by('-date_creation')
+ 
+    if request.method == 'POST':
+        try:
+            titre       = request.POST.get('titre', '').strip()
+            description = request.POST.get('description', '').strip()
+            enc_a_pk    = request.POST.get('enchere_a')
+            enc_b_pk    = request.POST.get('enchere_b')
+            nom_a       = request.POST.get('nom_camp_a', 'Camp A').strip()
+            nom_b       = request.POST.get('nom_camp_b', 'Camp B').strip()
+            couleur_a   = request.POST.get('couleur_camp_a', '#0066FF').strip()
+            couleur_b   = request.POST.get('couleur_camp_b', '#FF3300').strip()
+ 
+            if not titre:
+                raise ValueError("Le titre est requis.")
+            if enc_a_pk == enc_b_pk:
+                raise ValueError("Les deux enchères doivent être différentes.")
+ 
+            enchere_a = get_object_or_404(Enchere, pk=enc_a_pk)
+            enchere_b = get_object_or_404(Enchere, pk=enc_b_pk)
+ 
+            # Vérifier qu'elles ne sont pas déjà dans une battle
+            if BattleAuction.objects.filter(Q(enchere_a=enchere_a) | Q(enchere_b=enchere_a)).exists():
+                raise ValueError(f"« {enchere_a.titre} » est déjà dans une battle.")
+            if BattleAuction.objects.filter(Q(enchere_a=enchere_b) | Q(enchere_b=enchere_b)).exists():
+                raise ValueError(f"« {enchere_b.titre} » est déjà dans une battle.")
+ 
+            # Date de fin = la plus proche des deux
+            date_fin = min(enchere_a.date_fin, enchere_b.date_fin)
+ 
+        except (ValueError, TypeError) as e:
+            messages.error(request, f"Erreur : {e}")
+            return redirect('apps_enchere:creer_battle')
+ 
+        battle = BattleAuction.objects.create(
+            titre=titre,
+            description=description,
+            enchere_a=enchere_a,
+            enchere_b=enchere_b,
+            nom_camp_a=nom_a,
+            nom_camp_b=nom_b,
+            couleur_camp_a=couleur_a,
+            couleur_camp_b=couleur_b,
+            date_debut=timezone.now(),
+            date_fin=date_fin,
+            statut='en_cours' if enchere_a.statut == 'en_cours' or enchere_b.statut == 'en_cours' else 'a_venir',
+        )
+ 
+        messages.success(request, f"Battle ⚔️ « {battle} » créée !")
+        return redirect('apps_enchere:battle_detail', pk=battle.pk)
+ 
+    return render(request, 'apps_enchere/battle/battle_form.html', {
+        'encheres_dispo': encheres_dispo,
+        'page_titre':     '⚔️ Créer une Battle Auction',
+    })
+ 
+ 
+@login_required
+@require_POST
+def admin_terminer_battle(request, pk):
+    """Clôture manuellement une battle."""
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'message': 'Non autorisé'}, status=403)
+ 
+    battle = get_object_or_404(BattleAuction, pk=pk)
+ 
+    if battle.statut == 'termine':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': 'Battle déjà terminée.'})
+        messages.warning(request, "Battle déjà terminée.")
+        return redirect('apps_enchere:admin_battles_liste')
+ 
+    battle.statut   = 'termine'
+    battle.date_fin = timezone.now()
+    battle.save()
+ 
+    # Terminer aussi les deux enchères sous-jacentes
+    for enc in [battle.enchere_a, battle.enchere_b]:
+        if enc.statut in ('en_cours', 'prolongee'):
+            enc.date_fin = timezone.now()
+            enc.save(update_fields=['date_fin'])
+            enc.terminer()
+ 
+    gagnant = battle.camp_gagnant()
+    gagnant_nom = battle.nom_camp_a if gagnant == 'a' else battle.nom_camp_b
+ 
+    # Notifier les supporters du camp gagnant
+    try:
+        from apps_core.views_notifications import creer_notification_masse
+        supporters_gagnants = [
+            s.utilisateur for s in battle.supports.filter(camp=gagnant).select_related('utilisateur')
+        ]
+        if supporters_gagnants:
+            creer_notification_masse(
+                utilisateurs_qs=supporters_gagnants,
+                type_notification='enchere',
+                titre=f"🏆 Votre camp a gagné la Battle !",
+                message=f"« {gagnant_nom} » a remporté la battle « {battle.titre} » !",
+                lien=f"/encheres/battle/{battle.pk}/",
+            )
+    except Exception:
+        pass
+ 
+    msg = f"Battle terminée. Gagnant : {gagnant_nom}."
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': msg, 'camp_gagnant': gagnant})
+    messages.success(request, msg)
+    return redirect('apps_enchere:admin_battles_liste')
+ 
+ 
+@login_required
+def admin_battles_liste(request):
+    """Vue admin de toutes les battles."""
+    if not request.user.is_staff:
+        messages.error(request, "Accès réservé aux administrateurs.")
+        return redirect('apps_core:accueil')
+ 
+    qs = BattleAuction.objects.select_related(
+        'enchere_a', 'enchere_a__produit',
+        'enchere_b', 'enchere_b__produit',
+    ).order_by('-date_creation')
+ 
+    statut = request.GET.get('statut', '')
+    if statut:
+        qs = qs.filter(statut=statut)
+ 
+    q = request.GET.get('q', '')
+    if q:
+        qs = qs.filter(Q(titre__icontains=q) | Q(nom_camp_a__icontains=q) | Q(nom_camp_b__icontains=q))
+ 
+    stats = {
+        'total':    BattleAuction.objects.count(),
+        'actives':  BattleAuction.objects.filter(statut='en_cours').count(),
+        'a_venir':  BattleAuction.objects.filter(statut='a_venir').count(),
+        'terminees': BattleAuction.objects.filter(statut='termine').count(),
+    }
+ 
+    paginator = Paginator(qs, 20)
+    battles   = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/battle/admin_battles_liste.html', {
+        'battles':    battles,
+        'stats':      stats,
+        'statut':     statut,
+        'q':          q,
+        'statuts':    BattleAuction.STATUT_CHOICES,
+        'page_titre': 'Gestion des Battle Auctions ⚔️',
+    })
+ 
+
+
  
  
  

@@ -285,6 +285,22 @@
                 Admin offre liste
               </a>
             </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_encheres:admin_battles_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-hammer" style="color:var(--jade);font-size:.9rem"></i>
+                Admin battle
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_encheres:admin_appels_offre_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-hammer" style="color:var(--jade);font-size:.9rem"></i>
+                Admin appel offre
+              </a>
+            </li>
             
             {% endif %}
             <li><hr class="dropdown-divider" style="border-color:var(--border)"></li>
@@ -348,6 +364,14 @@
               style="color:var(--text-2);font-size:.83rem">
               <i class="bi bi-hammer" style="color:var(--ember);font-size:.9rem"></i>
               Enchères en direct
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_encheres:battles_liste' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-hammer" style="color:var(--ember);font-size:.9rem"></i>
+              Battle
             </a>
           </li>
           <li>

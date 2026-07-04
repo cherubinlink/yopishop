@@ -1,0 +1,242 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Battles — YopiShop" }}{% endblock %}
+
+{% block content %}
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes battle-glow {
+  0%,100% { box-shadow: 0 0 12px rgba(246,169,43,.4); }
+  50%      { box-shadow: 0 0 28px rgba(246,169,43,.8); }
+}
+.battle-card:hover { transform: translateY(-3px); }
+.battle-card { transition: transform .2s, border-color .2s; }
+.vs-badge {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--saffron); color: #0A0B1A;
+  font-family: var(--fm); font-size: .8rem; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; animation: battle-glow 2s infinite;
+}
+.camp-bar {
+  height: 8px; border-radius: 4px; overflow: hidden;
+  background: var(--border); margin-top: .4rem;
+}
+.camp-bar-a { height: 100%; background: linear-gradient(90deg, var(--saffron), var(--ember)); border-radius: 4px; transition: width .5s ease; }
+.camp-bar-b { height: 100%; background: linear-gradient(90deg, var(--indigo), #4f46e5); border-radius: 4px; transition: width .5s ease; float: right; }
+</style>
+
+<!-- Hero -->
+<div style="background:linear-gradient(135deg,#0e1038 0%,#1a0e3a 50%,#0e2444 100%);padding:2.5rem 0 2rem;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 80% at 80% 30%,rgba(246,169,43,.15) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 10% 80%,rgba(99,102,241,.12) 0%,transparent 55%)"></div>
+  <div class="container" style="position:relative;z-index:1">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <div style="font-size:.75rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(246,169,43,.8);margin-bottom:.5rem">
+          <i class="bi bi-fire me-1"></i>Enchères Battle
+        </div>
+        <h1 style="font-family:var(--fm);font-size:clamp(1.8rem,4vw,2.6rem);font-weight:900;color:#fff;margin:0 0 .4rem">
+          ⚔️ <span style="background:linear-gradient(90deg,var(--saffron),var(--ember));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">Battles</span> en direct
+        </h1>
+        <p style="color:rgba(255,255,255,.5);font-size:.85rem;margin:0">
+          Deux produits s'affrontent · Choisissez votre camp · Gagnez des points
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtres -->
+<div class="cat-strip d-block" style="border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_enchere:battles_liste' %}" class="cpill {% if not statut %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Toutes
+      </a>
+      <a href="?statut=en_cours" class="cpill {% if statut == 'en_cours' %}on{% endif %}" style="{% if statut == 'en_cours' %}color:var(--jade){% endif %}">
+        <i class="bi bi-broadcast"></i>En direct
+      </a>
+      <a href="?statut=a_venir" class="cpill {% if statut == 'a_venir' %}on{% endif %}" style="{% if statut == 'a_venir' %}color:var(--indigo){% endif %}">
+        <i class="bi bi-clock"></i>À venir
+      </a>
+      <a href="?statut=terminee" class="cpill {% if statut == 'terminee' %}on{% endif %}">
+        <i class="bi bi-flag"></i>Terminées
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys bg-surface">
+  <div class="container">
+    <div class="sec-head fi">
+      <div>
+        <div class="eyebrow">⚔️ Live</div>
+        <h2 class="sec-title">Toutes les <span class="ac">battles</span></h2>
+      </div>
+      <span style="font-size:.82rem;color:var(--muted)">{{ battles.paginator.count }} battle{{ battles.paginator.count|pluralize }}</span>
+    </div>
+
+    {% if battles %}
+    <div class="row g-4">
+      {% for battle in battles %}
+      <div class="col-12 col-md-6 fi" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <a href="{% url 'apps_enchere:battle_detail' battle.pk %}"
+           class="ycard battle-card d-block text-decoration-none"
+           style="border:1px solid {% if battle.statut == 'en_cours' %}rgba(246,169,43,.35){% else %}var(--border){% endif %};overflow:hidden">
+
+          <!-- Statut badge -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            {% if battle.statut == 'en_cours' %}
+            <span style="background:var(--ember);color:#fff;font-size:.68rem;font-weight:700;padding:.2rem .65rem;border-radius:99px;display:flex;align-items:center;gap:.3rem">
+              <span style="width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite;display:inline-block"></span>LIVE
+            </span>
+            {% elif battle.statut == 'a_venir' %}
+            <span style="background:var(--indigo-d);color:var(--indigo);border:1px solid rgba(99,102,241,.3);font-size:.68rem;font-weight:700;padding:.2rem .65rem;border-radius:99px">
+              <i class="bi bi-clock me-1"></i>À venir
+            </span>
+            {% else %}
+            <span style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:.68rem;font-weight:700;padding:.2rem .65rem;border-radius:99px">
+              <i class="bi bi-flag me-1"></i>Terminée
+            </span>
+            {% endif %}
+            <span style="font-size:.7rem;color:var(--muted)">
+              <i class="bi bi-people me-1"></i>{{ battle.nb_participants }} participants
+            </span>
+          </div>
+
+          <!-- Les 2 camps -->
+          <div class="d-flex align-items-center gap-2">
+
+            <!-- Camp A -->
+            <div style="flex:1;text-align:center">
+              <div style="height:90px;border-radius:10px;overflow:hidden;background:var(--surface);border:1px solid var(--border);margin-bottom:.5rem">
+                {% if battle.enchere_a.produit.image_principale %}
+                <img src="{{ battle.enchere_a.produit.image_principale }}" alt="{{ battle.enchere_a.titre }}"
+                     style="width:100%;height:100%;object-fit:cover">
+                {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                  <i class="bi bi-hammer" style="font-size:1.5rem;color:var(--muted)"></i>
+                </div>
+                {% endif %}
+              </div>
+              <div style="font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{ battle.enchere_a.titre|truncatechars:22 }}
+              </div>
+              <div style="font-family:var(--fm);font-size:.95rem;font-weight:900;color:var(--saffron)">
+                {{ battle.enchere_a.prix_actuel|floatformat:0 }} F
+              </div>
+              <div style="font-size:.7rem;color:var(--muted)">
+                {{ battle.nb_camp_a }} enchérisseur{{ battle.nb_camp_a|pluralize }}
+              </div>
+            </div>
+
+            <!-- VS -->
+            <div class="vs-badge">VS</div>
+
+            <!-- Camp B -->
+            <div style="flex:1;text-align:center">
+              <div style="height:90px;border-radius:10px;overflow:hidden;background:var(--surface);border:1px solid var(--border);margin-bottom:.5rem">
+                {% if battle.enchere_b.produit.image_principale %}
+                <img src="{{ battle.enchere_b.produit.image_principale }}" alt="{{ battle.enchere_b.titre }}"
+                     style="width:100%;height:100%;object-fit:cover">
+                {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                  <i class="bi bi-hammer" style="font-size:1.5rem;color:var(--muted)"></i>
+                </div>
+                {% endif %}
+              </div>
+              <div style="font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{ battle.enchere_b.titre|truncatechars:22 }}
+              </div>
+              <div style="font-family:var(--fm);font-size:.95rem;font-weight:900;color:var(--indigo)">
+                {{ battle.enchere_b.prix_actuel|floatformat:0 }} F
+              </div>
+              <div style="font-size:.7rem;color:var(--muted)">
+                {{ battle.nb_camp_b }} enchérisseur{{ battle.nb_camp_b|pluralize }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Barre progression camps -->
+          {% if battle.nb_participants > 0 %}
+          <div style="margin-top:.85rem">
+            {% with pct_a=battle.pct_camp_a pct_b=battle.pct_camp_b %}
+            <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-bottom:.2rem">
+              <span style="color:var(--saffron);font-weight:700">{{ pct_a }}%</span>
+              <span style="color:var(--indigo);font-weight:700">{{ pct_b }}%</span>
+            </div>
+            <div style="height:6px;border-radius:3px;overflow:hidden;background:var(--border);display:flex">
+              <div style="width:{{ pct_a }}%;background:linear-gradient(90deg,var(--saffron),var(--ember));border-radius:3px 0 0 3px;transition:width .5s ease"></div>
+              <div style="width:{{ pct_b }}%;background:linear-gradient(90deg,var(--indigo),#4f46e5);border-radius:0 3px 3px 0;transition:width .5s ease;margin-left:auto"></div>
+            </div>
+            {% endwith %}
+          </div>
+          {% endif %}
+
+          <!-- Timer si en cours -->
+          {% if battle.statut == 'en_cours' %}
+          <div style="margin-top:.7rem;text-align:center">
+            <span class="compte-a-rebours" data-fin="{{ battle.date_fin|date:'c' }}"
+                  style="font-size:.75rem;color:var(--ember);font-weight:700"></span>
+          </div>
+          {% endif %}
+
+          <!-- Gagnant si terminée -->
+          {% if battle.statut == 'terminee' and battle.camp_gagnant %}
+          <div style="margin-top:.75rem;text-align:center;padding:.5rem;background:rgba(246,169,43,.08);border-radius:8px">
+            <i class="bi bi-trophy-fill me-1" style="color:var(--saffron)"></i>
+            <span style="font-size:.8rem;font-weight:700;color:var(--text)">
+              Camp {% if battle.camp_gagnant == 'A' %}{{ battle.enchere_a.titre|truncatechars:20 }}{% else %}{{ battle.enchere_b.titre|truncatechars:20 }}{% endif %} gagne !
+            </span>
+          </div>
+          {% endif %}
+
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if battles.has_other_pages %}
+    <nav class="mt-5 d-flex justify-content-center fi">
+      <ul class="pagination" style="gap:.4rem">
+        {% if battles.has_previous %}<li><a class="cpill" href="?page={{ battles.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+        {% for num in battles.paginator.page_range %}
+          {% if battles.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+          {% elif num|add:"-2" <= battles.number and num|add:"2" >= battles.number %}
+          <li><a class="cpill" href="?page={{ num }}{% if statut %}&statut={{ statut }}{% endif %}">{{ num }}</a></li>{% endif %}
+        {% endfor %}
+        {% if battles.has_next %}<li><a class="cpill" href="?page={{ battles.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 fi">
+      <span style="font-size:3.5rem;display:block;margin-bottom:1rem">⚔️</span>
+      <div style="font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Aucune battle disponible</div>
+      <div style="font-size:.82rem;color:var(--muted)">Les prochaines battles seront annoncées bientôt.</div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+function majRebours() {
+  document.querySelectorAll('.compte-a-rebours').forEach(el => {
+    const diff = Math.max(0, new Date(el.dataset.fin) - Date.now());
+    if (diff === 0) { el.textContent = 'Terminée'; el.style.color = 'var(--muted)'; return; }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    el.textContent = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+  });
+}
+majRebours(); setInterval(majRebours, 1000);
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

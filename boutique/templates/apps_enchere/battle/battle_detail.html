@@ -1,0 +1,685 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+@keyframes countdown-flash { 0%,100%{color:var(--ember)}50%{color:#fff} }
+@keyframes battle-glow {
+  0%,100% { box-shadow:0 0 0 0 rgba(246,169,43,0); }
+  50%     { box-shadow:0 0 20px 4px rgba(246,169,43,.25); }
+}
+
+.battle-card {
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;transition:border-color .2s;
+}
+.battle-camp {
+  padding:1.5rem;text-align:center;
+  transition:background .3s,transform .2s;
+}
+.battle-camp:hover { transform:translateY(-2px); }
+.battle-camp.leading {
+  background:rgba(16,185,129,.06);
+  border-bottom:3px solid var(--jade);
+  animation:battle-glow 3s infinite;
+}
+.battle-price {
+  font-family:var(--fm);font-size:1.6rem;font-weight:900;
+  background:var(--grad-a);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent;
+}
+.battle-votes {
+  font-family:var(--fm);font-size:1.1rem;font-weight:800;color:var(--text);
+}
+.vs-separator {
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--fm);font-size:2rem;font-weight:900;
+  color:var(--saffron);padding:1rem 0;
+}
+.battle-progress-track {
+  height:12px;background:var(--surface);border-radius:99px;
+  overflow:hidden;border:1px solid var(--border);
+}
+.battle-progress-a {
+  height:100%;border-radius:99px;
+  transition:width .8s cubic-bezier(.4,0,.2,1);
+}
+.battle-progress-b {
+  height:100%;border-radius:99px;
+  transition:width .8s cubic-bezier(.4,0,.2,1);
+  float:right;
+}
+.bid-btn {
+  width:100%;border:none;border-radius:12px;
+  padding:.85rem;font-size:.9rem;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:.55rem;
+  transition:opacity .2s,transform .2s;
+}
+.bid-btn:hover:not(:disabled) { opacity:.9;transform:translateY(-1px); }
+.bid-btn:disabled { opacity:.5;cursor:not-allowed; }
+
+.timer-bloc {
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:.5rem .8rem;text-align:center;min-width:56px;
+}
+.timer-val {
+  font-family:var(--fm);font-size:1.3rem;font-weight:900;
+  color:var(--text);line-height:1;
+}
+.timer-lbl { font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em; }
+.timer-bloc.urgent { border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08); }
+.timer-bloc.urgent .timer-val { animation:countdown-flash 1s infinite; }
+</style>
+
+<div class="container py-4">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'apps_enchere:encheres_liste' %}" style="color:var(--saffron);text-decoration:none">Enchères</a>
+      </li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Battle ⚔️</li>
+    </ol>
+  </nav>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
+      color:var(--text)">{{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── En-tête Battle ── -->
+  <div class="text-center mb-4">
+    <div class="d-inline-flex align-items-center gap-2 mb-2">
+      <span class="chip" style="font-size:.75rem;padding:.3rem .85rem;
+        background:{% if battle.statut == 'en_cours' %}rgba(16,185,129,.15){% elif battle.statut == 'termine' %}rgba(99,102,241,.15){% elif battle.statut == 'annule' %}rgba(239,68,68,.15){% else %}rgba(246,169,43,.15){% endif %};
+        color:{% if battle.statut == 'en_cours' %}var(--jade){% elif battle.statut == 'termine' %}var(--indigo){% elif battle.statut == 'annule' %}var(--ember){% else %}var(--saffron){% endif %}">
+        {% if battle.statut == 'en_cours' %}
+          <i class="bi bi-circle-fill me-1" style="font-size:.45rem;animation:pulse 1.5s infinite"></i>En cours
+        {% elif battle.statut == 'termine' %}
+          <i class="bi bi-check-circle-fill me-1"></i>Terminé
+        {% elif battle.statut == 'annule' %}
+          <i class="bi bi-x-circle-fill me-1"></i>Annulé
+        {% else %}
+          <i class="bi bi-clock me-1"></i>À venir
+        {% endif %}
+      </span>
+    </div>
+    <h1 style="font-family:var(--fm);font-size:clamp(1.5rem,4vw,2.2rem);font-weight:900;color:var(--text);margin:.3rem 0 .5rem">
+      {{ battle.titre }}
+    </h1>
+    {% if battle.description %}
+    <p style="font-size:.85rem;color:var(--muted);max-width:560px;margin:0 auto">{{ battle.description }}</p>
+    {% endif %}
+  </div>
+
+  <!-- ── Timer ── -->
+  {% if battle.statut == 'en_cours' or battle.statut == 'a_venir' %}
+  <div class="d-flex justify-content-center mb-4">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.5rem">
+      <div style="font-size:.72rem;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">
+        {% if battle.statut == 'a_venir' %}Début dans{% else %}Se termine dans{% endif %}
+      </div>
+      <div class="d-flex gap-2 justify-content-center" id="battleTimer"
+        data-fin="{{ battle.date_fin|date:'c' }}">
+        <div class="timer-bloc" id="tb-j"><div class="timer-val" id="tv-j">--</div><div class="timer-lbl">Jours</div></div>
+        <div class="timer-bloc" id="tb-h"><div class="timer-val" id="tv-h">--</div><div class="timer-lbl">Heures</div></div>
+        <div class="timer-bloc" id="tb-m"><div class="timer-val" id="tv-m">--</div><div class="timer-lbl">Min</div></div>
+        <div class="timer-bloc" id="tb-s"><div class="timer-val" id="tv-s">--</div><div class="timer-lbl">Sec</div></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Gagnant (si terminé) ── -->
+  {% if battle.statut == 'termine' and battle.camp_gagnant %}
+  <div class="text-center mb-4">
+    <div style="display:inline-block;background:rgba(246,169,43,.12);border:2px solid rgba(246,169,43,.35);border-radius:var(--r);padding:1rem 2rem">
+      <i class="bi bi-trophy-fill" style="font-size:2rem;color:var(--saffron);display:block;margin-bottom:.5rem"></i>
+      <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.2rem">Vainqueur</div>
+      <div style="font-size:1.2rem;font-weight:800;color:var(--saffron);font-family:var(--fm)">
+        {% if battle.camp_gagnant == 'A' %}{{ battle.nom_camp_a }}{% else %}{{ battle.nom_camp_b }}{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── ARÈNE : Les deux camps ── -->
+  <div class="row g-3 mb-4 align-items-stretch">
+
+    <!-- CAMP A -->
+    <div class="col-12 col-md-5">
+      <div class="battle-card h-100">
+        <div class="battle-camp {% if votes_a > votes_b %}leading{% endif %}"
+          style="border-top:4px solid {{ battle.couleur_camp_a }}">
+
+          <!-- Image produit A -->
+          <div style="width:100%;aspect-ratio:4/3;border-radius:var(--r);overflow:hidden;background:var(--surface);margin-bottom:1rem;position:relative">
+            {% if battle.enchere_a.produit.image_principale %}
+              <img src="{{ battle.enchere_a.produit.image_principale }}"
+                alt="{{ battle.enchere_a.titre }}"
+                style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-image" style="font-size:2.5rem;color:var(--muted)"></i>
+              </div>
+            {% endif %}
+            {% if votes_a > votes_b %}
+            <div style="position:absolute;top:.5rem;right:.5rem">
+              <span class="chip" style="font-size:.7rem;padding:.2rem .6rem;background:rgba(16,185,129,.9);color:#fff">
+                <i class="bi bi-crown-fill me-1"></i>En tête
+              </span>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Nom camp -->
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ battle.couleur_camp_a }};margin-bottom:.3rem">
+            {{ battle.nom_camp_a }}
+          </div>
+
+          <!-- Titre enchère -->
+          <div style="font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.5rem;line-height:1.3">
+            {{ battle.enchere_a.titre }}
+          </div>
+
+          <!-- Vendeur -->
+          <div style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem">
+            <i class="bi bi-shop me-1"></i>{{ battle.enchere_a.vendeur.boutique.nom|default:battle.enchere_a.vendeur.username }}
+          </div>
+
+          <!-- Prix actuel -->
+          <div class="battle-price mb-1" id="prixA">
+            {{ battle.enchere_a.prix_actuel|floatformat:0 }} FCFA
+          </div>
+          <div style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem">
+            Prix actuel &bull; départ {{ battle.enchere_a.prix_depart|floatformat:0 }} F
+          </div>
+
+          <!-- Votes -->
+          <div class="battle-votes mb-1" id="votesA">
+            {{ votes_a }}
+          </div>
+          <div style="font-size:.74rem;color:var(--muted);margin-bottom:1rem">
+            vote{{ votes_a|pluralize }} pour ce camp
+          </div>
+
+          <!-- Bouton enchérir sur A -->
+          {% if battle.statut == 'en_cours' %}
+            {% if request.user.is_authenticated %}
+              {% if request.user != battle.enchere_a.vendeur %}
+              <button class="bid-btn btn-encherer-battle"
+                id="btnBidA"
+                data-enchere="{{ battle.enchere_a.pk }}"
+                data-camp="A"
+                data-url="{% url 'apps_enchere:ajax_placer_offre' battle.enchere_a.pk %}"
+                data-min="{{ offre_min_a }}"
+                style="background:linear-gradient(135deg, {{ battle.couleur_camp_a }}, {{ battle.couleur_camp_a }}cc);color:#fff;margin-bottom:.5rem">
+                <i class="bi bi-hammer"></i>
+                Enchérir — min {{ offre_min_a|floatformat:0 }} F
+              </button>
+              {% endif %}
+            {% else %}
+            <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}"
+              class="bid-btn" style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);text-decoration:none">
+              <i class="bi bi-lock-fill"></i>Connectez-vous pour enchérir
+            </a>
+            {% endif %}
+          {% endif %}
+
+          <!-- Lien vers l'enchère -->
+          <a href="{% url 'apps_enchere:enchere_detail' battle.enchere_a.pk %}"
+            style="font-size:.76rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:.3rem">
+            <i class="bi bi-eye"></i>Voir l'enchère complète
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- VS -->
+    <div class="col-12 col-md-2 d-flex align-items-center justify-content-center">
+      <div class="vs-separator">⚔️</div>
+    </div>
+
+    <!-- CAMP B -->
+    <div class="col-12 col-md-5">
+      <div class="battle-card h-100">
+        <div class="battle-camp {% if votes_b > votes_a %}leading{% endif %}"
+          style="border-top:4px solid {{ battle.couleur_camp_b }}">
+
+          <!-- Image produit B -->
+          <div style="width:100%;aspect-ratio:4/3;border-radius:var(--r);overflow:hidden;background:var(--surface);margin-bottom:1rem;position:relative">
+            {% if battle.enchere_b.produit.image_principale %}
+              <img src="{{ battle.enchere_b.produit.image_principale }}"
+                alt="{{ battle.enchere_b.titre }}"
+                style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+              <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-image" style="font-size:2.5rem;color:var(--muted)"></i>
+              </div>
+            {% endif %}
+            {% if votes_b > votes_a %}
+            <div style="position:absolute;top:.5rem;right:.5rem">
+              <span class="chip" style="font-size:.7rem;padding:.2rem .6rem;background:rgba(16,185,129,.9);color:#fff">
+                <i class="bi bi-crown-fill me-1"></i>En tête
+              </span>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Nom camp -->
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ battle.couleur_camp_b }};margin-bottom:.3rem">
+            {{ battle.nom_camp_b }}
+          </div>
+
+          <!-- Titre enchère -->
+          <div style="font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.5rem;line-height:1.3">
+            {{ battle.enchere_b.titre }}
+          </div>
+
+          <!-- Vendeur -->
+          <div style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem">
+            <i class="bi bi-shop me-1"></i>{{ battle.enchere_b.vendeur.boutique.nom|default:battle.enchere_b.vendeur.username }}
+          </div>
+
+          <!-- Prix actuel -->
+          <div class="battle-price mb-1" id="prixB">
+            {{ battle.enchere_b.prix_actuel|floatformat:0 }} FCFA
+          </div>
+          <div style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem">
+            Prix actuel &bull; départ {{ battle.enchere_b.prix_depart|floatformat:0 }} F
+          </div>
+
+          <!-- Votes -->
+          <div class="battle-votes mb-1" id="votesB">
+            {{ votes_b }}
+          </div>
+          <div style="font-size:.74rem;color:var(--muted);margin-bottom:1rem">
+            vote{{ votes_b|pluralize }} pour ce camp
+          </div>
+
+          <!-- Bouton enchérir sur B -->
+          {% if battle.statut == 'en_cours' %}
+            {% if request.user.is_authenticated %}
+              {% if request.user != battle.enchere_b.vendeur %}
+              <button class="bid-btn btn-encherer-battle"
+                id="btnBidB"
+                data-enchere="{{ battle.enchere_b.pk }}"
+                data-camp="B"
+                data-url="{% url 'apps_enchere:ajax_placer_offre' battle.enchere_b.pk %}"
+                data-min="{{ offre_min_b }}"
+                style="background:linear-gradient(135deg, {{ battle.couleur_camp_b }}, {{ battle.couleur_camp_b }}cc);color:#fff;margin-bottom:.5rem">
+                <i class="bi bi-hammer"></i>
+                Enchérir — min {{ offre_min_b|floatformat:0 }} F
+              </button>
+              {% endif %}
+            {% else %}
+            <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}"
+              class="bid-btn" style="background:var(--surface);color:var(--text-2);border:1px solid var(--border);text-decoration:none">
+              <i class="bi bi-lock-fill"></i>Connectez-vous pour enchérir
+            </a>
+            {% endif %}
+          {% endif %}
+
+          <!-- Lien vers l'enchère -->
+          <a href="{% url 'apps_enchere:enchere_detail' battle.enchere_b.pk %}"
+            style="font-size:.76rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:.3rem">
+            <i class="bi bi-eye"></i>Voir l'enchère complète
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Barre de progression globale ── -->
+  <div class="ycard p-4 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span style="font-size:.8rem;font-weight:700;color:{{ battle.couleur_camp_a }}">
+        {{ battle.nom_camp_a }}
+        <span id="pctA" style="font-weight:400;color:var(--muted)">
+          {% if votes_total > 0 %}({% widthratio votes_a votes_total 100 %}%){% endif %}
+        </span>
+      </span>
+      <span style="font-size:.76rem;color:var(--muted)" id="totalVotes">
+        {{ votes_total }} vote{{ votes_total|pluralize }} au total
+      </span>
+      <span style="font-size:.8rem;font-weight:700;color:{{ battle.couleur_camp_b }}">
+        <span id="pctB" style="font-weight:400;color:var(--muted)">
+          {% if votes_total > 0 %}({% widthratio votes_b votes_total 100 %}%){% endif %}
+        </span>
+        {{ battle.nom_camp_b }}
+      </span>
+    </div>
+
+    {% if votes_total > 0 %}
+    {% widthratio votes_a votes_total 100 as pct_a %}
+    {% widthratio votes_b votes_total 100 as pct_b %}
+    <div class="battle-progress-track" style="display:flex;overflow:hidden;border-radius:99px">
+      <div style="width:{{ pct_a }}%;height:12px;background:{{ battle.couleur_camp_a }};transition:width .8s" id="progressA"></div>
+      <div style="width:{{ pct_b }}%;height:12px;background:{{ battle.couleur_camp_b }};transition:width .8s;margin-left:auto" id="progressB"></div>
+    </div>
+    {% else %}
+    <div class="battle-progress-track">
+      <div style="width:50%;height:12px;background:linear-gradient(90deg,{{ battle.couleur_camp_a }},{{ battle.couleur_camp_b }});opacity:.3"></div>
+    </div>
+    <div style="font-size:.76rem;color:var(--muted);text-align:center;margin-top:.4rem">Aucun vote pour l'instant — soyez le premier !</div>
+    {% endif %}
+  </div>
+
+  <!-- ── Dernières offres ── -->
+  <div class="row g-3 mb-4">
+
+    <!-- Offres Camp A -->
+    <div class="col-12 col-md-6">
+      <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-left:3px solid {{ battle.couleur_camp_a }};border-radius:var(--r);overflow:hidden">
+        <div class="px-4 py-3" style="border-bottom:1px solid var(--border);background:var(--surface)">
+          <div style="font-size:.85rem;font-weight:700;color:var(--text)">
+            <span style="color:{{ battle.couleur_camp_a }}">{{ battle.nom_camp_a }}</span>
+            — Dernières offres
+          </div>
+        </div>
+        <div id="offresA" style="padding:.5rem 0;max-height:220px;overflow-y:auto">
+          {% if offres_a %}
+            {% for offre in offres_a %}
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 1.1rem;border-bottom:1px solid var(--border)">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+                {{ offre.encherisseur.username|first|upper }}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.78rem;font-weight:600;color:var(--text)">{{ offre.encherisseur.username }}</div>
+                <div style="font-size:.68rem;color:var(--muted)">{{ offre.date_creation|timesince }} ago</div>
+              </div>
+              <div style="font-size:.82rem;font-weight:800;color:var(--saffron);font-family:var(--fm)">{{ offre.montant|floatformat:0 }} F</div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">
+            <i class="bi bi-hammer" style="display:block;font-size:1.5rem;margin-bottom:.4rem;opacity:.4"></i>
+            Aucune offre encore
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Offres Camp B -->
+    <div class="col-12 col-md-6">
+      <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-left:3px solid {{ battle.couleur_camp_b }};border-radius:var(--r);overflow:hidden">
+        <div class="px-4 py-3" style="border-bottom:1px solid var(--border);background:var(--surface)">
+          <div style="font-size:.85rem;font-weight:700;color:var(--text)">
+            <span style="color:{{ battle.couleur_camp_b }}">{{ battle.nom_camp_b }}</span>
+            — Dernières offres
+          </div>
+        </div>
+        <div id="offresB" style="padding:.5rem 0;max-height:220px;overflow-y:auto">
+          {% if offres_b %}
+            {% for offre in offres_b %}
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 1.1rem;border-bottom:1px solid var(--border)">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--indigo-d,rgba(99,102,241,.15));display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--indigo);flex-shrink:0">
+                {{ offre.encherisseur.username|first|upper }}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.78rem;font-weight:600;color:var(--text)">{{ offre.encherisseur.username }}</div>
+                <div style="font-size:.68rem;color:var(--muted)">{{ offre.date_creation|timesince }} ago</div>
+              </div>
+              <div style="font-size:.82rem;font-weight:800;color:var(--saffron);font-family:var(--fm)">{{ offre.montant|floatformat:0 }} F</div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">
+            <i class="bi bi-hammer" style="display:block;font-size:1.5rem;margin-bottom:.4rem;opacity:.4"></i>
+            Aucune offre encore
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Actions admin ── -->
+  {% if request.user.is_staff and battle.statut == 'en_cours' %}
+  <div class="ycard p-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.8rem">
+      <i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Actions admin
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <form method="post" action="{% url 'apps_enchere:admin_terminer_battle' battle.pk %}"
+        onsubmit="return confirm('Terminer ce battle maintenant ?')">
+        {% csrf_token %}
+        <button type="submit" class="btn-ghost" style="font-size:.82rem;width:auto;color:var(--indigo);border-color:rgba(99,102,241,.3)">
+          <i class="bi bi-stop-circle me-1"></i>Terminer le battle
+        </button>
+      </form>
+      <form method="post" action="{% url 'apps_enchere:admin_terminer_battle' battle.pk %}"
+        onsubmit="return confirm('Annuler ce battle ?')">
+        {% csrf_token %}
+        <button type="submit" class="btn-ghost" style="font-size:.82rem;width:auto;color:var(--ember);border-color:rgba(239,68,68,.3)">
+          <i class="bi bi-x-circle me-1"></i>Annuler le battle
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+/* ── Timer ── */
+(function () {
+  const timerEl = document.getElementById('battleTimer');
+  if (!timerEl) return;
+  const fin    = new Date(timerEl.dataset.fin);
+  const labels = [86400000, 3600000, 60000, 1000];
+  const ids    = ['j','h','m','s'];
+
+  function tick() {
+    const diff   = fin - new Date();
+    const urgent = diff < 300000;
+    if (diff <= 0) {
+      ids.forEach(b => {
+        document.getElementById('tv-'+b).textContent = '00';
+        document.getElementById('tb-'+b).classList.add('urgent');
+      });
+      clearInterval(tmr);
+      setTimeout(() => location.reload(), 3000);
+      return;
+    }
+    const vals = [
+      Math.floor(diff / labels[0]),
+      Math.floor((diff % labels[0]) / labels[1]),
+      Math.floor((diff % labels[1]) / labels[2]),
+      Math.floor((diff % labels[2]) / labels[3]),
+    ];
+    ids.forEach((b, i) => {
+      document.getElementById('tv-'+b).textContent = String(vals[i]).padStart(2,'0');
+      document.getElementById('tb-'+b).classList.toggle('urgent', urgent);
+    });
+  }
+  const tmr = setInterval(tick, 1000);
+  tick();
+})();
+
+/* ── Enchérir sur un camp ── */
+document.querySelectorAll('.btn-encherer-battle').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const url    = this.dataset.url;
+    const camp   = this.dataset.camp;
+    const minVal = parseFloat(this.dataset.min) || 0;
+
+    const montant = prompt(
+      `Enchère pour le ${camp === 'A' ? '{{ battle.nom_camp_a|escapejs }}' : '{{ battle.nom_camp_b|escapejs }}'}\nMontant minimum : ${Math.round(minVal).toLocaleString('fr')} FCFA`,
+      Math.round(minVal)
+    );
+    if (!montant) return;
+
+    const montantNum = parseFloat(montant);
+    if (isNaN(montantNum) || montantNum < minVal) {
+      afficherToast(`Montant minimum requis : ${Math.round(minVal).toLocaleString('fr')} FCFA`, 'error');
+      return;
+    }
+
+    this.disabled = true;
+    const orig = this.innerHTML;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></span>';
+
+    const fd = new FormData();
+    fd.append('montant', montantNum);
+
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd,
+      });
+
+      if (!r.ok) {
+        let msg = `Erreur ${r.status}`;
+        try { const d = await r.json(); msg = d.message || msg; } catch {}
+        afficherToast(msg, 'error');
+        this.disabled = false;
+        this.innerHTML = orig;
+        return;
+      }
+
+      const d = await r.json();
+      if (d.success) {
+        afficherToast(d.message || 'Offre placée !', 'success');
+        this.style.background = 'linear-gradient(90deg,var(--jade),#059669)';
+        this.innerHTML = '<i class="bi bi-check-lg"></i> Offre placée !';
+        // Mettre à jour le prix du camp
+        const prixEl = document.getElementById(`prix${camp}`);
+        if (prixEl && d.prix_actuel) {
+          prixEl.textContent = `${Math.round(d.prix_actuel).toLocaleString('fr')} FCFA`;
+        }
+        // Mettre à jour le min du bouton
+        if (d.offre_minimum) {
+          this.dataset.min = d.offre_minimum;
+          const labelF = camp === 'A' ? 'A' : 'B';
+          this.innerHTML = `<i class="bi bi-hammer"></i> Enchérir — min ${Math.round(d.offre_minimum).toLocaleString('fr')} F`;
+        }
+        // Polling immédiat pour rafraîchir les votes
+        setTimeout(rafraichirBattle, 1000);
+      } else {
+        afficherToast(d.message || 'Offre refusée.', 'error');
+        this.disabled = false;
+        this.innerHTML = orig;
+      }
+    } catch (err) {
+      console.error(err);
+      afficherToast('Erreur réseau.', 'error');
+      this.disabled = false;
+      this.innerHTML = orig;
+    }
+  });
+});
+
+/* ── Polling état battle ── */
+const URL_ETAT_A = "{% url 'apps_enchere:ajax_etat_enchere' battle.enchere_a.pk %}";
+const URL_ETAT_B = "{% url 'apps_enchere:ajax_etat_enchere' battle.enchere_b.pk %}";
+
+async function rafraichirBattle() {
+  try {
+    const [rA, rB] = await Promise.all([
+      fetch(URL_ETAT_A, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
+      fetch(URL_ETAT_B, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
+    ]);
+    if (!rA.ok || !rB.ok) return;
+    const [dA, dB] = await Promise.all([rA.json(), rB.json()]);
+
+    // Mise à jour prix
+    if (dA.prix_actuel) {
+      const pA = document.getElementById('prixA');
+      if (pA) pA.textContent = `${Math.round(dA.prix_actuel).toLocaleString('fr')} FCFA`;
+    }
+    if (dB.prix_actuel) {
+      const pB = document.getElementById('prixB');
+      if (pB) pB.textContent = `${Math.round(dB.prix_actuel).toLocaleString('fr')} FCFA`;
+    }
+
+    // Mise à jour votes (nb_offres utilisé comme proxy du score)
+    const vA = dA.nb_offres || 0;
+    const vB = dB.nb_offres || 0;
+    const total = vA + vB;
+
+    const votesAEl = document.getElementById('votesA');
+    const votesBEl = document.getElementById('votesB');
+    const totalEl  = document.getElementById('totalVotes');
+    if (votesAEl) votesAEl.textContent = vA;
+    if (votesBEl) votesBEl.textContent = vB;
+    if (totalEl)  totalEl.textContent  = `${total} vote${total > 1 ? 's' : ''} au total`;
+
+    // Mise à jour barre de progression
+    if (total > 0) {
+      const pctA = Math.round(vA / total * 100);
+      const pctB = 100 - pctA;
+      const pA = document.getElementById('progressA');
+      const pB = document.getElementById('progressB');
+      if (pA) pA.style.width = `${pctA}%`;
+      if (pB) pB.style.width = `${pctB}%`;
+      const pctAEl = document.getElementById('pctA');
+      const pctBEl = document.getElementById('pctB');
+      if (pctAEl) pctAEl.textContent = `(${pctA}%)`;
+      if (pctBEl) pctBEl.textContent = `(${pctB}%)`;
+    }
+
+    // Mise à jour offres
+    if (dA.offres && dA.offres.length) renderOffres('offresA', dA.offres, '{{ battle.couleur_camp_a|escapejs }}');
+    if (dB.offres && dB.offres.length) renderOffres('offresB', dB.offres, '{{ battle.couleur_camp_b|escapejs }}');
+
+  } catch (e) { /* silencieux */ }
+}
+
+function renderOffres(containerId, offres, couleur) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = offres.slice(0, 10).map(o => `
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 1.1rem;border-bottom:1px solid var(--border)">
+      <div style="width:28px;height:28px;border-radius:50%;background:${couleur}22;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:${couleur};flex-shrink:0">
+        ${o.encherisseur.charAt(0).toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.78rem;font-weight:600;color:var(--text)">${o.encherisseur}</div>
+        <div style="font-size:.68rem;color:var(--muted)">${o.date}</div>
+      </div>
+      <div style="font-size:.82rem;font-weight:800;color:var(--saffron);font-family:var(--fm)">${Math.round(o.montant).toLocaleString('fr')} F</div>
+    </div>
+  `).join('');
+}
+
+/* Polling toutes les 8s */
+setInterval(rafraichirBattle, 8000);
+
+/* ── Toast ── */
+function afficherToast(msg, type = 'info') {
+  const colors = { success:'var(--jade)', error:'var(--ember)', info:'var(--indigo)' };
+  const icons  = { success:'bi-check-circle-fill', error:'bi-x-circle-fill', info:'bi-info-circle-fill' };
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:var(--card);border:1px solid var(--border);border-left:4px solid ${colors[type]};border-radius:var(--r);padding:.75rem 1.1rem;font-size:.82rem;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.35);max-width:320px;display:flex;align-items:center;gap:.6rem;opacity:1;transition:opacity .3s`;
+  t.innerHTML = `<i class="bi ${icons[type]}" style="color:${colors[type]};flex-shrink:0"></i>${msg}`;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+</script>
+{% endblock %}

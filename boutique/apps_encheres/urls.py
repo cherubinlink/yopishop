@@ -105,6 +105,36 @@ urlpatterns = [
     # Administration des appels d'offre
     path('admin/appels-offre/',views.admin_appels_offre_liste,name='admin_appels_offre_liste'),
 
+    
+    # =========================================================================
+    # PUBLIC
+    # =========================================================================
+ 
+    # Liste de toutes les battles actives
+    path('encheres/battle/',views.battles_liste,name='battles_liste',),
+ 
+    # Page détail d'une battle (2 camps côte à côte)
+    path('encheres/battle/<uuid:pk>/',views.battle_detail,name='battle_detail',),
+ 
+    # Choisir son camp (AJAX POST)
+    path('encheres/battle/<uuid:pk>/camp/',views.ajax_choisir_camp,name='ajax_choisir_camp',),
+ 
+    # Polling temps réel (AJAX GET)
+    path('encheres/battle/<uuid:pk>/ajax-etat/',views.ajax_etat_battle,name='ajax_etat_battle',),
+ 
+    # =========================================================================
+    # ADMIN
+    # =========================================================================
+ 
+    # Créer une battle (2 enchères existantes)
+    path('admin/encheres/battle/creer/',views.creer_battle,name='creer_battle',),
+ 
+    # Liste admin de toutes les battles
+    path('admin/encheres/battle/',views.admin_battles_liste,name='admin_battles_liste',),
+ 
+    # Terminer manuellement une battle (POST / AJAX)
+    path('admin/encheres/battle/<uuid:pk>/terminer/',views.admin_terminer_battle,name='admin_terminer_battle',),
+
  
     
 ]

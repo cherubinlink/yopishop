@@ -1,0 +1,289 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Créer une Battle — YopiShop" }}{% endblock %}
+
+{% block content %}
+
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 py-1">
+      <a href="{% url 'apps_enchere:admin_battles_liste' %}" class="cpill">
+        <i class="bi bi-arrow-left me-1"></i>Admin Battles
+      </a>
+      <span style="color:var(--border)">|</span>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+        <i class="bi bi-plus-lg me-1" style="color:var(--saffron)"></i>Créer une Battle
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<section class="ys">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8">
+
+        <div class="mb-4 fi">
+          <div class="eyebrow mb-2">⚔️ Admin</div>
+          <h1 class="sec-title" style="font-size:clamp(1.5rem,3vw,2rem)">
+            Créer une <span class="ac">Battle</span>
+          </h1>
+          <p style="font-size:.85rem;color:var(--text-2);margin-top:.4rem">
+            Sélectionnez deux enchères existantes pour les faire s'affronter. Les participants choisissent leur camp et enchérissent.
+          </p>
+        </div>
+
+        {% if messages %}{% for msg in messages %}
+        <div class="ycard mb-3 fi" style="border-left:3px solid {% if 'success' in msg.tags %}var(--jade){% else %}var(--ember){% endif %}">
+          <div style="font-size:.85rem;color:{% if 'success' in msg.tags %}var(--jade){% else %}var(--ember){% endif %}">
+            <i class="bi bi-{% if 'success' in msg.tags %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>{{ msg }}
+          </div>
+        </div>
+        {% endfor %}{% endif %}
+
+        <form method="post" id="battleForm">
+          {% csrf_token %}
+
+          <!-- Titre -->
+          <div class="ycard mb-4 fi">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-info-circle" style="color:var(--saffron)"></i>Informations générales
+            </div>
+            <div class="mb-3">
+              <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                Titre de la battle <span style="color:var(--ember)">*</span>
+              </label>
+              <input type="text" name="titre" required maxlength="200"
+                     value="{{ form.titre.value|default:'' }}"
+                     placeholder="Ex: iPhone 15 VS Samsung S24 — Lequel gagne ?"
+                     style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem .9rem;font-size:.85rem;outline:none;transition:border-color .2s"
+                     onfocus="this.style.borderColor='var(--saffron)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+            <div>
+              <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">Description (optionnel)</label>
+              <textarea name="description" rows="2"
+                        placeholder="Contexte, règles spéciales, enjeux…"
+                        style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem .9rem;font-size:.85rem;outline:none;resize:none;transition:border-color .2s"
+                        onfocus="this.style.borderColor='var(--saffron)'" onblur="this.style.borderColor='var(--border)'">{{ form.description.value|default:'' }}</textarea>
+            </div>
+          </div>
+
+          <!-- Sélection des 2 enchères -->
+          <div class="ycard mb-4 fi">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-hammer" style="color:var(--saffron)"></i>Les deux enchères qui s'affrontent
+            </div>
+
+            <div class="row g-4">
+              <!-- Camp A -->
+              <div class="col-12 col-md-5">
+                <div style="border:2px solid rgba(246,169,43,.3);border-radius:10px;padding:1rem;position:relative">
+                  <div style="position:absolute;top:-12px;left:1rem;background:var(--saffron);color:#0A0B1A;font-size:.7rem;font-weight:700;padding:.15rem .65rem;border-radius:99px">
+                    ⚔️ Camp A
+                  </div>
+                  <div class="mt-1">
+                    <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                      Enchère Camp A <span style="color:var(--ember)">*</span>
+                    </label>
+                    <select name="enchere_a" id="selectA" required
+                            style="width:100%;background:var(--surface);border:1.5px solid rgba(246,169,43,.4);border-radius:8px;color:var(--text);padding:.6rem .9rem;font-size:.82rem;outline:none"
+                            onchange="previewCamp('A', this)">
+                      <option value="">— Choisir une enchère —</option>
+                      {% for enc in encheres_dispo %}
+                      <option value="{{ enc.pk }}"
+                              data-titre="{{ enc.titre }}"
+                              data-prix="{{ enc.prix_actuel|floatformat:0 }}"
+                              data-img="{% if enc.produit.image_principale %}{{ enc.produit.image_principale }}{% endif %}">
+                        {{ enc.titre|truncatechars:40 }} — {{ enc.prix_actuel|floatformat:0 }} F
+                      </option>
+                      {% endfor %}
+                    </select>
+                    <!-- Preview Camp A -->
+                    <div id="previewA" style="display:none;margin-top:.75rem;padding:.65rem;background:var(--surface);border-radius:8px;border:1px solid rgba(246,169,43,.2)">
+                      <div style="height:80px;border-radius:6px;overflow:hidden;background:var(--card);margin-bottom:.4rem">
+                        <img id="imgA" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none">
+                        <div id="imgAFallback" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                          <i class="bi bi-hammer" style="color:var(--muted)"></i>
+                        </div>
+                      </div>
+                      <div id="titreA" style="font-size:.8rem;font-weight:700;color:var(--saffron)"></div>
+                      <div id="prixA" style="font-size:.75rem;color:var(--muted)"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- VS Central -->
+              <div class="col-12 col-md-2 d-flex align-items-center justify-content-center">
+                <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--saffron),var(--ember));display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:1rem;font-weight:900;color:#0A0B1A;box-shadow:0 4px 16px rgba(246,169,43,.4)">
+                  VS
+                </div>
+              </div>
+
+              <!-- Camp B -->
+              <div class="col-12 col-md-5">
+                <div style="border:2px solid rgba(99,102,241,.3);border-radius:10px;padding:1rem;position:relative">
+                  <div style="position:absolute;top:-12px;left:1rem;background:var(--indigo);color:#fff;font-size:.7rem;font-weight:700;padding:.15rem .65rem;border-radius:99px">
+                    ⚔️ Camp B
+                  </div>
+                  <div class="mt-1">
+                    <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                      Enchère Camp B <span style="color:var(--ember)">*</span>
+                    </label>
+                    <select name="enchere_b" id="selectB" required
+                            style="width:100%;background:var(--surface);border:1.5px solid rgba(99,102,241,.4);border-radius:8px;color:var(--text);padding:.6rem .9rem;font-size:.82rem;outline:none"
+                            onchange="previewCamp('B', this)">
+                      <option value="">— Choisir une enchère —</option>
+                      {% for enc in encheres_dispo %}
+                      <option value="{{ enc.pk }}"
+                              data-titre="{{ enc.titre }}"
+                              data-prix="{{ enc.prix_actuel|floatformat:0 }}"
+                              data-img="{% if enc.produit.image_principale %}{{ enc.produit.image_principale }}{% endif %}">
+                        {{ enc.titre|truncatechars:40 }} — {{ enc.prix_actuel|floatformat:0 }} F
+                      </option>
+                      {% endfor %}
+                    </select>
+                    <!-- Preview Camp B -->
+                    <div id="previewB" style="display:none;margin-top:.75rem;padding:.65rem;background:var(--surface);border-radius:8px;border:1px solid rgba(99,102,241,.2)">
+                      <div style="height:80px;border-radius:6px;overflow:hidden;background:var(--card);margin-bottom:.4rem">
+                        <img id="imgB" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none">
+                        <div id="imgBFallback" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                          <i class="bi bi-hammer" style="color:var(--muted)"></i>
+                        </div>
+                      </div>
+                      <div id="titreB" style="font-size:.8rem;font-weight:700;color:var(--indigo)"></div>
+                      <div id="prixB" style="font-size:.75rem;color:var(--muted)"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Durée -->
+          <div class="ycard mb-4 fi">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+              <i class="bi bi-clock" style="color:var(--saffron)"></i>Durée de la battle
+            </div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-6">
+                <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                  Durée (heures) <span style="color:var(--ember)">*</span>
+                </label>
+                <div class="d-flex gap-2 mb-2 flex-wrap">
+                  {% for h in "1,3,6,12,24" %}
+                  <button type="button" class="btn-dur cpill" data-val="{{ h }}" onclick="setDuree({{ h }})" style="font-size:.74rem;padding:.25rem .6rem">{{ h }}h</button>
+                  {% endfor %}
+                </div>
+                <input type="number" name="duree_heures" id="fieldDuree" min="1" max="168"
+                       value="{{ form.duree_heures.value|default:'6' }}" required
+                       style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem .9rem;font-size:.85rem;outline:none;transition:border-color .2s"
+                       onfocus="this.style.borderColor='var(--saffron)'" onblur="this.style.borderColor='var(--border)'">
+                <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Max 7 jours (168h)</div>
+              </div>
+              <div class="col-12 col-sm-6">
+                <label style="font-size:.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.4rem">
+                  Points bonus gagnant
+                </label>
+                <input type="number" name="points_bonus" min="0" max="1000"
+                       value="{{ form.points_bonus.value|default:'50' }}"
+                       style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:.6rem .9rem;font-size:.85rem;outline:none;transition:border-color .2s"
+                       onfocus="this.style.borderColor='var(--saffron)'" onblur="this.style.borderColor='var(--border)'">
+                <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Points YopiPoints crédités au camp gagnant</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Aperçu -->
+          <div class="ycard mb-4 fi" style="background:linear-gradient(135deg,var(--saffron-d),var(--indigo-d));border:1px solid rgba(246,169,43,.2)">
+            <div style="font-size:.8rem;font-weight:600;color:var(--saffron);margin-bottom:.5rem">
+              <i class="bi bi-eye me-1"></i>Aperçu de la battle
+            </div>
+            <div id="apercuBattle" style="font-size:.8rem;color:var(--text-2);line-height:1.8">
+              Sélectionnez les deux enchères pour voir l'aperçu…
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex align-items-center justify-content-between gap-3 fi">
+            <a href="{% url 'apps_enchere:admin_battles_liste' %}" class="btn-ghost">
+              <i class="bi bi-x-circle me-1"></i>Annuler
+            </a>
+            <button type="submit" class="btn-gold" style="min-width:200px;background:linear-gradient(90deg,var(--saffron),var(--ember));border:none">
+              <i class="bi bi-fire me-1"></i>Lancer la Battle ⚔️
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+"use strict";
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+
+/* Preview camp sélectionné */
+function previewCamp(camp, sel) {
+  const opt    = sel.options[sel.selectedIndex];
+  const suffix = camp;
+  const prev   = document.getElementById(`preview${suffix}`);
+  const img    = document.getElementById(`img${suffix}`);
+  const imgFB  = document.getElementById(`img${suffix}Fallback`);
+  const titre  = document.getElementById(`titre${suffix}`);
+  const prix   = document.getElementById(`prix${suffix}`);
+
+  if (!opt.value) { prev.style.display='none'; mettreAJourApercu(); return; }
+
+  prev.style.display = 'block';
+  if (opt.dataset.img) {
+    img.src = opt.dataset.img; img.style.display='block'; imgFB.style.display='none';
+  } else { img.style.display='none'; imgFB.style.display='flex'; }
+  if (titre) titre.textContent = opt.dataset.titre;
+  if (prix)  prix.textContent  = `${opt.dataset.prix} FCFA`;
+  mettreAJourApercu();
+}
+
+/* Durée rapide */
+function setDuree(val) {
+  document.getElementById('fieldDuree').value = val;
+  document.querySelectorAll('.btn-dur').forEach(b => {
+    const s=parseInt(b.dataset.val)===val;
+    b.style.background=s?'var(--saffron)':'var(--surface)';
+    b.style.color=s?'#0A0B1A':'var(--muted)';
+    b.style.borderColor=s?'var(--saffron)':'var(--border)';
+  });
+  mettreAJourApercu();
+}
+
+/* Aperçu */
+function mettreAJourApercu() {
+  const selA  = document.getElementById('selectA');
+  const selB  = document.getElementById('selectB');
+  const duree = document.getElementById('fieldDuree')?.value || '6';
+  const titre = document.querySelector('[name="titre"]')?.value || '—';
+  const optA  = selA?.options[selA.selectedIndex];
+  const optB  = selB?.options[selB.selectedIndex];
+
+  let html = `<strong style="color:var(--text)">${titre}</strong><br>`;
+  if (optA?.value) html += `<span style="color:var(--saffron)">⚔️ Camp A</span> : <strong>${optA.dataset.titre||optA.text}</strong><br>`;
+  else html += `<span style="color:var(--muted)">Camp A : non sélectionné</span><br>`;
+  if (optB?.value) html += `<span style="color:var(--indigo)">⚔️ Camp B</span> : <strong>${optB.dataset.titre||optB.text}</strong><br>`;
+  else html += `<span style="color:var(--muted)">Camp B : non sélectionné</span><br>`;
+  html += `Durée : <strong>${duree}h</strong>`;
+  document.getElementById('apercuBattle').innerHTML = html;
+}
+
+document.querySelectorAll('input,textarea,select').forEach(el=>{
+  el.addEventListener('input',mettreAJourApercu);
+  el.addEventListener('change',mettreAJourApercu);
+});
+mettreAJourApercu();
+</script>
+{% endblock %}
+{% endblock %}

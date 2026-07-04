@@ -1,0 +1,355 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- ── Breadcrumb ── -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:.78rem;background:none;padding:0;margin:0">
+      <li class="breadcrumb-item">
+        <a href="{% url 'apps_core:accueil' %}" style="color:var(--saffron);text-decoration:none">Accueil</a>
+      </li>
+      <li class="breadcrumb-item active" style="color:var(--muted)">Battles de prix</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <h1 style="font-family:var(--fm);font-size:1.6rem;font-weight:800;background:var(--grad-a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0">
+        Gestion des Battles
+      </h1>
+      <p style="color:var(--muted);font-size:.82rem;margin:.3rem 0 0">
+        <i class="bi bi-shield-check me-1" style="color:var(--saffron)"></i>Vue admin
+        &bull; {{ battles.paginator.count }} battle{{ battles.paginator.count|pluralize }}
+      </p>
+    </div>
+    <a href="{% url 'apps_enchere:creer_battle' %}" class="btn-gold" style="font-size:.85rem">
+      <i class="bi bi-plus-lg me-1"></i>Créer un battle
+    </a>
+  </div>
+
+  <!-- ── KPIs ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--text)">{{ stats.total }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Total</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--jade)">{{ stats.actifs }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En cours</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--saffron)">{{ stats.votes_total }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Votes totaux</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:1.4rem;font-weight:900;font-family:var(--fm);color:var(--indigo)">{{ stats.termines }}</div>
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Terminés</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtres + recherche ── -->
+  <div class="ycard p-3 mb-4" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-5">
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.8rem"></i>
+          <input type="text" name="q" value="{{ q }}"
+            placeholder="Titre, produit, vendeur…"
+            class="form-control"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;padding-left:2.2rem">
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <select name="statut" class="form-select"
+          style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem">
+          <option value="">— Tous les statuts —</option>
+          {% for val, label in statuts %}
+          <option value="{{ val }}" {% if statut == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.82rem">
+          <i class="bi bi-funnel"></i> Filtrer
+        </button>
+        {% if q or statut %}
+        <a href="{% url 'apps_marketplace:admin_battle_liste' %}" class="btn-ghost" style="font-size:.82rem;width:auto">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Filtres rapides statut ── -->
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    <a href="{% url 'apps_enchere:admin_battles_liste' %}{% if q %}?q={{ q }}{% endif %}"
+      class="cpill {% if not statut %}on{% endif %}"
+      style="{% if not statut %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      Tous
+    </a>
+    {% for val, label in statuts %}
+    <a href="?statut={{ val }}{% if q %}&q={{ q }}{% endif %}"
+      class="cpill {% if statut == val %}on{% endif %}"
+      style="{% if statut == val %}background:rgba(246,169,43,.18);border-color:var(--saffron);color:var(--saffron){% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-3 py-2 px-3" style="border-radius:var(--r);font-size:.82rem;
+      background:{% if msg.tags == 'error' %}rgba(239,68,68,.12){% elif msg.tags == 'success' %}rgba(16,185,129,.12){% else %}rgba(246,169,43,.12){% endif %};
+      border:1px solid {% if msg.tags == 'error' %}rgba(239,68,68,.25){% elif msg.tags == 'success' %}rgba(16,185,129,.25){% else %}rgba(246,169,43,.25){% endif %};
+      color:var(--text)">{{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Liste des battles ── -->
+  {% if battles %}
+  <div style="display:grid;gap:.75rem">
+    {% for battle in battles %}
+    <div class="ycard" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden" id="battle-{{ battle.pk }}">
+
+      <!-- Header -->
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-3"
+        style="border-bottom:1px solid var(--border);background:var(--surface)">
+        <div>
+          <div style="font-size:.9rem;font-weight:700;color:var(--text)">{{ battle.titre }}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem">
+            <i class="bi bi-calendar3 me-1"></i>{{ battle.date_debut|date:"d M Y H:i" }}
+            {% if battle.date_fin %}
+            &bull; <i class="bi bi-hourglass-split me-1"></i>
+            <span style="color:{% if battle.est_expire %}var(--ember){% else %}var(--text-2){% endif %}">
+              Fin : {{ battle.date_fin|date:"d M Y H:i" }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="chip" style="font-size:.68rem;padding:.2rem .6rem;
+            background:{% if battle.statut == 'actif' %}rgba(16,185,129,.15){% elif battle.statut == 'termine' %}rgba(99,102,241,.15){% elif battle.statut == 'annule' %}rgba(239,68,68,.15){% else %}rgba(246,169,43,.15){% endif %};
+            color:{% if battle.statut == 'actif' %}var(--jade){% elif battle.statut == 'termine' %}var(--indigo){% elif battle.statut == 'annule' %}var(--ember){% else %}var(--saffron){% endif %}">
+            {% if battle.statut == 'actif' %}
+              <i class="bi bi-circle-fill me-1" style="font-size:.45rem;animation:pulse 1.5s infinite"></i>
+            {% endif %}
+            {{ battle.get_statut_display }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Corps : comparaison produits -->
+      <div class="px-4 py-3">
+        <div class="row g-3 align-items-center">
+
+          <!-- Produit A -->
+          <div class="col-12 col-md-4">
+            <div class="d-flex align-items-center gap-3">
+              <div style="width:54px;height:54px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0;border:2px solid {% if battle.gagnant == 'A' %}var(--jade){% else %}var(--border){% endif %}">
+                {% if battle.produit_a.image_principale %}
+                  <img src="{{ battle.produit_a.image_principale }}" alt="" style="width:100%;height:100%;object-fit:cover">
+                {% else %}
+                  <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted)"></i></div>
+                {% endif %}
+              </div>
+              <div class="min-width-0">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  {{ battle.produit_a.titre|truncatechars:25 }}
+                </div>
+                <div style="font-size:.78rem;font-weight:800;color:var(--saffron);font-family:var(--fm)">
+                  {{ battle.prix_a|floatformat:0 }} FCFA
+                </div>
+                <div style="font-size:.7rem;color:var(--muted)">
+                  <i class="bi bi-hand-thumbs-up me-1"></i>{{ battle.votes_a }} vote{{ battle.votes_a|pluralize }}
+                </div>
+                {% if battle.gagnant == 'A' %}
+                <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(16,185,129,.15);color:var(--jade)">
+                  <i class="bi bi-trophy-fill me-1"></i>Gagnant
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- VS + progression -->
+          <div class="col-12 col-md-4 text-center">
+            <div style="font-size:1.2rem;font-weight:900;font-family:var(--fm);color:var(--muted);margin-bottom:.5rem">VS</div>
+            {% with total_votes=battle.nb_supporters_a|add:battle.nb_supporters_b %}
+            {% if total_votes > 0 %}
+            <div style="height:8px;background:var(--surface);border-radius:99px;overflow:hidden;border:1px solid var(--border);margin-bottom:.4rem">
+              {% widthratio battle.votes_a total_votes 100 as pct_a %}
+              <div style="height:100%;background:linear-gradient(90deg,var(--saffron),var(--jade));border-radius:99px;width:{{ pct_a }}%;transition:width .4s"></div>
+            </div>
+            <div style="font-size:.72rem;color:var(--muted);display:flex;justify-content:space-between">
+              <span style="color:var(--saffron)">{{ pct_a }}%</span>
+              <span style="color:var(--indigo)">{% widthratio battle.votes_b total_votes 100 %}%</span>
+            </div>
+            {% else %}
+            <div style="font-size:.74rem;color:var(--muted)">Aucun vote pour l'instant</div>
+            {% endif %}
+            {% endwith %}
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">
+              {{ battle.nb_supporters_a|add:battle.nb_supporters_b }} vote{{ battle.nb_supporters_a|add:battle.nb_supporters_b|pluralize }} au total
+            </div>
+          </div>
+
+          <!-- Produit B -->
+          <div class="col-12 col-md-4">
+            <div class="d-flex align-items-center gap-3 justify-content-md-end">
+              <div class="min-width-0 text-md-end">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  {{ battle.produit_b.titre|truncatechars:25 }}
+                </div>
+                <div style="font-size:.78rem;font-weight:800;color:var(--saffron);font-family:var(--fm)">
+                  {{ battle.prix_b|floatformat:0 }} FCFA
+                </div>
+                <div style="font-size:.7rem;color:var(--muted)">
+                  {{ battle.nb_supporters_b}} vote{{ battle.votes_b|pluralize }} <i class="bi bi-hand-thumbs-up ms-1"></i>
+                </div>
+                {% if battle.gagnant == 'B' %}
+                <span class="chip" style="font-size:.65rem;padding:.15rem .5rem;background:rgba(16,185,129,.15);color:var(--jade)">
+                  <i class="bi bi-trophy-fill me-1"></i>Gagnant
+                </span>
+                {% endif %}
+              </div>
+              <div style="width:54px;height:54px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0;border:2px solid {% if battle.gagnant == 'B' %}var(--jade){% else %}var(--border){% endif %}">
+                {% if battle.enchere_b.image_principale %}
+                  <img src="{{ battle.enchere_b.image_principale }}" alt="" style="width:100%;height:100%;object-fit:cover">
+                {% else %}
+                  <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-image" style="color:var(--muted)"></i></div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-2"
+        style="border-top:1px solid var(--border);background:var(--surface)">
+        <div style="font-size:.74rem;color:var(--muted)">
+          {% if battle.reduction_gagnant %}
+          <i class="bi bi-percent me-1" style="color:var(--jade)"></i>
+          Réduction gagnant : <strong style="color:var(--jade)">{{ battle.reduction_gagnant }}%</strong>
+          {% endif %}
+          {% if battle.nb_participants %}
+          &bull; <i class="bi bi-people me-1"></i>{{ battle.nb_participants }} participant{{ battle.nb_participants|pluralize }}
+          {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          {% if battle.statut == 'planifie' %}
+          <!-- Activer -->
+          <form method="post" action="{% url 'apps_marketplace:admin_activer_battle' battle.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost"
+              style="font-size:.74rem;padding:.3rem .75rem;width:auto;color:var(--jade);border-color:rgba(16,185,129,.3)">
+              <i class="bi bi-play-fill me-1"></i>Activer
+            </button>
+          </form>
+          {% endif %}
+          {% if battle.statut == 'actif' %}
+          <!-- Terminer -->
+          <form method="post" action="{% url 'apps_marketplace:admin_terminer_battle' battle.pk %}"
+            onsubmit="return confirm('Terminer ce battle maintenant ?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost"
+              style="font-size:.74rem;padding:.3rem .75rem;width:auto;color:var(--indigo);border-color:rgba(99,102,241,.3)">
+              <i class="bi bi-stop-circle me-1"></i>Terminer
+            </button>
+          </form>
+          {% endif %}
+          {% if battle.statut != 'annule' and battle.statut != 'termine' %}
+          <!-- Annuler -->
+          <form method="post" action=""
+            onsubmit="return confirm('Annuler ce battle ?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost"
+              style="font-size:.74rem;padding:.3rem .65rem;width:auto;color:var(--ember);border-color:rgba(239,68,68,.3)">
+              <i class="bi bi-x-circle"></i>
+            </button>
+          </form>
+          {% endif %}
+          <!-- Modifier -->
+          <a href=""
+            class="btn-ghost" style="font-size:.74rem;padding:.3rem .65rem;width:auto">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <!-- Voir détail public -->
+          <a href="{% url 'apps_enchere:battle_detail' battle.pk %}"
+            class="btn-ghost" style="font-size:.74rem;padding:.3rem .75rem;width:auto">
+            <i class="bi bi-eye me-1"></i>Voir
+          </a>
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if battles.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+    {% if battles.has_previous %}
+    <a href="?statut={{ statut }}&q={{ q }}&page={{ battles.previous_page_number }}"
+      class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto">
+      <i class="bi bi-chevron-left"></i>
+    </a>
+    {% endif %}
+    {% for p in battles.paginator.page_range %}
+      {% if p == battles.number %}
+      <span class="btn-gold" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center">{{ p }}</span>
+      {% elif p >= battles.number|add:"-2" and p <= battles.number|add:"2" %}
+      <a href="?statut={{ statut }}&q={{ q }}&page={{ p }}"
+        class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;min-width:40px;justify-content:center;width:auto">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if battles.has_next %}
+    <a href="?statut={{ statut }}&q={{ q }}&page={{ battles.next_page_number }}"
+      class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem;width:auto">
+      <i class="bi bi-chevron-right"></i>
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <!-- État vide -->
+  <div class="ycard p-5 text-center" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="bi bi-lightning-charge" style="font-size:1.8rem;color:var(--saffron)"></i>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.4rem">
+      {% if statut or q %}Aucun battle trouvé{% else %}Aucun battle créé{% endif %}
+    </div>
+    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem">
+      {% if statut or q %}Modifiez vos filtres.
+      {% else %}Créez votre premier battle pour animer la plateforme.{% endif %}
+    </div>
+    <a href="{% url 'apps_enchere:creer_battle' %}" class="btn-gold justify-content-center">
+      <i class="bi bi-plus-lg me-1"></i>Créer un battle
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+</style>
+{% endblock %}
