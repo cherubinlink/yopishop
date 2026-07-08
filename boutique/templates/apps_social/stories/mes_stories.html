@@ -1,0 +1,187 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+/* Variables contexte : actives (qs), expirees (qs, max 20), stats {actives, vues_total, clics_total}, page_titre */
+.ms-wrap { max-width:960px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.ms-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.75rem; }
+.ms-titre { font-size:1.2rem; font-weight:800; color:var(--text); }
+
+.ms-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:.85rem; margin-bottom:2rem; }
+@media(max-width:576px){ .ms-stats { grid-template-columns:1fr; } }
+.ms-stat-card { background:var(--card); border:1.5px solid var(--border); border-radius:14px; padding:1rem; text-align:center; }
+.ms-stat-val { font-family:var(--fm); font-size:1.5rem; font-weight:900; color:var(--saffron); }
+.ms-stat-label { font-size:.76rem; color:var(--muted); margin-top:.2rem; }
+
+.ms-section-titre { font-size:.95rem; font-weight:800; color:var(--text); margin: 1.5rem 0 .85rem; display:flex; align-items:center; gap:.4rem; }
+
+.ms-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:1rem; }
+.ms-card {
+  background:var(--card); border:1.5px solid var(--border); border-radius:14px; overflow:hidden;
+  position:relative;
+}
+.ms-card-media-zone { aspect-ratio:9/16; position:relative; background:var(--surface); }
+.ms-card-media { width:100%; height:100%; object-fit:cover; }
+.ms-card-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:1.8rem; }
+.ms-card-expire {
+  position:absolute; top:.4rem; left:.4rem; background:rgba(0,0,0,.55); color:#fff;
+  font-size:.62rem; font-weight:700; padding:2px 7px; border-radius:99px;
+}
+.ms-card-body { padding:.6rem .7rem; }
+.ms-card-texte { font-size:.74rem; color:var(--text-2); line-height:1.3; margin-bottom:.5rem; min-height:2.4em; overflow:hidden; }
+.ms-card-mini-stats { display:flex; gap:.7rem; font-size:.7rem; color:var(--muted); margin-bottom:.6rem; }
+.ms-card-actions { display:flex; gap:.4rem; }
+.ms-card-btn {
+  flex:1; text-align:center; font-size:.72rem; font-weight:700; padding:.4rem; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface); color:var(--text-2); cursor:pointer; text-decoration:none;
+}
+.ms-card-btn:hover { border-color:var(--saffron); color:var(--saffron); }
+.ms-card-btn.danger:hover { border-color:var(--ember); color:var(--ember); background:var(--ember-d); }
+
+.ms-expiree-row { display:flex; gap:1rem; overflow-x:auto; padding-bottom:.5rem; scrollbar-width:none; }
+.ms-expiree-row::-webkit-scrollbar { display:none; }
+.ms-expiree-item {
+  flex-shrink:0; width:110px; aspect-ratio:9/16; border-radius:10px; overflow:hidden; position:relative;
+  opacity:.55; filter:grayscale(.3); background:var(--surface);
+}
+.ms-expiree-item img { width:100%; height:100%; object-fit:cover; }
+.ms-expiree-badge {
+  position:absolute; bottom:.3rem; left:.3rem; right:.3rem; background:rgba(0,0,0,.6); color:#fff;
+  font-size:.6rem; text-align:center; border-radius:6px; padding:1px 4px;
+}
+
+.ms-empty { text-align:center; padding:3rem 1rem; color:var(--muted); }
+.ms-empty i { font-size:2.2rem; display:block; margin-bottom:.6rem; opacity:.5; }
+</style>
+
+<div class="ms-wrap">
+  <div class="ms-head">
+    <span class="ms-titre"><i class="bi bi-camera-fill" style="color:var(--saffron)"></i> {{ page_titre }}</span>
+    <a href="{% url 'apps_social:creer_story' %}" class="btn-gold" style="font-size:.82rem;padding:.45rem 1rem">
+      <i class="bi bi-plus-lg"></i> Nouvelle story
+    </a>
+  </div>
+
+  <div class="ms-stats">
+    <div class="ms-stat-card">
+      <div class="ms-stat-val">{{ stats.actives }}</div>
+      <div class="ms-stat-label">Stories actives</div>
+    </div>
+    <div class="ms-stat-card">
+      <div class="ms-stat-val">{{ stats.vues_total }}</div>
+      <div class="ms-stat-label">Vues cumulées</div>
+    </div>
+    <div class="ms-stat-card">
+      <div class="ms-stat-val">{{ stats.clics_total }}</div>
+      <div class="ms-stat-label">Clics sur les boutons</div>
+    </div>
+  </div>
+
+  <div class="ms-section-titre"><i class="bi bi-broadcast" style="color:var(--jade)"></i> Stories actives</div>
+  {% if actives %}
+  <div class="ms-grid">
+    {% for story in actives %}
+    <div class="ms-card" id="msCard{{ story.pk }}">
+      <div class="ms-card-media-zone">
+        <span class="ms-card-expire">expire {{ story.date_expiration|timeuntil }}</span>
+        {% if story.type_story == 'video' and story.miniature %}
+        <img class="ms-card-media" src="{{ story.miniature.url }}" alt="">
+        {% elif story.media %}
+        <img class="ms-card-media" src="{{ story.media.url }}" alt="">
+        {% else %}
+        <div class="ms-card-fallback"><i class="bi bi-image"></i></div>
+        {% endif %}
+      </div>
+      <div class="ms-card-body">
+        {% if story.texte %}
+        <div class="ms-card-texte">{{ story.texte|truncatechars:60 }}</div>
+        {% endif %}
+        <div class="ms-card-mini-stats">
+          <span><i class="bi bi-eye"></i> {{ story.nb_vues }}</span>
+          <span><i class="bi bi-hand-index"></i> {{ story.nb_clics }}</span>
+        </div>
+        <div class="ms-card-actions">
+          <a href="{% url 'apps_social:story_viewer' pk=story.pk %}" class="ms-card-btn">
+            <i class="bi bi-eye"></i> Voir
+          </a>
+          <button class="ms-card-btn danger" onclick="supprimerStory({{ story.pk }})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ms-empty">
+    <i class="bi bi-camera"></i>
+    Vous n'avez aucune story active. Publiez-en une pour engager vos abonnés !
+  </div>
+  {% endif %}
+
+  {% if expirees %}
+  <div class="ms-section-titre"><i class="bi bi-clock-history" style="color:var(--muted)"></i> Stories expirées récentes</div>
+  <div class="ms-expiree-row">
+    {% for story in expirees %}
+    <div class="ms-expiree-item">
+      {% if story.type_story == 'video' and story.miniature %}
+      <img src="{{ story.miniature.url }}" alt="">
+      {% elif story.media %}
+      <img src="{{ story.media.url }}" alt="">
+      {% endif %}
+      <span class="ms-expiree-badge">{{ story.nb_vues }} vue{{ story.nb_vues|pluralize }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<script>
+"use strict";
+
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
+
+// UUID factice servant de placeholder
+const URL_SUPPRIMER_TPL =
+"{% url 'apps_social:supprimer_story' pk='00000000-0000-0000-0000-000000000000' %}";
+
+async function supprimerStory(pk) {
+
+    if (!confirm("Supprimer définitivement cette story ?")) {
+        return;
+    }
+
+    // Remplace l'UUID factice par le véritable UUID de la story
+    const url = URL_SUPPRIMER_TPL.replace(
+        "00000000-0000-0000-0000-000000000000",
+        pk
+    );
+
+    try {
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": CSRF,
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById(`msCard${pk}`)?.remove();
+        } else {
+            alert(data.message || "Erreur lors de la suppression.");
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Erreur réseau.");
+    }
+}
+</script>
+{% endblock %}

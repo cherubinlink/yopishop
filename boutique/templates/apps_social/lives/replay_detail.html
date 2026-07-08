@@ -1,0 +1,123 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+.rp-wrap { padding:2rem 0 4rem; }
+.rp-video-wrap { aspect-ratio:16/9;background:#000;border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem;position:relative; }
+.rp-video-wrap video { width:100%;height:100%;object-fit:contain;background:#000; }
+.rp-no-video { width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);gap:.75rem; }
+.rp-title { font-family:var(--fm);font-size:1.3rem;font-weight:900;color:var(--text);margin-bottom:.5rem; }
+.rp-meta { display:flex;align-items:center;gap:1rem;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-bottom:1.25rem; }
+.rp-vendor-card { display:flex;align-items:center;gap:.85rem;padding:1rem 1.2rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:1.5rem; }
+.rp-vendor-avatar { width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--saffron);flex-shrink:0; }
+.rp-prod-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.85rem; }
+.rp-prod-card { border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--card);text-decoration:none;display:block; }
+.rp-prod-img { aspect-ratio:1;background:var(--surface); }
+.rp-prod-img img { width:100%;height:100%;object-fit:cover; }
+.rp-prod-body { padding:.6rem .75rem; }
+.rp-prod-titre { font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.rp-prod-prix { font-family:var(--fm);font-size:.85rem;font-weight:800;color:var(--saffron); }
+</style>
+
+<div class="rp-wrap">
+  <div class="container">
+
+    <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted)">
+      <a href="{% url 'apps_social:lives_liste' %}" style="color:var(--muted);text-decoration:none">
+        <i class="bi bi-arrow-left me-1"></i>Retour aux lives
+      </a>
+    </nav>
+
+    <div class="row g-4">
+      <div class="col-lg-8">
+
+        <!-- Vidéo -->
+        <div class="rp-video-wrap fi">
+          {% if replay.url_replay %}
+          <video controls poster="{% if live.image_miniature %}{{ live.image_miniature.url }}{% endif %}">
+            <source src="{{ replay.url_replay }}">
+          </video>
+          {% else %}
+          <div class="rp-no-video">
+            <i class="bi bi-camera-video-off" style="font-size:2.5rem"></i>
+            <span>Cette vidéo n'est plus disponible</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="fi">
+          <div class="rp-title">{{ replay.titre|default:live.titre }}</div>
+          <div class="rp-meta">
+            <span><i class="bi bi-eye-fill me-1"></i>{{ replay.nb_vues }} vue{{ replay.nb_vues|pluralize }}</span>
+            {% if live.date_fin %}
+            <span><i class="bi bi-calendar3 me-1"></i>{{ live.date_fin|date:"d M Y" }}</span>
+            {% endif %}
+            {% if live.duree_secondes %}
+            <span><i class="bi bi-clock me-1"></i>{% widthratio live.duree_secondes 60 1 %} min</span>
+            {% endif %}
+          </div>
+          {% if live.description %}
+          <p style="font-size:.88rem;color:var(--text-2);line-height:1.65">{{ live.description }}</p>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <div class="col-lg-4">
+
+        <!-- Vendeur -->
+        <a href="{% url 'apps_social:profil_public' username=live.vendeur.username %}" class="rp-vendor-card fi" style="text-decoration:none">
+          {% if live.vendeur.avatar %}
+          <img src="{{ live.vendeur.avatar.url }}" alt="" class="rp-vendor-avatar">
+          {% else %}
+          <div class="rp-vendor-avatar">{{ live.vendeur.username|first|upper }}</div>
+          {% endif %}
+          <div>
+            <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+              {{ live.vendeur.boutique.nom|default:live.vendeur.username }}
+              {% if live.vendeur.est_verifie %}<i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.75rem;margin-left:.2rem"></i>{% endif %}
+            </div>
+            <div style="font-size:.76rem;color:var(--muted)">Voir le profil</div>
+          </div>
+        </a>
+
+        <!-- Produits du live -->
+        {% if live.produits.all %}
+        <div class="fi">
+          <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:.75rem">
+            <i class="bi bi-bag" style="color:var(--saffron)"></i> Produits présentés
+          </div>
+          <div class="rp-prod-grid">
+            {% for pl in live.produits.all %}
+            <a href="{% url 'apps_core:produit_detail' pl.produit.slug %}" class="rp-prod-card">
+              <div class="rp-prod-img">
+                {% if pl.produit.image_principale %}
+                <img src="{{ pl.produit.image_principale }}" alt="{{ pl.produit.titre }}">
+                {% endif %}
+              </div>
+              <div class="rp-prod-body">
+                <div class="rp-prod-titre">{{ pl.produit.titre }}</div>
+                <div class="rp-prod-prix">{{ pl.produit.prix|floatformat:0 }} F</div>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

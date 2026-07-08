@@ -1652,6 +1652,13 @@ def produit_detail(request, slug):
         liste = ListeSouhaits.objects.filter(utilisateur=request.user).first()
         if liste:
             est_favori = liste.produits.filter(pk=produit.pk).exists()
+      # Abonnement au vendeur (NOUVEAU)
+    je_suis_vendeur = False
+    if request.user.is_authenticated and request.user != produit.vendeur:
+        from apps_social.models import AbonnementSocial
+        je_suis_vendeur = AbonnementSocial.objects.filter(
+            abonne=request.user, suivi=produit.vendeur
+        ).exists()
  
     context = {
         'produit':              produit,
@@ -1662,6 +1669,7 @@ def produit_detail(request, slug):
         'peut_laisser_avis':    peut_laisser_avis,
         'produits_similaires':  produits_similaires,
         'est_favori':           est_favori,
+        'je_suis_vendeur':      je_suis_vendeur,
         'form_avis':            AvisProduitForm() if peut_laisser_avis else None,
         'page_titre':           f"{produit.titre} — YopiShop",
     }

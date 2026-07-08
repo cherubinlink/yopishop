@@ -1,0 +1,228 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — Admin YopiShop{% endblock %}
+
+{% block content %}
+<style>
+/* Variables contexte : stories (Page), stats {total,actives,expirees,produits},
+   type_filtre, statut, q, types (TYPE_CHOICES), page_titre */
+.asl-wrap { max-width:1200px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.asl-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.75rem; }
+.asl-titre { font-size:1.2rem; font-weight:800; color:var(--text); }
+
+.asl-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:.85rem; margin-bottom:1.5rem; }
+@media(max-width:768px){ .asl-stats { grid-template-columns:repeat(2,1fr); } }
+.asl-stat-card { background:var(--card); border:1.5px solid var(--border); border-radius:14px; padding:.9rem; text-align:center; }
+.asl-stat-val { font-family:var(--fm); font-size:1.35rem; font-weight:900; color:var(--saffron); }
+.asl-stat-label { font-size:.72rem; color:var(--muted); margin-top:.15rem; }
+
+.asl-filters {
+  display:flex; gap:.6rem; flex-wrap:wrap; align-items:center;
+  background:var(--card); border:1.5px solid var(--border); border-radius:12px; padding:.85rem; margin-bottom:1.25rem;
+}
+.asl-filters select, .asl-filters input {
+  background:var(--surface); border:1.5px solid var(--border); border-radius:8px;
+  color:var(--text); font-size:.8rem; padding:.45rem .7rem; outline:none;
+}
+.asl-filters input[type=text] { flex:1; min-width:160px; }
+
+.asl-table-wrap { background:var(--card); border:1.5px solid var(--border); border-radius:14px; overflow:hidden; }
+.asl-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.asl-table th {
+  text-align:left; padding:.7rem .9rem; background:var(--surface); color:var(--muted);
+  font-size:.72rem; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--border);
+}
+.asl-table td { padding:.65rem .9rem; border-bottom:1px solid var(--border); color:var(--text-2); vertical-align:middle; }
+.asl-table tr:last-child td { border-bottom:none; }
+.asl-auteur { display:flex; align-items:center; gap:.5rem; }
+.asl-auteur-avatar {
+  width:26px; height:26px; border-radius:50%; background:var(--indigo-d); color:var(--indigo);
+  display:flex; align-items:center; justify-content:center; font-size:.68rem; font-weight:800; flex-shrink:0;
+}
+.asl-badge-type {
+  font-size:.68rem; font-weight:700; padding:2px 8px; border-radius:99px;
+  background:var(--surface); color:var(--text-2); border:1px solid var(--border);
+}
+.asl-badge-expire {
+  font-size:.68rem; font-weight:700; padding:2px 8px; border-radius:99px;
+}
+.asl-badge-expire.active { background:var(--jade-d); color:var(--jade); }
+.asl-badge-expire.expire { background:var(--surface); color:var(--muted); }
+.asl-texte-apercu { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.asl-btn-suppr {
+  background:var(--ember-d); border:1px solid rgba(255,90,71,.3); color:var(--ember);
+  border-radius:8px; padding:.35rem .6rem; font-size:.76rem; cursor:pointer;
+}
+.asl-btn-suppr:hover { background:var(--ember); color:#fff; }
+
+.asl-empty { text-align:center; padding:3rem 1rem; color:var(--muted); }
+
+.asl-pagination { display:flex; justify-content:center; gap:.5rem; margin-top:1.25rem; }
+.asl-page-link {
+  padding:.4rem .8rem; border-radius:8px; border:1px solid var(--border); background:var(--card);
+  color:var(--text-2); font-size:.8rem; text-decoration:none;
+}
+.asl-page-link.actif { background:var(--saffron); color:#0A0B1A; border-color:var(--saffron); font-weight:700; }
+</style>
+
+<div class="asl-wrap">
+  <div class="asl-head">
+    <span class="asl-titre"><i class="bi bi-shield-check" style="color:var(--saffron)"></i> {{ page_titre }}</span>
+    <a href="{% url 'apps_social:cron_nettoyer_stories' %}"
+       class="btn-ghost" style="font-size:.8rem;padding:.4rem .9rem"
+       onclick="return confirm('Supprimer toutes les stories expirées depuis plus de 24h ? Cette action est irréversible.')">
+      <i class="bi bi-trash3"></i> Nettoyer les expirées
+    </a>
+  </div>
+
+  <div class="asl-stats">
+    <div class="asl-stat-card"><div class="asl-stat-val">{{ stats.total }}</div><div class="asl-stat-label">Total</div></div>
+    <div class="asl-stat-card"><div class="asl-stat-val">{{ stats.actives }}</div><div class="asl-stat-label">Actives</div></div>
+    <div class="asl-stat-card"><div class="asl-stat-val">{{ stats.expirees }}</div><div class="asl-stat-label">Expirées</div></div>
+    <div class="asl-stat-card"><div class="asl-stat-val">{{ stats.produits }}</div><div class="asl-stat-label">Produit / Offre</div></div>
+  </div>
+
+  <form method="get" class="asl-filters">
+    <select name="type" onchange="this.form.submit()">
+      <option value="">Tous les types</option>
+      {% for valeur, libelle in types %}
+      <option value="{{ valeur }}" {% if type_filtre == valeur %}selected{% endif %}>{{ libelle }}</option>
+      {% endfor %}
+    </select>
+    <select name="statut" onchange="this.form.submit()">
+      <option value="">Tous les statuts</option>
+      <option value="actives" {% if statut == 'actives' %}selected{% endif %}>Actives</option>
+      <option value="expirees" {% if statut == 'expirees' %}selected{% endif %}>Expirées</option>
+    </select>
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher un auteur ou un texte…">
+    <button type="submit" class="btn-gold" style="font-size:.8rem;padding:.45rem 1rem">
+      <i class="bi bi-search"></i> Filtrer
+    </button>
+    {% if type_filtre or statut or q %}
+    <a href="{% url 'apps_social:admin_stories_liste' %}" class="btn-ghost" style="font-size:.8rem;padding:.45rem .9rem">Réinitialiser</a>
+    {% endif %}
+  </form>
+
+  <div class="asl-table-wrap">
+    {% if stories %}
+    <table class="asl-table">
+      <thead>
+        <tr>
+          <th>Auteur</th>
+          <th>Type</th>
+          <th>Aperçu</th>
+          <th>Créée le</th>
+          <th>Expire le</th>
+          <th>Statut</th>
+          <th>Vues</th>
+          <th>Clics</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for story in stories %}
+        <tr id="aslRow{{ story.pk }}">
+          <td>
+            <div class="asl-auteur">
+              <div class="asl-auteur-avatar">{{ story.auteur.username|first|upper }}</div>
+              <span>{{ story.auteur.username }}</span>
+            </div>
+          </td>
+          <td><span class="asl-badge-type">{{ story.get_type_story_display }}</span></td>
+          <td class="asl-texte-apercu" title="{{ story.texte }}">
+            {% if story.texte %}{{ story.texte|truncatechars:40 }}{% else %}<span style="color:var(--muted)">—</span>{% endif %}
+            {% if story.produit_lie %}<div style="font-size:.7rem;color:var(--saffron)"><i class="bi bi-bag"></i> {{ story.produit_lie.titre|truncatechars:25 }}</div>{% endif %}
+          </td>
+          <td>{{ story.date_creation|date:"d/m/Y H:i" }}</td>
+          <td>{{ story.date_expiration|date:"d/m/Y H:i" }}</td>
+          <td>
+            {% if story.date_expiration > now %}
+            <span class="asl-badge-expire active">Active</span>
+            {% else %}
+            <span class="asl-badge-expire expire">Expirée</span>
+            {% endif %}
+          </td>
+          <td>{{ story.nb_vues }}</td>
+          <td>{{ story.nb_clics }}</td>
+          <td>
+            <button class="asl-btn-suppr" onclick="supprimerStoryAdmin({{ story.pk }}, '{{ story.auteur.username|escapejs }}')">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="asl-empty">
+      <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.5"></i>
+      Aucune story ne correspond à ces critères.
+    </div>
+    {% endif %}
+  </div>
+
+  {% if stories.paginator.num_pages > 1 %}
+  <div class="asl-pagination">
+    {% if stories.has_previous %}
+    <a class="asl-page-link" href="?page={{ stories.previous_page_number }}&type={{ type_filtre }}&statut={{ statut }}&q={{ q }}"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    {% for num in stories.paginator.page_range %}
+      {% if num == stories.number %}
+      <span class="asl-page-link actif">{{ num }}</span>
+      {% elif num > stories.number|add:"-3" and num < stories.number|add:"3" %}
+      <a class="asl-page-link" href="?page={{ num }}&type={{ type_filtre }}&statut={{ statut }}&q={{ q }}">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if stories.has_next %}
+    <a class="asl-page-link" href="?page={{ stories.next_page_number }}&type={{ type_filtre }}&statut={{ statut }}&q={{ q }}"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+
+<script>
+"use strict";
+
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+const URL_ADMIN_SUPPR_TPL =
+"{% url 'apps_social:admin_supprimer_story' pk='00000000-0000-0000-0000-000000000000' %}";
+
+async function supprimerStoryAdmin(pk, username){
+
+    if(!confirm(`Supprimer définitivement la story de @${username} ? Cette action est irréversible.`)){
+        return;
+    }
+
+    const url = URL_ADMIN_SUPPR_TPL.replace(
+        "00000000-0000-0000-0000-000000000000",
+        pk
+    );
+
+    try{
+
+        const r = await fetch(url,{
+            method:"POST",
+            headers:{
+                "X-CSRFToken":CSRF,
+                "X-Requested-With":"XMLHttpRequest"
+            }
+        });
+
+        const data = await r.json();
+
+        if(data.success){
+            document.getElementById(`aslRow${pk}`)?.remove();
+        }else{
+            alert(data.message || "Erreur lors de la suppression.");
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("Erreur réseau.");
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,303 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+body { overflow: hidden; }
+.vf-wrap {
+  height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory;
+  scrollbar-width: none; background: #000;
+}
+.vf-wrap::-webkit-scrollbar { display: none; }
+.vf-slide {
+  height: 100vh; scroll-snap-align: start; position: relative;
+  display: flex; align-items: center; justify-content: center; background: #000;
+}
+.vf-video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.vf-gradient-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 45%;
+  background: linear-gradient(to top, rgba(0,0,0,.85), transparent); pointer-events: none;
+}
+.vf-caption { position: absolute; left: 1rem; right: 90px; bottom: 1.5rem; color: #fff; z-index: 2; }
+.vf-auteur { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.vf-auteur-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; background: var(--saffron-d); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--saffron); }
+.vf-auteur-nom { font-size: .88rem; font-weight: 700; }
+.vf-titre { font-size: .85rem; font-weight: 600; margin-bottom: .3rem; line-height: 1.4; }
+.vf-hashtags { font-size: .8rem; color: var(--saffron); }
+
+.vf-actions { position: absolute; right: .75rem; bottom: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 1.3rem; z-index: 2; }
+.vf-action-btn { display: flex; flex-direction: column; align-items: center; gap: .25rem; background: none; border: none; color: #fff; cursor: pointer; }
+.vf-action-ico { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; transition: transform .15s, background .2s; }
+.vf-action-btn:active .vf-action-ico { transform: scale(.85); }
+.vf-action-ico.liked { background: rgba(255,79,94,.25); color: #FF4F5E; }
+.vf-action-count { font-size: .72rem; font-weight: 700; }
+
+.vf-shop-btn {
+  position: absolute; left: 1rem; bottom: -60px; z-index: 2;
+  background: var(--saffron); color: #0A0B1A; border: none; border-radius: 99px;
+  padding: .55rem 1.2rem; font-size: .82rem; font-weight: 800; text-decoration: none;
+  display: inline-flex; align-items: center; gap: .4rem;
+}
+
+.vf-topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+  padding: .8rem 1rem; display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(0,0,0,.6), transparent);
+}
+.vf-topbar-title { color: #fff; font-family: var(--fm); font-weight: 900; font-size: 1.1rem; }
+.vf-close-btn { color: #fff; background: rgba(255,255,255,.12); border: none; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
+
+/* Panneau commentaires */
+.vf-comments-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9998; display: none; align-items: flex-end; justify-content: center; }
+.vf-comments-overlay.show { display: flex; }
+.vf-comments-panel { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; height: 65vh; display: flex; flex-direction: column; }
+.vf-comments-head { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.vf-comments-list { flex: 1; overflow-y: auto; padding: 1rem 1.25rem; }
+.vf-comment-item { display: flex; gap: .6rem; margin-bottom: 1rem; }
+.vf-comment-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--indigo-d); color: var(--indigo); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; flex-shrink: 0; }
+.vf-comment-user { font-size: .78rem; font-weight: 700; color: var(--text); }
+.vf-comment-text { font-size: .82rem; color: var(--text-2); }
+.vf-comments-input-zone { padding: .75rem 1rem; border-top: 1px solid var(--border); display: flex; gap: .5rem; }
+.vf-comments-input { flex: 1; background: var(--surface); border: 1.5px solid var(--border); border-radius: 20px; padding: .5rem 1rem; color: var(--text); font-size: .84rem; }
+
+.vf-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.5); flex-direction: column; gap: 1rem; }
+</style>
+
+<div class="vf-topbar">
+  <span class="vf-topbar-title"><i class="bi bi-lightning-charge-fill" style="color:var(--saffron)"></i> ShopTok</span>
+  <a href="{% url 'apps_core:accueil' %}" class="vf-close-btn"><i class="bi bi-x-lg"></i></a>
+</div>
+
+<div class="vf-wrap" id="vfWrap">
+  {% for video in videos %}
+  <div class="vf-slide" id="slide-{{ video.pk }}" data-pk="{{ video.pk }}">
+    <video class="vf-video" loop playsinline poster="{{ video.miniature.url }}" id="vid-{{ video.pk }}">
+      <source src="{{ video.video.url }}" type="video/mp4">
+    </video>
+    <div class="vf-gradient-bottom"></div>
+
+    <div class="vf-caption">
+      <div class="vf-auteur">
+        {% if video.auteur.avatar %}
+        <img src="{{ video.auteur.avatar.url }}" alt="" class="vf-auteur-avatar">
+        {% else %}
+        <div class="vf-auteur-avatar">{{ video.auteur.username|first|upper }}</div>
+        {% endif %}
+        <span class="vf-auteur-nom">@{{ video.auteur.username }}</span>
+      </div>
+      <div class="vf-titre">{{ video.titre }}</div>
+      {% if video.hashtags %}<div class="vf-hashtags">{% for tag in video.hashtags.split %}#{{ tag }} {% endfor %}</div>{% endif %}
+      <a href="{% url 'apps_social:video_detail' pk=video.pk %}" class="vf-shop-btn">
+        <i class="bi bi-bag-fill"></i> Voir la boutique
+      </a>
+    </div>
+
+    <div class="vf-actions">
+      <button class="vf-action-btn like-btn" data-pk="{{ video.pk }}" onclick="likerVideo(this)">
+        <div class="vf-action-ico"><i class="bi bi-heart-fill"></i></div>
+        <span class="vf-action-count" id="likes-{{ video.pk }}">{{ video.nb_likes }}</span>
+      </button>
+      <button class="vf-action-btn" onclick="ouvrirCommentaires('{{ video.pk }}')">
+        <div class="vf-action-ico"><i class="bi bi-chat-fill"></i></div>
+        <span class="vf-action-count" id="comms-{{ video.pk }}">{{ video.nb_commentaires }}</span>
+      </button>
+      <button class="vf-action-btn" onclick="partagerVideo('{{ video.pk }}')">
+        <div class="vf-action-ico"><i class="bi bi-share-fill"></i></div>
+        <span class="vf-action-count" id="partages-{{ video.pk }}">{{ video.nb_partages }}</span>
+      </button>
+    </div>
+  </div>
+  {% empty %}
+  <div class="vf-slide">
+    <div class="vf-empty">
+      <i class="bi bi-camera-video" style="font-size:3rem"></i>
+      <span>Aucune vidéo pour le moment</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Panneau commentaires -->
+<div class="vf-comments-overlay" id="commentsOverlay" onclick="fermerCommentaires(event)">
+  <div class="vf-comments-panel">
+    <div class="vf-comments-head">
+      <span style="font-size:.9rem;font-weight:700;color:var(--text)">Commentaires</span>
+      <button onclick="fermerCommentaires()" style="background:none;border:none;color:var(--muted);font-size:1.1rem">✕</button>
+    </div>
+    <div class="vf-comments-list" id="commentsList"></div>
+    <div class="vf-comments-input-zone">
+      <input type="text" id="commentInput" class="vf-comments-input" placeholder="Ajouter un commentaire..." maxlength="300">
+      <button class="btn-gold" style="font-size:.8rem" onclick="posterCommentaire()"><i class="bi bi-send-fill"></i></button>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+let currentVideoPk = null;
+
+/* ── Autoplay au scroll ── */
+const videos = document.querySelectorAll('.vf-video');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.play().catch(()=>{}); }
+    else { e.target.pause(); }
+  });
+}, { threshold: .6 });
+videos.forEach(v => io.observe(v));
+
+/* ── Like ── */
+async function likerVideo(btn){
+  const pk = btn.dataset.pk;
+  try{
+    const r = await fetch(`/videos/${pk}/liker/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    const d = await r.json();
+    if(d.success){
+      btn.querySelector('.vf-action-ico').classList.add('liked');
+      document.getElementById(`likes-${pk}`).textContent = d.nb_likes;
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ── Commentaires ── */
+async function ouvrirCommentaires(pk){
+  currentVideoPk = pk;
+  document.getElementById('commentsOverlay').classList.add('show');
+  const list = document.getElementById('commentsList');
+  list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem 0">Chargement...</div>';
+  try{
+    const r = await fetch(`/videos/${pk}/commentaires/`);
+    const d = await r.json();
+    list.innerHTML = '';
+    if(!d.commentaires.length){
+      list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem 0">Aucun commentaire. Soyez le premier !</div>';
+      return;
+    }
+    d.commentaires.forEach(c => list.appendChild(creerCommentaireEl(c)));
+  }catch(e){ list.innerHTML = '<div style="text-align:center;color:var(--muted)">Erreur de chargement</div>'; }
+}
+
+function creerCommentaireEl(c){
+  const div = document.createElement('div');
+  div.className = 'vf-comment-item';
+  div.innerHTML = `
+    <div class="vf-comment-avatar">${c.username[0].toUpperCase()}</div>
+    <div>
+      <div class="vf-comment-user">${c.username}</div>
+      <div class="vf-comment-text">${c.contenu}</div>
+    </div>`;
+  return div;
+}
+
+function fermerCommentaires(e){
+  if(e && e.target !== document.getElementById('commentsOverlay')) return;
+  document.getElementById('commentsOverlay').classList.remove('show');
+}
+
+async function posterCommentaire(){
+  const inp = document.getElementById('commentInput');
+  const contenu = inp.value.trim();
+  if(!contenu || !currentVideoPk) return;
+  try{
+    const fd = new FormData();
+    fd.append('contenu', contenu);
+    const r = await fetch(`/videos/${currentVideoPk}/commenter/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    });
+    const d = await r.json();
+    if(d.success){
+      inp.value = '';
+      document.getElementById('commentsList').appendChild(creerCommentaireEl(d.commentaire));
+      const countEl = document.getElementById(`comms-${currentVideoPk}`);
+      if(countEl) countEl.textContent = parseInt(countEl.textContent||0) + 1;
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ── Partage ── */
+async function partagerVideo(pk){
+  try{
+    const r = await fetch(`/videos/${pk}/partager/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    const d = await r.json();
+    if(d.success){
+      if(navigator.share){ navigator.share({url: d.lien}).catch(()=>{}); }
+      else { navigator.clipboard.writeText(d.lien); }
+      const countEl = document.getElementById(`partages-${pk}`);
+      if(countEl) countEl.textContent = parseInt(countEl.textContent||0) + 1;
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ── Scroll infini ── */
+let chargementEnCours = false;
+let aPlus = true;
+document.getElementById('vfWrap').addEventListener('scroll', function(){
+  if(chargementEnCours || !aPlus) return;
+  const wrap = this;
+  if(wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 400){
+    chargerVideosSuivantes();
+  }
+});
+
+async function chargerVideosSuivantes(){
+  chargementEnCours = true;
+  const slides = document.querySelectorAll('.vf-slide[data-pk]');
+  const derniere = slides[slides.length - 1]?.dataset.pk;
+  if(!derniere) { chargementEnCours = false; return; }
+
+  try{
+    const r = await fetch(`/videos/ajax/suivantes/?apres=${derniere}`);
+    const d = await r.json();
+    aPlus = d.a_plus;
+    d.videos.forEach(v => {
+      const slide = document.createElement('div');
+      slide.className = 'vf-slide';
+      slide.id = `slide-${v.pk}`;
+      slide.dataset.pk = v.pk;
+      slide.innerHTML = `
+        <video class="vf-video" loop playsinline poster="${v.miniature_url}"><source src="${v.video_url}" type="video/mp4"></video>
+        <div class="vf-gradient-bottom"></div>
+        <div class="vf-caption">
+          <div class="vf-auteur">
+            ${v.auteur.avatar_url ? `<img src="${v.auteur.avatar_url}" class="vf-auteur-avatar" alt="">` : `<div class="vf-auteur-avatar">${v.auteur.username[0].toUpperCase()}</div>`}
+            <span class="vf-auteur-nom">@${v.auteur.username}</span>
+          </div>
+          <div class="vf-titre">${v.titre}</div>
+          <a href="/videos/${v.pk}/" class="vf-shop-btn"><i class="bi bi-bag-fill"></i> Voir la boutique</a>
+        </div>
+        <div class="vf-actions">
+          <button class="vf-action-btn like-btn" data-pk="${v.pk}" onclick="likerVideo(this)">
+            <div class="vf-action-ico"><i class="bi bi-heart-fill"></i></div>
+            <span class="vf-action-count" id="likes-${v.pk}">${v.nb_likes}</span>
+          </button>
+          <button class="vf-action-btn" onclick="ouvrirCommentaires('${v.pk}')">
+            <div class="vf-action-ico"><i class="bi bi-chat-fill"></i></div>
+            <span class="vf-action-count" id="comms-${v.pk}">${v.nb_commentaires}</span>
+          </button>
+          <button class="vf-action-btn" onclick="partagerVideo('${v.pk}')">
+            <div class="vf-action-ico"><i class="bi bi-share-fill"></i></div>
+            <span class="vf-action-count" id="partages-${v.pk}">${v.nb_partages}</span>
+          </button>
+        </div>`;
+      document.getElementById('vfWrap').appendChild(slide);
+      const vidEl = slide.querySelector('.vf-video');
+      io.observe(vidEl);
+    });
+  }catch(e){ console.error(e); }
+  chargementEnCours = false;
+}
+</script>
+{% endblock %}
+{% endblock %}

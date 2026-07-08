@@ -1,0 +1,150 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }}{% endblock %}
+
+{% block content %}
+<style>
+.ll-hero { padding:2rem 0 1.5rem; }
+.ll-search { position:relative;max-width:420px;margin-bottom:1.5rem; }
+.ll-search input { width:100%;padding:.7rem 1rem .7rem 2.6rem;border-radius:.7rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.88rem; }
+.ll-search i { position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--muted); }
+.ll-section-title { font-family:var(--fm);font-size:1.05rem;font-weight:900;color:var(--text);display:flex;align-items:center;gap:.5rem;margin:2rem 0 1.1rem; }
+.ll-live-dot { width:9px;height:9px;border-radius:50%;background:var(--ember);animation:llpulse 1.4s infinite; }
+@keyframes llpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.ll-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem; }
+.ll-card { border-radius:var(--r);overflow:hidden;background:var(--card);border:1px solid var(--border);text-decoration:none;display:block;transition:transform .2s,border-color .2s; }
+.ll-card:hover { transform:translateY(-3px);border-color:var(--saffron); }
+.ll-thumb { aspect-ratio:9/12;background:var(--surface);position:relative;overflow:hidden; }
+.ll-thumb img { width:100%;height:100%;object-fit:cover; }
+.ll-badge-live { position:absolute;top:.6rem;left:.6rem;background:var(--ember);color:#fff;font-size:.68rem;font-weight:800;padding:.25rem .6rem;border-radius:6px;display:flex;align-items:center;gap:.3rem; }
+.ll-badge-live .ll-live-dot { background:#fff; }
+.ll-viewers { position:absolute;bottom:.6rem;left:.6rem;background:rgba(0,0,0,.55);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:99px;display:flex;align-items:center;gap:.3rem; }
+.ll-body { padding:.75rem .9rem; }
+.ll-titre { font-size:.85rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.2rem; }
+.ll-vendeur { font-size:.75rem;color:var(--muted); }
+.ll-date-badge { position:absolute;top:.6rem;left:.6rem;background:var(--indigo);color:#fff;font-size:.66rem;font-weight:700;padding:.25rem .6rem;border-radius:6px; }
+.ll-play-overlay { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.15); }
+.ll-play-overlay i { font-size:2.2rem;color:#fff;opacity:.85; }
+.ll-empty { text-align:center;padding:2.5rem 1rem;color:var(--muted); }
+</style>
+
+<div class="container ll-hero">
+
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.35rem;font-weight:900;color:var(--text)">
+      <i class="bi bi-broadcast me-2" style="color:var(--ember)"></i>Lives YopiShop
+    </div>
+    <div style="font-size:.85rem;color:var(--muted);margin-top:.25rem">Achetez en direct auprès de vos vendeurs préférés</div>
+  </div>
+
+  <form method="get" class="ll-search fi">
+    <i class="bi bi-search"></i>
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher un live ou un vendeur...">
+  </form>
+
+  <!-- EN DIRECT -->
+  <div class="ll-section-title fi">
+    <span class="ll-live-dot"></span> En direct maintenant
+  </div>
+  {% if en_direct %}
+  <div class="ll-grid fi">
+    {% for live in en_direct %}
+    <a href="{% url 'apps_social:live_detail' pk=live.pk %}" class="ll-card">
+      <div class="ll-thumb">
+        {% if live.image_couverture %}
+        <img src="{{ live.image_couverture.url }}" alt="{{ live.titre }}">
+        {% else %}
+        <div class="ll-play-overlay" style="position:static;height:100%;background:var(--surface)"><i class="bi bi-broadcast" style="color:var(--muted)"></i></div>
+        {% endif %}
+        <div class="ll-badge-live"><span class="ll-live-dot"></span>DIRECT</div>
+        <div class="ll-viewers"><i class="bi bi-eye-fill"></i> {{ live.nb_actifs }}</div>
+      </div>
+      <div class="ll-body">
+        <div class="ll-titre">{{ live.titre }}</div>
+        <div class="ll-vendeur">{{ live.vendeur.boutique.nom|default:live.vendeur.username }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ll-empty fi">Aucun live en cours pour le moment.</div>
+  {% endif %}
+
+  <!-- PLANIFIÉS -->
+  <div class="ll-section-title fi">
+    <i class="bi bi-calendar-event" style="color:var(--indigo)"></i> Prochains lives
+  </div>
+  {% if planifies %}
+  <div class="ll-grid fi">
+    {% for live in planifies %}
+    <a href="{% url 'apps_social:live_detail' pk=live.pk %}" class="ll-card">
+      <div class="ll-thumb">
+        {% if live.image_couverture %}
+        <img src="{{ live.image_couverture.url }}" alt="{{ live.titre }}">
+        {% else %}
+        <div style="height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-calendar-event" style="color:var(--muted);font-size:1.6rem"></i></div>
+        {% endif %}
+        <div class="ll-date-badge"><i class="bi bi-clock me-1"></i>{{ live.date_debut|date:"d M à H:i" }}</div>
+      </div>
+      <div class="ll-body">
+        <div class="ll-titre">{{ live.titre }}</div>
+        <div class="ll-vendeur">{{ live.vendeur.boutique.nom|default:live.vendeur.username }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ll-empty fi">Aucun live planifié.</div>
+  {% endif %}
+
+  <!-- REPLAYS -->
+  <div class="ll-section-title fi">
+    <i class="bi bi-play-circle" style="color:var(--saffron)"></i> Replays
+  </div>
+  {% if replays %}
+  <div class="ll-grid fi">
+    {% for replay in replays %}
+    <a href="{% url 'apps_social:replay_detail' pk=replay.pk %}" class="ll-card">
+      <div class="ll-thumb">
+        {% if replay.image_couverture %}
+        <img src="{{ replay.image_couverture.url }}" alt="{{ replay.titre }}">
+        {% else %}
+        <div style="height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-play-circle" style="color:var(--muted);font-size:1.6rem"></i></div>
+        {% endif %}
+        <div class="ll-play-overlay"><i class="bi bi-play-circle-fill"></i></div>
+        <div class="ll-viewers"><i class="bi bi-eye-fill"></i> {{ replay.nb_vues_total }}</div>
+      </div>
+      <div class="ll-body">
+        <div class="ll-titre">{{ replay.titre }}</div>
+        <div class="ll-vendeur">{{ replay.vendeur.boutique.nom|default:replay.vendeur.username }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if replays.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if replays.has_previous %}
+    <a href="?page={{ replays.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ replays.number }} / {{ replays.paginator.num_pages }}</span>
+    {% if replays.has_next %}
+    <a href="?page={{ replays.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ll-empty fi">Aucun replay disponible.</div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,353 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.vd-wrap { padding: 2rem 0 4rem; }
+.vd-player-col { position: sticky; top: 1.5rem; }
+.vd-player-wrap { position: relative; aspect-ratio: 9/16; max-height: 78vh; margin: 0 auto; background: #000; border-radius: var(--r); overflow: hidden; }
+.vd-video { width: 100%; height: 100%; object-fit: contain; }
+.vd-marker { position: absolute; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.95); display: flex; align-items: center; justify-content: center; color: var(--saffron); font-size: 1rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.4); transform: translate(-50%,-50%); animation: markerPulse 1.6s infinite; display: none; }
+.vd-marker.visible { display: flex; }
+@keyframes markerPulse { 0%,100%{box-shadow:0 0 0 0 rgba(247,183,49,.5)} 50%{box-shadow:0 0 0 8px rgba(247,183,49,0)} }
+.vd-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.25); cursor: pointer; }
+.vd-play-overlay i { font-size: 3rem; color: #fff; opacity: .9; }
+.vd-play-overlay.hidden { display: none; }
+
+.vd-actions-row { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem; }
+.vd-action-btn { display: flex; flex-direction: column; align-items: center; gap: .3rem; background: none; border: none; cursor: pointer; color: var(--text-2); }
+.vd-action-ico { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all .2s; }
+.vd-action-ico.liked { background: var(--ember-d); border-color: rgba(255,90,71,.3); color: #FF4F5E; }
+.vd-action-count { font-size: .74rem; font-weight: 700; }
+
+.vd-info-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: 1.25rem; }
+.vd-auteur-row { display: flex; align-items: center; gap: .75rem; margin-bottom: .9rem; }
+.vd-auteur-avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: var(--saffron-d); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--saffron); flex-shrink: 0; }
+.vd-titre { font-size: 1.05rem; font-weight: 800; color: var(--text); margin-bottom: .5rem; }
+.vd-hashtags { font-size: .82rem; color: var(--saffron); margin-bottom: .5rem; }
+.vd-desc { font-size: .85rem; color: var(--text-2); line-height: 1.6; }
+
+.vd-prod-list { display: flex; flex-direction: column; gap: .6rem; }
+.vd-prod-row { display: flex; align-items: center; gap: .75rem; padding: .7rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; transition: border-color .2s; }
+.vd-prod-row:hover { border-color: var(--saffron); }
+.vd-prod-img { width: 50px; height: 50px; border-radius: 8px; overflow: hidden; background: var(--card); flex-shrink: 0; }
+.vd-prod-img img { width: 100%; height: 100%; object-fit: cover; }
+.vd-prod-nom { font-size: .84rem; font-weight: 600; color: var(--text); }
+.vd-prod-prix { font-family: var(--fm); font-size: .88rem; font-weight: 800; color: var(--saffron); }
+.vd-prod-ts { font-size: .7rem; color: var(--muted); }
+
+.vd-comments-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.3rem; }
+.vd-comment-item { display: flex; gap: .6rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.vd-comment-item:last-child { border-bottom: none; }
+.vd-comment-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--indigo-d); color: var(--indigo); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .82rem; flex-shrink: 0; }
+.vd-comment-reponses { margin-left: 2.6rem; margin-top: .5rem; }
+
+/* Modal achat */
+.vd-buy-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 9998; display: none; align-items: center; justify-content: center; }
+.vd-buy-overlay.show { display: flex; }
+.vd-buy-modal { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; width: 100%; max-width: 420px; margin: 1rem; }
+</style>
+
+<div class="vd-wrap">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- Colonne vidéo -->
+      <div class="col-lg-5">
+        <div class="vd-player-col fi">
+          <div class="vd-player-wrap">
+            <video class="vd-video" id="vdVideo" loop playsinline poster="{{ video.miniature.url }}">
+              <source src="{{ video.video.url }}" type="video/mp4">
+            </video>
+            <div class="vd-play-overlay" id="vdPlayOverlay" onclick="togglePlay()">
+              <i class="bi bi-play-circle-fill"></i>
+            </div>
+            {% for pv in produits_video %}
+            <div class="vd-marker" id="marker-{{ pv.pk }}"
+                 style="left:{{ pv.position_x }}%;top:{{ pv.position_y }}%"
+                 data-ts="{{ pv.timestamp_apparition }}"
+                 onclick="ouvrirAchat('{{ pv.pk }}','{{ pv.produit.titre|escapejs }}',{{ pv.produit.prix }},{{ pv.produit.quantite_stock }})">
+              <i class="bi bi-bag-fill"></i>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="vd-actions-row">
+            <button class="vd-action-btn" id="likeBtn" onclick="likerVideo()">
+              <div class="vd-action-ico" id="likeIco"><i class="bi bi-heart-fill"></i></div>
+              <span class="vd-action-count" id="likesCount">{{ video.nb_likes }}</span>
+            </button>
+            <button class="vd-action-btn" onclick="document.getElementById('vdCommentInput').focus()">
+              <div class="vd-action-ico"><i class="bi bi-chat-fill"></i></div>
+              <span class="vd-action-count">{{ video.nb_commentaires }}</span>
+            </button>
+            <button class="vd-action-btn" onclick="partagerVideo()">
+              <div class="vd-action-ico"><i class="bi bi-share-fill"></i></div>
+              <span class="vd-action-count" id="partagesCount">{{ video.nb_partages }}</span>
+            </button>
+            <div class="vd-action-btn" style="cursor:default">
+              <div class="vd-action-ico"><i class="bi bi-eye-fill"></i></div>
+              <span class="vd-action-count">{{ video.nb_vues }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Colonne infos -->
+      <div class="col-lg-7">
+
+        <div class="vd-info-card fi">
+          <div class="vd-auteur-row">
+            <a href="{% url 'apps_social:profil_public' username=video.auteur.username %}" style="display:flex;align-items:center;gap:.75rem;text-decoration:none;flex:1">
+              {% if video.auteur.avatar %}
+              <img src="{{ video.auteur.avatar.url }}" alt="" class="vd-auteur-avatar">
+              {% else %}
+              <div class="vd-auteur-avatar">{{ video.auteur.username|first|upper }}</div>
+              {% endif %}
+              <div>
+                <div style="font-size:.9rem;font-weight:700;color:var(--text)">@{{ video.auteur.username }}</div>
+                <div style="font-size:.75rem;color:var(--muted)">{{ video.date_creation|timesince }}</div>
+              </div>
+            </a>
+            {% if est_proprietaire %}
+            <a href="{% url 'apps_social:modifier_video' pk=video.pk %}" class="btn-ghost" style="font-size:.78rem">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% endif %}
+          </div>
+
+          <div class="vd-titre">{{ video.titre }}</div>
+          {% if video.hashtags %}
+          <div class="vd-hashtags">{% for tag in video.hashtags.split %}#{{ tag }} {% endfor %}</div>
+          {% endif %}
+          {% if video.description %}
+          <div class="vd-desc">{{ video.description }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Produits tagués -->
+        {% if produits_video %}
+        <div class="vd-info-card fi">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.75rem">
+            <i class="bi bi-bag-check" style="color:var(--saffron)"></i> Produits dans cette vidéo
+          </div>
+          <div class="vd-prod-list">
+            {% for pv in produits_video %}
+            <div class="vd-prod-row" onclick="ouvrirAchat('{{ pv.pk }}','{{ pv.produit.titre|escapejs }}',{{ pv.produit.prix }},{{ pv.produit.quantite_stock }})">
+              <div class="vd-prod-img">
+                {% if pv.produit.image_principale %}<img src="{{ pv.produit.image_principale }}" alt="">{% endif %}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div class="vd-prod-nom">{{ pv.produit.titre|truncatechars:40 }}</div>
+                <div class="vd-prod-prix">{{ pv.produit.prix|floatformat:0 }} F</div>
+              </div>
+              <div class="vd-prod-ts"><i class="bi bi-clock"></i> {{ pv.timestamp_apparition }}s</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Commentaires -->
+        <div class="vd-comments-card fi">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:1rem">
+            <i class="bi bi-chat-dots" style="color:var(--indigo)"></i> Commentaires ({{ video.nb_commentaires }})
+          </div>
+
+          {% if request.user.is_authenticated %}
+          <div style="display:flex;gap:.5rem;margin-bottom:1.25rem">
+            <input type="text" id="vdCommentInput" placeholder="Ajouter un commentaire..." maxlength="300"
+                   style="flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:.55rem 1rem;color:var(--text);font-size:.84rem">
+            <button class="btn-gold" style="font-size:.8rem" onclick="posterCommentaire()"><i class="bi bi-send-fill"></i></button>
+          </div>
+          {% else %}
+          <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.25rem">
+            <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" style="color:var(--saffron)">Connectez-vous</a> pour commenter.
+          </div>
+          {% endif %}
+
+          <div id="commentsList">
+            {% for c in commentaires %}
+            <div class="vd-comment-item">
+              <div class="vd-comment-avatar">{{ c.auteur.username|first|upper }}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ c.auteur.username }}</div>
+                <div style="font-size:.82rem;color:var(--text-2)">{{ c.contenu }}</div>
+                {% if c.reponses.all %}
+                <div class="vd-comment-reponses">
+                  {% for r in c.reponses.all %}
+                  <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+                    <div class="vd-comment-avatar" style="width:26px;height:26px;font-size:.7rem">{{ r.auteur.username|first|upper }}</div>
+                    <div>
+                      <div style="font-size:.76rem;font-weight:700;color:var(--text)">{{ r.auteur.username }}</div>
+                      <div style="font-size:.78rem;color:var(--text-2)">{{ r.contenu }}</div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% empty %}
+            <div style="text-align:center;color:var(--muted);font-size:.85rem;padding:1.5rem 0">Aucun commentaire pour le moment.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal achat -->
+<div class="vd-buy-overlay" id="buyOverlay" onclick="fermerAchat(event)">
+  <div class="vd-buy-modal">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <span style="font-size:.9rem;font-weight:700;color:var(--text)"><i class="bi bi-bag-fill me-1" style="color:var(--saffron)"></i>Acheter</span>
+      <button onclick="fermerAchat()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem">✕</button>
+    </div>
+    <div id="buyTitre" style="font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.3rem">—</div>
+    <div id="buyPrix" style="font-family:var(--fm);font-size:1.4rem;font-weight:900;color:var(--saffron);margin-bottom:.9rem">—</div>
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
+      <button onclick="changeQte(-1)" style="width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border);cursor:pointer">−</button>
+      <span id="buyQteVal" style="font-family:var(--fm);font-weight:700;min-width:24px;text-align:center">1</span>
+      <button onclick="changeQte(1)" style="width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border);cursor:pointer">+</button>
+    </div>
+    <button class="btn-gold" style="width:100%" id="btnConfirmerAchat" onclick="confirmerAchat()">
+      <i class="bi bi-bag-check-fill me-1"></i>Confirmer l'achat
+    </button>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF     = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const VIDEO_PK = "{{ video.pk }}";
+const video    = document.getElementById('vdVideo');
+const overlay  = document.getElementById('vdPlayOverlay');
+
+/* ── Lecture ── */
+function togglePlay(){
+  if(video.paused){ video.play(); overlay.classList.add('hidden'); }
+  else { video.pause(); overlay.classList.remove('hidden'); }
+}
+video.addEventListener('click', togglePlay);
+
+/* ── Marqueurs produits selon le timestamp ── */
+const marqueurs = document.querySelectorAll('.vd-marker');
+video.addEventListener('timeupdate', function(){
+  marqueurs.forEach(m => {
+    const ts = parseFloat(m.dataset.ts);
+    m.classList.toggle('visible', video.currentTime >= ts);
+  });
+});
+
+/* ── Like ── */
+async function likerVideo(){
+  try{
+    const r = await fetch(`/videos/${VIDEO_PK}/liker/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    const d = await r.json();
+    if(d.success){
+      document.getElementById('likeIco').classList.add('liked');
+      document.getElementById('likesCount').textContent = d.nb_likes;
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ── Partage ── */
+async function partagerVideo(){
+  try{
+    const r = await fetch(`/videos/${VIDEO_PK}/partager/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    const d = await r.json();
+    if(d.success){
+      if(navigator.share){ navigator.share({url: d.lien}).catch(()=>{}); }
+      else { navigator.clipboard.writeText(d.lien); }
+      document.getElementById('partagesCount').textContent = parseInt(document.getElementById('partagesCount').textContent||0) + 1;
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ── Commentaires ── */
+async function posterCommentaire(){
+  const inp = document.getElementById('vdCommentInput');
+  const contenu = inp.value.trim();
+  if(!contenu) return;
+  try{
+    const fd = new FormData();
+    fd.append('contenu', contenu);
+    const r = await fetch(`/videos/${VIDEO_PK}/commenter/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    });
+    const d = await r.json();
+    if(d.success){
+      inp.value = '';
+      const list = document.getElementById('commentsList');
+      const div = document.createElement('div');
+      div.className = 'vd-comment-item';
+      div.innerHTML = `
+        <div class="vd-comment-avatar">${d.commentaire.username[0].toUpperCase()}</div>
+        <div><div style="font-size:.82rem;font-weight:700;color:var(--text)">${d.commentaire.username}</div>
+        <div style="font-size:.82rem;color:var(--text-2)">${d.commentaire.contenu}</div></div>`;
+      list.prepend(div);
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ── Modal achat ── */
+let buyPvPk = null, buyPrix = 0, buyQte = 1, buyStockMax = 1;
+function ouvrirAchat(pvPk, titre, prix, stock){
+  {% if not request.user.is_authenticated %}
+  location.href = "{% url 'apps_core:connexion' %}?next={{ request.path }}";
+  return;
+  {% endif %}
+  buyPvPk = pvPk; buyPrix = prix; buyQte = 1; buyStockMax = stock;
+  document.getElementById('buyTitre').textContent = titre;
+  document.getElementById('buyPrix').textContent = `${Math.round(prix).toLocaleString('fr')} FCFA`;
+  document.getElementById('buyQteVal').textContent = 1;
+  document.getElementById('buyOverlay').classList.add('show');
+}
+function fermerAchat(e){
+  if(e && e.target !== document.getElementById('buyOverlay')) return;
+  document.getElementById('buyOverlay').classList.remove('show');
+}
+function changeQte(delta){
+  buyQte = Math.max(1, Math.min(buyStockMax, buyQte + delta));
+  document.getElementById('buyQteVal').textContent = buyQte;
+}
+async function confirmerAchat(){
+  const btn = document.getElementById('btnConfirmerAchat');
+  btn.disabled = true;
+  try{
+    const fd = new FormData();
+    fd.append('quantite', buyQte);
+    const r = await fetch(`/videos/${VIDEO_PK}/produits/${buyPvPk}/acheter/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    });
+    const d = await r.json();
+    if(d.success){
+      alert(d.message);
+      fermerAchat();
+    } else {
+      alert(d.message || 'Erreur');
+    }
+  }catch(e){ console.error(e); alert('Erreur réseau'); }
+  btn.disabled = false;
+}
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

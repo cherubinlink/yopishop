@@ -1,0 +1,320 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre|default:"Admin — Interactions enchères" }}{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="cat-strip d-block">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between py-1 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'apps_enchere:admin_encheres_liste' %}" class="cpill">
+          <i class="bi bi-arrow-left me-1"></i>Admin Enchères
+        </a>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-2)">
+          <i class="bi bi-activity me-1" style="color:var(--saffron)"></i>Interactions
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Onglets type -->
+<div class="cat-strip d-block" style="border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="cat-inner">
+      <a href="{% url 'apps_enchere:admin_interactions_liste' %}"
+         class="cpill {% if not type_filtre %}on{% endif %}">
+        <i class="bi bi-grid-fill"></i>Tout
+      </a>
+      <a href="?type=commentaire"
+         class="cpill {% if type_filtre == 'commentaire' %}on{% endif %}">
+        <i class="bi bi-chat-dots"></i>Commentaires
+        {% if stats.commentaires_en_attente > 0 %}
+        <span style="background:var(--ember);color:#fff;font-size:.6rem;font-weight:700;padding:.05rem .4rem;border-radius:99px;margin-left:.2rem">
+          {{ stats.commentaires_en_attente }}
+        </span>
+        {% endif %}
+      </a>
+      <a href="?type=like"
+         class="cpill {% if type_filtre == 'like' %}on{% endif %}">
+        <i class="bi bi-heart"></i>Likes
+      </a>
+      <a href="?type=partage"
+         class="cpill {% if type_filtre == 'partage' %}on{% endif %}">
+        <i class="bi bi-share"></i>Partages
+      </a>
+      <a href="?signale=1"
+         class="cpill {% if signale %}on{% endif %}" style="{% if signale %}color:var(--ember){% endif %}">
+        <i class="bi bi-flag"></i>Signalés
+        {% if stats.signales > 0 %}
+        <span style="background:var(--ember);color:#fff;font-size:.6rem;font-weight:700;padding:.05rem .4rem;border-radius:99px;margin-left:.2rem">
+          {{ stats.signales }}
+        </span>
+        {% endif %}
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<div class="container py-4">
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4 fi">
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="border:1px solid var(--border)">
+        <div style="font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--text)">{{ stats.total_commentaires }}</div>
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Commentaires</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="border:1px solid rgba(239,68,68,.3)">
+        <div style="font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--ember)">{{ stats.commentaires_en_attente }}</div>
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">En attente</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="border:1px solid rgba(246,169,43,.3)">
+        <div style="font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--saffron)">{{ stats.total_likes }}</div>
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Likes</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard p-3 text-center" style="border:1px solid rgba(99,102,241,.3)">
+        <div style="font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--indigo)">{{ stats.total_partages }}</div>
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Partages</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="ycard p-3 mb-4 fi" style="border:1px solid var(--border)">
+    <form method="get" class="row g-2 align-items-end">
+      {% if type_filtre %}<input type="hidden" name="type" value="{{ type_filtre }}">{% endif %}
+      {% if signale %}<input type="hidden" name="signale" value="1">{% endif %}
+      <div class="col-12 col-md-5">
+        <div style="position:relative">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.78rem"></i>
+          <input type="text" name="q" value="{{ q }}"
+                 placeholder="Utilisateur, enchère, contenu…"
+                 style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:.45rem .8rem .45rem 2.1rem;font-size:.82rem;outline:none">
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <select name="statut_com" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:.45rem .8rem;font-size:.82rem;outline:none">
+          <option value="">— Statut commentaire —</option>
+          <option value="en_attente" {% if statut_com == 'en_attente' %}selected{% endif %}>En attente</option>
+          <option value="approuve"   {% if statut_com == 'approuve' %}selected{% endif %}>Approuvé</option>
+          <option value="rejete"     {% if statut_com == 'rejete' %}selected{% endif %}>Rejeté</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4 d-flex gap-2">
+        <button type="submit" class="btn-gold flex-grow-1 justify-content-center" style="font-size:.82rem">
+          <i class="bi bi-funnel me-1"></i>Filtrer
+        </button>
+        {% if q or statut_com %}
+        <a href="?{% if type_filtre %}type={{ type_filtre }}&{% endif %}{% if signale %}signale=1{% endif %}"
+           class="btn-ghost" style="font-size:.82rem;width:auto">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- ══ COMMENTAIRES ══ -->
+  {% if not type_filtre or type_filtre == 'commentaire' %}
+
+  {% if commentaires %}
+  <div class="mb-2 d-flex align-items-center gap-2">
+    <span style="font-size:.85rem;font-weight:700;color:var(--text)">
+      <i class="bi bi-chat-dots me-1" style="color:var(--saffron)"></i>Commentaires
+    </span>
+    <span style="font-size:.78rem;color:var(--muted)">({{ commentaires.paginator.count }})</span>
+  </div>
+
+  <div class="d-flex flex-column gap-2 mb-4">
+    {% for com in commentaires %}
+    <div class="ycard fi" style="border:1px solid {% if com.statut == 'en_attente' %}rgba(246,169,43,.35){% elif com.est_signale %}rgba(239,68,68,.35){% else %}var(--border){% endif %}">
+      <div class="row align-items-start g-3">
+
+        <!-- Auteur -->
+        <div class="col-12 col-md-3">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width:34px;height:34px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+              {{ com.auteur.username|first|upper }}
+            </div>
+            <div>
+              <div style="font-size:.82rem;font-weight:700;color:var(--text)">{{ com.auteur.username }}</div>
+              <div style="font-size:.68rem;color:var(--muted)">{{ com.date_creation|date:"d M Y à H:i" }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contenu -->
+        <div class="col-12 col-md-5">
+          <div style="font-size:.82rem;color:var(--text-2);line-height:1.5;margin-bottom:.4rem">
+            {{ com.contenu }}
+          </div>
+          <a href="{% url 'apps_enchere:enchere_detail' com.enchere.pk %}"
+             style="font-size:.72rem;color:var(--saffron);text-decoration:none">
+            <i class="bi bi-hammer me-1"></i>{{ com.enchere.titre|truncatechars:35 }}
+          </a>
+          {% if com.est_signale %}
+          <div style="margin-top:.3rem">
+            <span class="chip chip-ember" style="font-size:.62rem">
+              <i class="bi bi-flag-fill me-1"></i>Signalé — {{ com.motif_signalement|default:"Sans motif" }}
+            </span>
+          </div>
+          {% endif %}
+          {% if com.commentaire_parent %}
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">
+            <i class="bi bi-reply me-1"></i>Réponse à {{ com.commentaire_parent.auteur.username }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Statut + Actions -->
+        <div class="col-12 col-md-4">
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+            <!-- Statut -->
+            <div>
+              {% if com.statut == 'en_attente' %}
+              <span class="chip" style="background:var(--saffron-d);color:var(--saffron);font-size:.68rem">
+                <i class="bi bi-hourglass-split me-1"></i>En attente
+              </span>
+              {% elif com.statut == 'approuve' %}
+              <span class="chip chip-jade" style="font-size:.68rem">
+                <i class="bi bi-check-circle-fill me-1"></i>Approuvé
+              </span>
+              {% elif com.statut == 'rejete' %}
+              <span class="chip chip-ember" style="font-size:.68rem">
+                <i class="bi bi-x-circle-fill me-1"></i>Rejeté
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-1 flex-wrap">
+              {% if com.statut == 'en_attente' or com.est_signale %}
+              <form method="post" action="{% url 'apps_enchere:admin_approuver_commentaire' com.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-ghost" style="font-size:.72rem;padding:.28rem .6rem;width:auto;color:var(--jade);border-color:rgba(16,185,129,.35)">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+              </form>
+              {% endif %}
+              {% if com.statut != 'rejete' %}
+              <form method="post" action="{% url 'apps_enchere:admin_rejeter_commentaire' com.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-ghost" style="font-size:.72rem;padding:.28rem .6rem;width:auto;color:var(--ember);border-color:rgba(239,68,68,.35)">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </form>
+              {% endif %}
+              <form method="post" action="{% url 'apps_enchere:admin_supprimer_commentaire' com.pk %}"
+                    onsubmit="return confirm('Supprimer ce commentaire ?')">
+                {% csrf_token %}
+                <button type="submit" class="btn-ghost" style="font-size:.72rem;padding:.28rem .6rem;width:auto;color:var(--muted)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if commentaires.has_other_pages %}
+  <nav class="d-flex justify-content-center fi mb-4">
+    <ul class="pagination" style="gap:.4rem">
+      {% if commentaires.has_previous %}<li><a class="cpill" href="?page={{ commentaires.previous_page_number }}&type=commentaire&q={{ q }}&statut_com={{ statut_com }}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+      {% for num in commentaires.paginator.page_range %}
+        {% if commentaires.number == num %}<li><span class="cpill on">{{ num }}</span></li>
+        {% elif num|add:"-2" <= commentaires.number and num|add:"2" >= commentaires.number %}
+        <li><a class="cpill" href="?page={{ num }}&type=commentaire&q={{ q }}&statut_com={{ statut_com }}">{{ num }}</a></li>
+        {% endif %}
+      {% endfor %}
+      {% if commentaires.has_next %}<li><a class="cpill" href="?page={{ commentaires.next_page_number }}&type=commentaire&q={{ q }}&statut_com={{ statut_com }}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard p-4 text-center fi mb-4" style="border:1px solid var(--border)">
+    <i class="bi bi-chat-dots" style="font-size:2.5rem;color:var(--muted);display:block;margin-bottom:.7rem;opacity:.4"></i>
+    <div style="font-size:.88rem;color:var(--muted)">Aucun commentaire trouvé.</div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+
+  <!-- ══ LIKES ══ -->
+  {% if not type_filtre or type_filtre == 'like' %}
+  {% if likes %}
+  <div class="mb-2 d-flex align-items-center gap-2">
+    <span style="font-size:.85rem;font-weight:700;color:var(--text)">
+      <i class="bi bi-heart-fill me-1" style="color:var(--ember)"></i>Likes récents
+    </span>
+    <span style="font-size:.78rem;color:var(--muted)">({{ likes.count }})</span>
+  </div>
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    {% for like in likes %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem;display:flex;align-items:center;gap:.5rem">
+      <i class="bi bi-heart-fill" style="color:var(--ember);font-size:.78rem"></i>
+      <div>
+        <div style="font-size:.78rem;font-weight:600;color:var(--text)">{{ like.utilisateur.username }}</div>
+        <a href="{% url 'apps_enchere:enchere_detail' like.enchere.pk %}"
+           style="font-size:.68rem;color:var(--muted);text-decoration:none">
+          {{ like.enchere.titre|truncatechars:25 }}
+        </a>
+      </div>
+      <span style="font-size:.65rem;color:var(--muted);margin-left:.3rem">{{ like.date_creation|date:"d M" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- ══ PARTAGES ══ -->
+  {% if not type_filtre or type_filtre == 'partage' %}
+  {% if partages %}
+  <div class="mb-2 d-flex align-items-center gap-2">
+    <span style="font-size:.85rem;font-weight:700;color:var(--text)">
+      <i class="bi bi-share-fill me-1" style="color:var(--indigo)"></i>Partages récents
+    </span>
+    <span style="font-size:.78rem;color:var(--muted)">({{ partages.count }})</span>
+  </div>
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    {% for p in partages %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem;display:flex;align-items:center;gap:.5rem">
+      <i class="bi bi-share-fill" style="color:var(--indigo);font-size:.78rem"></i>
+      <div>
+        <div style="font-size:.78rem;font-weight:600;color:var(--text)">{{ p.utilisateur.username }}</div>
+        <a href="{% url 'apps_enchere:enchere_detail' p.enchere.pk %}"
+           style="font-size:.68rem;color:var(--muted);text-decoration:none">
+          {{ p.enchere.titre|truncatechars:25 }}
+        </a>
+      </div>
+      <span style="font-size:.65rem;color:var(--muted);margin-left:.3rem">{{ p.date_creation|date:"d M" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

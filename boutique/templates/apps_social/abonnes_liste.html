@@ -1,0 +1,143 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}Abonnés de @{{ utilisateur.username }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.al-header { display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem; }
+.al-avatar { width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:1.3rem;font-weight:900;color:var(--saffron);flex-shrink:0; }
+.al-search { position:relative;margin-bottom:1.25rem; }
+.al-search input { width:100%;padding:.65rem 1rem .65rem 2.6rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.85rem; }
+.al-search i { position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--muted); }
+.al-row { display:flex;align-items:center;gap:.85rem;padding:.85rem 0;border-bottom:1px solid var(--border); }
+.al-row:last-child { border-bottom:none; }
+.al-avatar-sm { width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:1rem;font-weight:900;color:var(--saffron);flex-shrink:0; }
+.al-name { font-size:.88rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.35rem; }
+.al-user { font-size:.78rem;color:var(--muted); }
+.al-empty { text-align:center;padding:3rem 1rem; }
+.al-follow-btn { font-size:.78rem;padding:.4rem .9rem; }
+</style>
+
+<div class="container mt-4">
+
+  <!-- En-tête -->
+  <div class="al-header fi">
+    {% if utilisateur.avatar %}
+    <img src="{{ utilisateur.avatar.url }}" alt="" class="al-avatar">
+    {% else %}
+    <div class="al-avatar">{{ utilisateur.username|first|upper }}</div>
+    {% endif %}
+    <div>
+      <div style="font-family:var(--fm);font-size:1.1rem;font-weight:900;color:var(--text);display:flex;align-items:center;gap:.4rem">
+        Abonnés de @{{ utilisateur.username }}
+        {% if profil.est_verifie %}
+        <i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.9rem"></i>
+        {% endif %}
+      </div>
+      <div style="font-size:.8rem;color:var(--muted)">{{ profil.nb_abonnes }} abonné{{ profil.nb_abonnes|pluralize }}</div>
+    </div>
+  </div>
+
+  <!-- Recherche -->
+  <form method="get" class="al-search fi">
+    <i class="bi bi-search"></i>
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher un abonné...">
+  </form>
+
+  <!-- Liste -->
+  <div class="ycard fi" style="border:1px solid var(--border);padding:.5rem 1.25rem">
+    {% if abonnes %}
+      {% for abonnement in abonnes %}
+      <div class="al-row">
+        {% if abonnement.abonne.avatar %}
+        <img src="{{ abonnement.abonne.avatar.url }}" alt="" class="al-avatar-sm">
+        {% else %}
+        <div class="al-avatar-sm">{{ abonnement.abonne.username|first|upper }}</div>
+        {% endif %}
+        <div style="flex:1;min-width:0">
+          <a href="{% url 'apps_social:profil_public' abonnement.abonne.username %}" style="text-decoration:none">
+            <div class="al-name">
+              {{ abonnement.abonne.get_full_name|default:abonnement.abonne.username }}
+              {% if abonnement.abonne.profil_social.est_verifie %}
+              <i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.75rem"></i>
+              {% endif %}
+            </div>
+            <div class="al-user">@{{ abonnement.abonne.username }}</div>
+          </a>
+        </div>
+        {% if request.user.is_authenticated and request.user != abonnement.abonne %}
+        <button class="btn-ghost al-follow-btn" data-username="{{ abonnement.abonne.username }}"
+                data-url="{% url 'apps_social:ajax_toggle_abonnement' username=abonnement.abonne.username %}"
+                onclick="toggleAbonnement(this)">
+          {% if abonnement.abonne.id in mes_suivis %}
+          <i class="bi bi-person-check me-1"></i>Abonné
+          {% else %}
+          <i class="bi bi-person-plus me-1"></i>Suivre
+          {% endif %}
+        </button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="al-empty">
+        <i class="bi bi-people" style="font-size:2.5rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+        <div style="font-size:.9rem;color:var(--text);font-weight:600">
+          {% if q %}Aucun résultat pour « {{ q }} »{% else %}Aucun abonné pour le moment{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  {% if abonnes.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if abonnes.has_previous %}
+    <a href="?page={{ abonnes.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ abonnes.number }} / {{ abonnes.paginator.num_pages }}</span>
+    {% if abonnes.has_next %}
+    <a href="?page={{ abonnes.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+function toggleAbonnement(btn) {
+  const url = btn.dataset.url;
+  btn.disabled = true;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+  })
+  .then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  })
+  .then(data => {
+    btn.disabled = false;
+    if (data.success) {
+      btn.innerHTML = data.je_suis
+        ? '<i class="bi bi-person-check me-1"></i>Abonné'
+        : '<i class="bi bi-person-plus me-1"></i>Suivre';
+    } else {
+      console.error('Échec abonnement:', data.message);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    console.error('Erreur toggleAbonnement:', err);
+  });
+}
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

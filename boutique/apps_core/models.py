@@ -60,6 +60,8 @@ class Utilisateur(AbstractUser):
     date_naissance      = models.DateField(null=True, blank=True, verbose_name="Date de naissance")
     avatar              = models.ImageField(upload_to='avatars/', null=True, blank=True,
                                              verbose_name="Avatar")
+    banniere  = models.ImageField(upload_to='bannieres/', null=True, blank=True,
+                               verbose_name="Bannière de profil")
     bio                 = models.TextField(max_length=500, blank=True,
                             verbose_name="Biographie courte")
  

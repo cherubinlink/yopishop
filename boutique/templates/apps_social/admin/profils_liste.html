@@ -1,0 +1,212 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}Gestion des profils sociaux — Admin YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.ap-stat-card { text-align:center;padding:1rem .5rem; }
+.ap-stat-val { font-family:var(--fm);font-size:1.5rem;font-weight:900;color:var(--text); }
+.ap-stat-lbl { font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em; }
+.ap-filters { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem; }
+.ap-filters select, .ap-filters input { padding:.55rem .9rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.82rem; }
+.ap-filters input { flex:1;min-width:200px; }
+.ap-table { width:100%;border-collapse:collapse; }
+.ap-table th { text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.6rem .75rem;border-bottom:1px solid var(--border); }
+.ap-table td { padding:.7rem .75rem;border-bottom:1px solid var(--border);font-size:.84rem;color:var(--text);vertical-align:middle; }
+.ap-table tr:last-child td { border-bottom:none; }
+.ap-avatar-sm { width:38px;height:38px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:.85rem;font-weight:900;color:var(--saffron);flex-shrink:0; }
+.ap-user-cell { display:flex;align-items:center;gap:.65rem; }
+.ap-badge { font-size:.68rem;font-weight:700;padding:.2rem .55rem;border-radius:999px; }
+.ap-badge-public { background:rgba(46,160,67,.15);color:#2ea043; }
+.ap-badge-prive { background:rgba(200,80,80,.15);color:#c85050; }
+.ap-badge-verifie { background:rgba(88,101,242,.15);color:var(--indigo); }
+</style>
+
+<div class="container mt-4">
+
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text)">
+      <i class="bi bi-shield-lock me-2" style="color:var(--saffron)"></i>Gestion des profils sociaux
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-2 fi" style="margin-bottom:1.25rem">
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ap-stat-card">
+          <div class="ap-stat-val">{{ stats.total }}</div>
+          <div class="ap-stat-lbl">Profils</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ap-stat-card">
+          <div class="ap-stat-val">{{ stats.verifies }}</div>
+          <div class="ap-stat-lbl">Certifiés</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ap-stat-card">
+          <div class="ap-stat-val">{{ stats.prives }}</div>
+          <div class="ap-stat-lbl">Privés</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ap-stat-card">
+          <div class="ap-stat-val">{{ stats.abonnements_total }}</div>
+          <div class="ap-stat-lbl">Abonnements</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="ap-filters fi">
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher par username, email ou bio...">
+    <select name="verifie" onchange="this.form.submit()">
+      <option value="">Certification</option>
+      <option value="1" {% if est_verifie == '1' %}selected{% endif %}>Certifiés</option>
+      <option value="0" {% if est_verifie == '0' %}selected{% endif %}>Non certifiés</option>
+    </select>
+    <select name="public" onchange="this.form.submit()">
+      <option value="">Visibilité</option>
+      <option value="1" {% if est_public == '1' %}selected{% endif %}>Publics</option>
+      <option value="0" {% if est_public == '0' %}selected{% endif %}>Privés</option>
+    </select>
+    <button type="submit" class="btn-gold" style="font-size:.82rem">Filtrer</button>
+  </form>
+
+  <!-- Tableau -->
+  <div class="ycard fi" style="border:1px solid var(--border);overflow-x:auto">
+    <table class="ap-table">
+      <thead>
+        <tr>
+          <th>Utilisateur</th>
+          <th>Abonnés</th>
+          <th>Publications</th>
+          <th>Visibilité</th>
+          <th>Statut</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for profil in profils %}
+        <tr id="row-{{ profil.utilisateur.username }}">
+          <td>
+            <div class="ap-user-cell">
+              {% if profil.utilisateur.avatar %}
+              <img src="{{ profil.utilisateur.avatar.url }}" alt="" class="ap-avatar-sm">
+              {% else %}
+              <div class="ap-avatar-sm">{{ profil.utilisateur.username|first|upper }}</div>
+              {% endif %}
+              <div>
+                <div style="font-weight:700">{{ profil.utilisateur.get_full_name|default:profil.utilisateur.username }}</div>
+                <div style="font-size:.76rem;color:var(--muted)">@{{ profil.utilisateur.username }} · {{ profil.utilisateur.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ profil.nb_abonnes }}</td>
+          <td>{{ profil.nb_publications }}</td>
+          <td>
+            {% if profil.est_public %}
+            <span class="ap-badge ap-badge-public">Public</span>
+            {% else %}
+            <span class="ap-badge ap-badge-prive">Privé</span>
+            {% endif %}
+          </td>
+          <td>
+            <span id="badge-verifie-{{ profil.utilisateur.username }}">
+              {% if profil.est_verifie %}
+              <span class="ap-badge ap-badge-verifie"><i class="bi bi-patch-check-fill"></i> Certifié</span>
+              {% else %}
+              <span style="color:var(--muted);font-size:.78rem">—</span>
+              {% endif %}
+            </span>
+          </td>
+          <td style="text-align:right">
+            <button class="btn-ghost" style="font-size:.78rem" data-username="{{ profil.utilisateur.username }}"
+                    data-url="{% url 'apps_social:admin_toggle_verifie' username=profil.utilisateur.username %}"
+                    onclick="toggleVerifie(this)">
+              {% if profil.est_verifie %}Décertifier{% else %}Certifier{% endif %}
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">
+            <i class="bi bi-search" style="font-size:2rem;display:block;margin-bottom:.75rem"></i>
+            Aucun profil ne correspond à ces critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if profils.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if profils.has_previous %}
+    <a href="?page={{ profils.previous_page_number }}&q={{ q }}&verifie={{ est_verifie }}&public={{ est_public }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ profils.number }} / {{ profils.paginator.num_pages }}</span>
+    {% if profils.has_next %}
+    <a href="?page={{ profils.next_page_number }}&q={{ q }}&verifie={{ est_verifie }}&public={{ est_public }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+function toggleVerifie(btn) {
+  const username = btn.dataset.username;
+  const url = btn.dataset.url;
+  btn.disabled = true;
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCsrfToken(),
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  })
+  .then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  })
+  .then(data => {
+    btn.disabled = false;
+    if (data.success) {
+      const badge = document.getElementById(`badge-verifie-${username}`);
+      badge.innerHTML = data.est_verifie
+        ? '<span class="ap-badge ap-badge-verifie"><i class="bi bi-patch-check-fill"></i> Certifié</span>'
+        : '<span style="color:var(--muted);font-size:.78rem">—</span>';
+      btn.textContent = data.est_verifie ? 'Décertifier' : 'Certifier';
+    } else {
+      alert(data.message || 'Une erreur est survenue.');
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    console.error('Erreur toggleVerifie:', err);
+    alert('Impossible de contacter le serveur. Ouvre la console (F12) pour le détail.');
+  });
+}
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

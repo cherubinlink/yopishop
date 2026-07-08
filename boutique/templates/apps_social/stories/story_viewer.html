@@ -1,0 +1,270 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+/* Variables contexte : story, story_prev (pk|None), story_next (pk|None),
+   vues (list, si est_proprio), est_proprio, temps_restant (secondes), page_titre */
+body { overflow:hidden; }
+.sv-wrap {
+  position:fixed; inset:0; background:#000; z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+}
+.sv-stage {
+  position:relative; width:100%; max-width:460px; height:100vh; max-height:900px;
+  background: {{ story.couleur_fond|default:"#0A0B1A" }};
+  overflow:hidden;
+}
+@media(min-width:461px){ .sv-stage { border-radius:16px; height:92vh; } }
+
+.sv-progress {
+  position:absolute; top:.6rem; left:.6rem; right:.6rem; z-index:20;
+  height:3px; background:rgba(255,255,255,.25); border-radius:99px; overflow:hidden;
+}
+.sv-progress-fill {
+  height:100%; width:0%; background:#fff; border-radius:99px;
+  transition: width linear;
+}
+
+.sv-top {
+  position:absolute; top:1.1rem; left:.75rem; right:.75rem; z-index:20;
+  display:flex; align-items:center; gap:.6rem;
+}
+.sv-avatar {
+  width:32px; height:32px; border-radius:50%; object-fit:cover;
+  background:var(--indigo-d); display:flex; align-items:center; justify-content:center;
+  color:#fff; font-weight:800; font-size:.85rem; border:1.5px solid rgba(255,255,255,.5);
+}
+.sv-username { font-size:.85rem; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+.sv-time { font-size:.7rem; color:rgba(255,255,255,.75); }
+.sv-actions { margin-left:auto; display:flex; gap:.5rem; }
+.sv-icon-btn {
+  width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.35); border:none;
+  color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:.95rem;
+}
+
+.sv-media-zone { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+.sv-media-zone img, .sv-media-zone video { width:100%; height:100%; object-fit:contain; }
+
+.sv-tap-zone { position:absolute; top:0; bottom:0; width:35%; z-index:15; cursor:pointer; }
+.sv-tap-prev { left:0; }
+.sv-tap-next { right:0; }
+
+.sv-texte {
+  position:absolute; left:1rem; right:1rem; bottom:6.5rem; z-index:20;
+  color:#fff; font-size:.95rem; font-weight:600; text-align:center;
+  text-shadow:0 2px 6px rgba(0,0,0,.6); white-space:pre-wrap;
+}
+
+.sv-produit-card {
+  position:absolute; left:1rem; right:1rem; bottom:5rem; z-index:20;
+  background:rgba(10,11,26,.9); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.15);
+  border-radius:14px; padding:.6rem .8rem; display:flex; align-items:center; gap:.7rem;
+  text-decoration:none;
+}
+.sv-produit-img { width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; background:var(--surface); }
+.sv-produit-titre { font-size:.8rem; font-weight:700; color:#fff; }
+.sv-produit-prix { font-size:.82rem; font-weight:800; color:var(--saffron); font-family:var(--fm); }
+
+.sv-cta {
+  position:absolute; left:1rem; right:1rem; bottom:1.75rem; z-index:20;
+  background:var(--saffron); color:#0A0B1A; border:none; border-radius:12px;
+  padding:.75rem; font-size:.88rem; font-weight:800; text-align:center; text-decoration:none; display:block;
+}
+
+.sv-vues-toggle {
+  position:absolute; bottom:1.75rem; left:1rem; z-index:20;
+  background:rgba(0,0,0,.4); border:none; color:#fff; font-size:.78rem;
+  border-radius:99px; padding:.4rem .85rem; display:flex; align-items:center; gap:.4rem; cursor:pointer;
+}
+.sv-vues-sheet {
+  position:absolute; inset:0; z-index:30; background:rgba(0,0,0,.75); display:none;
+  align-items:flex-end;
+}
+.sv-vues-sheet.show { display:flex; }
+.sv-vues-panel {
+  width:100%; max-height:65%; background:var(--card); border-radius:18px 18px 0 0;
+  padding:1rem; overflow-y:auto;
+}
+.sv-vues-item { display:flex; align-items:center; gap:.6rem; padding:.5rem 0; border-bottom:1px solid var(--border); }
+.sv-vues-avatar {
+  width:30px; height:30px; border-radius:50%; background:var(--indigo-d); color:var(--indigo);
+  display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:800;
+}
+.sv-vues-name { font-size:.8rem; font-weight:600; color:var(--text); }
+.sv-vues-date { font-size:.68rem; color:var(--muted); margin-left:auto; }
+
+.sv-close {
+  position:absolute; top:1.1rem; right:.75rem; z-index:25;
+  width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.35); border:none;
+  color:#fff; font-size:1.1rem; display:flex; align-items:center; justify-content:center;
+}
+</style>
+
+<div class="sv-wrap">
+  <div class="sv-stage" id="svStage">
+
+    <div class="sv-progress"><div class="sv-progress-fill" id="svProgressFill"></div></div>
+
+    <div class="sv-top">
+      {% if story.auteur.avatar %}
+      <img class="sv-avatar" src="{{ story.auteur.avatar.url }}" alt="">
+      {% else %}
+      <div class="sv-avatar">{{ story.auteur.username|first|upper }}</div>
+      {% endif %}
+      <div>
+        <div class="sv-username">@{{ story.auteur.username }}</div>
+        <div class="sv-time">{{ story.date_creation|timesince }}</div>
+      </div>
+      <div class="sv-actions">
+        {% if est_proprio %}
+        <button class="sv-icon-btn" onclick="supprimerStory()" title="Supprimer">
+          <i class="bi bi-trash"></i>
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <button class="sv-close" onclick="location.href='{% url 'apps_social:stories_feed' %}'">
+      <i class="bi bi-x-lg"></i>
+    </button>
+
+    <div class="sv-media-zone">
+      {% if story.type_story == 'video' %}
+      <video id="svVideo" src="{{ story.media.url }}" autoplay playsinline muted></video>
+      {% elif story.media %}
+      <img src="{{ story.media.url }}" alt="">
+      {% endif %}
+    </div>
+
+    <!-- Zones de tap navigation -->
+    {% if story_prev %}<div class="sv-tap-zone sv-tap-prev" onclick="allerVers({{ story_prev }})"></div>{% endif %}
+    {% if story_next %}<div class="sv-tap-zone sv-tap-next" onclick="allerVers({{ story_next }})"></div>
+    {% else %}<div class="sv-tap-zone sv-tap-next" onclick="location.href='{% url 'apps_social:stories_feed' %}'"></div>{% endif %}
+
+    {% if story.texte %}
+    <div class="sv-texte">{{ story.texte }}</div>
+    {% endif %}
+
+    {% if story.produit_lie %}
+    <a href="#" class="sv-produit-card">
+      {% if story.produit_lie.image_principale %}
+      <img class="sv-produit-img" src="{{ story.produit_lie.image_principale }}" alt="">
+      {% else %}
+      <div class="sv-produit-img" style="display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-bag"></i></div>
+      {% endif %}
+      <div>
+        <div class="sv-produit-titre">{{ story.produit_lie.titre|truncatechars:30 }}</div>
+        <div class="sv-produit-prix">{{ story.produit_lie.prix|floatformat:0 }} F</div>
+      </div>
+    </a>
+    {% endif %}
+
+    {% if story.bouton_action and story.lien_action %}
+    <a href="{{ story.lien_action }}"  rel="noopener" class="sv-cta" onclick="enregistrerClic()">
+      {{ story.bouton_action }}
+    </a>
+    {% endif %}
+
+    {% if est_proprio %}
+    <button class="sv-vues-toggle" onclick="toggleVues()">
+      <i class="bi bi-eye-fill"></i> {{ story.nb_vues }} vue{{ story.nb_vues|pluralize }}
+    </button>
+
+    <div class="sv-vues-sheet" id="svVuesSheet" onclick="if(event.target===this)toggleVues()">
+      <div class="sv-vues-panel">
+        <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:.75rem">
+          <i class="bi bi-eye-fill" style="color:var(--saffron)"></i> Vues ({{ vues|length }})
+        </div>
+        {% for vue in vues %}
+        <div class="sv-vues-item">
+          <div class="sv-vues-avatar">{{ vue.utilisateur.username|first|upper }}</div>
+          <span class="sv-vues-name">{{ vue.utilisateur.username }}</span>
+          <span class="sv-vues-date">{{ vue.date_vue|timesince }}</span>
+        </div>
+        {% empty %}
+        <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:1rem">Aucune vue pour le moment.</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF        = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const TYPE_STORY   = "{{ story.type_story }}";
+const DUREE_IMAGE  = 6000; // ms, durée d'affichage d'une image
+const URL_CLIC     = "{% url 'apps_social:ajax_clic_action' story.pk %}";
+{% if est_proprio %}
+const URL_SUPPR    = "{% url 'apps_social:supprimer_story' story.pk %}";
+{% endif %}
+{% if story_next %}const PK_NEXT = {{ story_next }};{% endif %}
+
+function allerVers(pk){
+  window.location.href = `/stories/${pk}/`;
+}
+
+function toggleVues(){
+  document.getElementById('svVuesSheet')?.classList.toggle('show');
+}
+
+async function enregistrerClic(){
+  try{
+    await fetch(URL_CLIC, {
+      method:'POST',
+      headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+    });
+  } catch(err){ console.error('Erreur clic CTA:', err); }
+}
+
+async function supprimerStory(){
+  if(!confirm('Supprimer définitivement cette story ?')) return;
+  try{
+    const r = await fetch(URL_SUPPR, {
+      method:'POST',
+      headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+    });
+    const d = await r.json();
+    if(d.success){
+      window.location.href = "{% url 'apps_social:mes_stories' %}";
+    } else {
+      alert(d.message || "Erreur lors de la suppression.");
+    }
+  } catch(err){ alert("Erreur réseau lors de la suppression."); }
+}
+
+function avancer(){
+  {% if story_next %}
+  allerVers(PK_NEXT);
+  {% else %}
+  window.location.href = "{% url 'apps_social:stories_feed' %}";
+  {% endif %}
+}
+
+/* Barre de progression + avancement auto */
+const fill = document.getElementById('svProgressFill');
+if(TYPE_STORY === 'video'){
+  const video = document.getElementById('svVideo');
+  if(video){
+    video.addEventListener('timeupdate', ()=>{
+      if(video.duration) fill.style.width = `${(video.currentTime / video.duration) * 100}%`;
+    });
+    video.addEventListener('ended', avancer);
+  }
+} else {
+  requestAnimationFrame(()=>{
+    fill.style.transition = `width ${DUREE_IMAGE}ms linear`;
+    fill.style.width = '100%';
+  });
+  setTimeout(avancer, DUREE_IMAGE);
+}
+</script>
+{% endblock %}

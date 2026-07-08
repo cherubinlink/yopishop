@@ -1,0 +1,209 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+/* Variables contexte : programme, conversions (max 20), taux_conversion, page_titre */
+.mi-wrap { max-width:960px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+
+.mi-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.75rem; }
+.mi-titre { font-size:1.2rem; font-weight:800; color:var(--text); }
+.mi-badge-statut {
+  font-size:.72rem; font-weight:700; padding:.3rem .8rem; border-radius:99px; display:inline-flex; align-items:center; gap:.3rem;
+}
+.mi-badge-statut.st-actif       { background:var(--jade-d); color:var(--jade); }
+.mi-badge-statut.st-candidature { background:rgba(247,183,49,.12); color:var(--saffron); }
+.mi-badge-statut.st-suspendu    { background:var(--ember-d); color:var(--ember); }
+.mi-badge-statut.st-termine     { background:var(--surface); color:var(--muted); border:1px solid var(--border); }
+
+.mi-banner {
+  border-radius:12px; padding:.9rem 1.1rem; margin-bottom:1.5rem; font-size:.84rem;
+  display:flex; align-items:center; gap:.6rem;
+}
+.mi-banner.attente  { background:rgba(247,183,49,.1); border:1px solid rgba(247,183,49,.3); color:var(--saffron); }
+.mi-banner.suspendu { background:var(--ember-d); border:1px solid rgba(255,90,71,.3); color:var(--ember); }
+.mi-banner.termine  { background:var(--surface); border:1px solid var(--border); color:var(--muted); }
+
+.mi-lien-card {
+  background:var(--card); border:1.5px solid var(--border); border-radius:14px; padding:1.1rem; margin-bottom:1.5rem;
+}
+.mi-lien-label { font-size:.78rem; color:var(--muted); margin-bottom:.5rem; }
+.mi-lien-row { display:flex; gap:.5rem; }
+.mi-lien-input {
+  flex:1; background:var(--surface); border:1.5px solid var(--border); border-radius:8px;
+  color:var(--text); font-family:var(--fm); font-size:.82rem; padding:.55rem .8rem;
+}
+.mi-btn-copier {
+  background:var(--saffron); color:#0A0B1A; border:none; border-radius:8px; padding:.55rem 1rem;
+  font-size:.82rem; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+.mi-code-row { display:flex; align-items:center; gap:.5rem; margin-top:.75rem; font-size:.8rem; color:var(--text-2); }
+.mi-code-val { font-family:var(--fm); font-weight:800; color:var(--jade); letter-spacing:.05em; }
+.mi-niveau-pill {
+  font-size:.7rem; font-weight:700; color:var(--saffron); background:rgba(247,183,49,.1);
+  border-radius:99px; padding:.15rem .6rem; margin-left:auto;
+}
+
+.mi-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:.85rem; margin-bottom:1.5rem; }
+@media(max-width:768px){ .mi-stats { grid-template-columns:repeat(2,1fr); } }
+.mi-stat-card { background:var(--card); border:1.5px solid var(--border); border-radius:14px; padding:1rem; text-align:center; }
+.mi-stat-val { font-family:var(--fm); font-size:1.4rem; font-weight:900; color:var(--saffron); }
+.mi-stat-val.jade { color:var(--jade); }
+.mi-stat-label { font-size:.72rem; color:var(--muted); margin-top:.2rem; }
+
+.mi-section-titre { font-size:.95rem; font-weight:800; color:var(--text); margin:1.5rem 0 .85rem; }
+
+.mi-table-wrap { background:var(--card); border:1.5px solid var(--border); border-radius:14px; overflow:hidden; }
+.mi-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.mi-table th {
+  text-align:left; padding:.65rem .85rem; background:var(--surface); color:var(--muted);
+  font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--border);
+}
+.mi-table td { padding:.6rem .85rem; border-bottom:1px solid var(--border); color:var(--text-2); }
+.mi-table tr:last-child td { border-bottom:none; }
+.mi-montant { font-family:var(--fm); font-weight:700; color:var(--text); }
+.mi-commission { font-family:var(--fm); font-weight:800; color:var(--jade); }
+.mi-badge-paye {
+  font-size:.68rem; font-weight:700; padding:2px 8px; border-radius:99px;
+}
+.mi-badge-paye.oui { background:var(--jade-d); color:var(--jade); }
+.mi-badge-paye.non { background:rgba(247,183,49,.12); color:var(--saffron); }
+
+.mi-empty { text-align:center; padding:2.5rem 1rem; color:var(--muted); }
+</style>
+
+<div class="mi-wrap">
+  <div class="mi-head">
+    <span class="mi-titre"><i class="bi bi-megaphone-fill" style="color:var(--saffron)"></i> {{ page_titre }}</span>
+    <span class="mi-badge-statut st-{{ programme.statut }}">
+      <i class="bi bi-circle-fill" style="font-size:.5rem"></i> {{ programme.get_statut_display }}
+    </span>
+  </div>
+
+  {% if programme.statut == 'candidature' %}
+  <div class="mi-banner attente">
+    <i class="bi bi-hourglass-split"></i>
+    Votre candidature est en cours d'examen. Vous serez notifié dès son activation.
+  </div>
+  {% elif programme.statut == 'suspendu' %}
+  <div class="mi-banner suspendu">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    Votre programme est actuellement suspendu. Contactez le support pour plus d'informations.
+  </div>
+  {% elif programme.statut == 'termine' %}
+  <div class="mi-banner termine">
+    <i class="bi bi-flag-fill"></i>
+    Ce programme est terminé.
+  </div>
+  {% endif %}
+
+  <div class="mi-lien-card">
+    <div class="mi-lien-label">Votre lien de parrainage</div>
+    <div class="mi-lien-row">
+      <input type="text" class="mi-lien-input" id="lienAffiliation" value="{{ programme.lien_affiliation }}" readonly>
+      <button class="mi-btn-copier" onclick="copierLien()" id="btnCopier">
+        <i class="bi bi-clipboard"></i> Copier
+      </button>
+    </div>
+    <div class="mi-code-row">
+      Code : <span class="mi-code-val">{{ programme.code_parrainage }}</span>
+      <span class="mi-niveau-pill">{{ programme.get_niveau_display }} — {{ programme.taux_commission }}% de commission</span>
+    </div>
+  </div>
+
+  <div class="mi-stats">
+    <div class="mi-stat-card">
+      <div class="mi-stat-val">{{ programme.nb_clics }}</div>
+      <div class="mi-stat-label">Clics enregistrés</div>
+    </div>
+    <div class="mi-stat-card">
+      <div class="mi-stat-val">{{ programme.nb_conversions }}</div>
+      <div class="mi-stat-label">Conversions</div>
+    </div>
+    <div class="mi-stat-card">
+      <div class="mi-stat-val">{{ taux_conversion }}%</div>
+      <div class="mi-stat-label">Taux de conversion</div>
+    </div>
+    <div class="mi-stat-card">
+      <div class="mi-stat-val">{{ programme.chiffre_affaires_genere|floatformat:0 }} F</div>
+      <div class="mi-stat-label">CA généré</div>
+    </div>
+    <div class="mi-stat-card">
+      <div class="mi-stat-val jade">{{ programme.commissions_gagnees|floatformat:0 }} F</div>
+      <div class="mi-stat-label">Commissions gagnées</div>
+    </div>
+    <div class="mi-stat-card">
+      <div class="mi-stat-val" id="commissionsDues" data-gagnees="{{ programme.commissions_gagnees|default:0 }}" data-payees="{{ programme.commissions_payees|default:0 }}">—</div>
+      <div class="mi-stat-label">Commissions dues (non payées)</div>
+    </div>
+  </div>
+
+  <div class="mi-section-titre"><i class="bi bi-list-ul"></i> Dernières conversions</div>
+  <div class="mi-table-wrap">
+    {% if conversions %}
+    <table class="mi-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Client</th>
+          <th>Montant commande</th>
+          <th>Commission</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for conv in conversions %}
+        <tr>
+          <td>{{ conv.date_conversion|date:"d/m/Y H:i" }}</td>
+          <td>{{ conv.utilisateur_converti.username }}</td>
+          <td class="mi-montant">{{ conv.montant_commande|floatformat:0 }} F</td>
+          <td class="mi-commission">{{ conv.commission_gagnee|floatformat:0 }} F</td>
+          <td>
+            {% if conv.est_payee %}
+            <span class="mi-badge-paye oui">Payée</span>
+            {% else %}
+            <span class="mi-badge-paye non">En attente</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="mi-empty">
+      <i class="bi bi-graph-up" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.5"></i>
+      Aucune conversion pour le moment. Partagez votre lien pour commencer à gagner des commissions !
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+"use strict";
+
+function copierLien(){
+  const input = document.getElementById('lienAffiliation');
+  input.select();
+  input.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(input.value).then(()=>{
+    const btn = document.getElementById('btnCopier');
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Copié !';
+    setTimeout(()=>{ btn.innerHTML = original; }, 2000);
+  }).catch(()=>{
+    document.execCommand('copy');
+  });
+}
+
+/* Calcul côté client : les templates Django ne soustraient pas deux variables directement */
+(function(){
+  const el = document.getElementById('commissionsDues');
+  const gagnees = parseFloat(el.dataset.gagnees) || 0;
+  const payees  = parseFloat(el.dataset.payees) || 0;
+  const dues    = Math.max(0, gagnees - payees);
+  el.textContent = `${Math.round(dues).toLocaleString('fr')} F`;
+})();
+</script>
+{% endblock %}

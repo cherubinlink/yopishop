@@ -140,11 +140,12 @@
               <div style="font-size:.7rem;color:var(--muted)">{{ request.user.email }}</div>
             </li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_core:profil' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-person" style="color:var(--saffron)"></i>Mon profil</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_social:mon_profil_social' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-person" style="color:var(--saffron)"></i>Mon profil social</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_commandes' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-box" style="color:var(--indigo)"></i>Mes commandes</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_paiements' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-credit-card me-1" style="color:var(--indigo)"></i>Mes paiements</a></li>
             <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'app_marketplace:mes_retours' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes retours</a></li>
-            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_offres' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes offres</a></li>
-            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_appels_offre' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-arrow-return-left" style="color:var(--indigo)"></i>Mes appels offres</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_offres' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-cash-stack" style="color:var(--indigo)"></i>Mes offres</a></li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="{% url 'apps_enchere:mes_appels_offre' %}" style="color:var(--text-2);font-size:.82rem"><i class="bi bi-megaphone-fill" style="color:var(--indigo)"></i>Mes appels offres</a></li>
            
      
             
@@ -237,14 +238,7 @@
                 Operateurs
               </a>
             </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
-                href="{% url 'apps_marketplace:admin_numeros_versement' %}"
-                style="color:var(--text-2);font-size:.83rem">
-                <i class="bi bi-phone-vibrate" style="color:var(--jade);font-size:.9rem"></i>
-                Numeros versements
-              </a>
-            </li>
+            
             <li>
               <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
                 href="{% url 'apps_marketplace:admin_paiements_liste' %}"
@@ -281,24 +275,68 @@
               <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
                 href="{% url 'apps_encheres:admin_offres_liste' %}"
                 style="color:var(--text-2);font-size:.83rem">
-                <i class="bi bi-hammer" style="color:var(--jade);font-size:.9rem"></i>
-                Admin offre liste
+                <i class="bi bi-cash-stack" style="color:var(--jade);font-size:.9rem"></i>
+                Admin offres
               </a>
             </li>
+
             <li>
               <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
                 href="{% url 'apps_encheres:admin_battles_liste' %}"
                 style="color:var(--text-2);font-size:.83rem">
-                <i class="bi bi-hammer" style="color:var(--jade);font-size:.9rem"></i>
-                Admin battle
+                <i class="bi bi-shield-fill-check" style="color:var(--indigo);font-size:.9rem"></i>
+                Admin Battles
               </a>
             </li>
+
             <li>
               <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
                 href="{% url 'apps_encheres:admin_appels_offre_liste' %}"
                 style="color:var(--text-2);font-size:.83rem">
-                <i class="bi bi-hammer" style="color:var(--jade);font-size:.9rem"></i>
-                Admin appel offre
+                <i class="bi bi-megaphone-fill" style="color:var(--saffron);font-size:.9rem"></i>
+                Admin appels d'offre
+              </a>
+            </li>
+
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_encheres:admin_interactions_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-chat-dots-fill" style="color:var(--ember);font-size:.9rem"></i>
+                Admin interactions
+              </a>
+            </li>
+
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_social:admin_profils_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-person-badge-fill" style="color:#0ea5e9;font-size:.9rem"></i>
+                Admin profils
+              </a>
+            </li>
+             <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_social:admin_stories_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-circle-half" style="color:#0ea5e9;font-size:.9rem"></i>
+                Admin stories
+              </a>
+            </li>
+             <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_social:admin_videos_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-circle-half" style="color:#0ea5e9;font-size:.9rem"></i>
+                Admin Video
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                href="{% url 'apps_social:admin_influenceurs_liste' %}"
+                style="color:var(--text-2);font-size:.83rem">
+                <i class="bi bi-circle-half" style="color:#0ea5e9;font-size:.9rem"></i>
+                Admin influenceur
               </a>
             </li>
             
@@ -317,6 +355,24 @@
               <i class="bi bi-shop" style="color:var(--saffron);font-size:.9rem"></i>
               Dashboard vendeur
             </a>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_social:mes_videos' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-camera-video" style="color:var(--saffron);font-size:.9rem"></i>
+              Mes videos
+            </a>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_social:mes_stories' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-circle-half" style="color:var(--saffron);font-size:.9rem"></i>
+              Mes stories
+            </a>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_social:mes_lives' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-broadcast" style="color:var(--saffron);font-size:.9rem"></i>
+              Mes lives
+            </a>
             {% else %}
             <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
               href="{% url 'app_marketplace:creer_boutique' %}"
@@ -324,6 +380,7 @@
               <i class="bi bi-shop" style="color:var(--saffron);font-size:.9rem"></i>
               Créer ma boutique
             </a>
+           
             {% endif %}
           </li>
           {% else %}
@@ -344,6 +401,32 @@
               YopiFulfillment
             </a>
           </li>
+          {% if request.user.is_authenticated %}
+          {% if request.user.programme_influenceur %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_social:mon_espace_influenceur' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-megaphone-fill" style="color:var(--saffron);font-size:.9rem"></i>
+              Mon espace influenceur
+              {% if request.user.programme_influenceur.statut == 'candidature' %}
+              <span style="margin-left:auto;font-size:.65rem;font-weight:700;color:var(--saffron);background:rgba(247,183,49,.12);border-radius:99px;padding:1px 7px">
+                En attente
+              </span>
+              {% endif %}
+            </a>
+          </li>
+          {% else %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_social:devenir_influenceur' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-box-seam" style="color:var(--saffron);font-size:.9rem"></i>
+              Devenir influenceur
+            </a>
+          </li>
+          {% endif %}
+        {% endif %}
           {% if request.user.peut_vendre %}
           <li>
             <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
@@ -376,7 +459,7 @@
           </li>
           <li>
             <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
-              href="/lives/"
+              href="{% url 'apps_social:lives_liste' %}"
               style="color:var(--text-2);font-size:.83rem">
               <i class="bi bi-broadcast" style="color:var(--ember);font-size:.9rem"></i>
               Lives shopping
@@ -384,7 +467,7 @@
           </li>
           <li>
             <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
-              href="/videos/"
+              href="{% url 'apps_social:videos_feed' %}"
               style="color:var(--text-2);font-size:.83rem">
               <i class="bi bi-play-circle" style="color:var(--indigo);font-size:.9rem"></i>
               ShopTok — Vidéos
@@ -406,6 +489,16 @@
               Appels offre
             </a>
           </li>
+         
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+              href="{% url 'apps_social:stories_feed' %}"
+              style="color:var(--text-2);font-size:.83rem">
+              <i class="bi bi-circle-half" style="color:var(--indigo);font-size:.9rem"></i>
+              Stories
+            </a>
+          </li>
+         
           <li>
             <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
               href="{% url 'apps_marketplace:boutiques_liste' %}"
@@ -443,7 +536,7 @@
 
 
       <a href="{% url 'apps_encheres:encheres_liste' %}" class="cpill special"><i class="bi bi-hammer"></i>Enchères</a>
-      <a href="/lives/" class="cpill special"><i class="bi bi-broadcast"></i>Lives</a>
+      <a href="{% url 'apps_social:lives_liste' %}" class="cpill special"><i class="bi bi-broadcast"></i>Lives</a>
       <a href="{% url 'apps_core:promotions_liste' %}" class="cpill" style="color:var(--saffron)"><i class="bi bi-percent"></i>Promos</a>
     </div>
   </div>
@@ -506,13 +599,22 @@
       <a href="{% url 'apps_marketplace:groupes_actifs' %}" class="cpill">
         <i class="bi bi-people-fill" style="color:var(--muted)"></i>Achat groupe
       </a>
+       <a href="{% url 'apps_enchere:appels_offre_liste' %}" class="cpill">
+        <i class="bi bi-megaphone-fill" style="color:var(--muted)"></i>Appel offre
+      </a>
+      <a href="{% url 'apps_social:stories_feed' %}" class="cpill">
+        <i class="bi bi-circle-half" style="color:var(--muted)"></i>Stories
+      </a>
+       <a href="{% url 'apps_social:videos_feed' %}" class="cpill">
+        <i class="bi bi-camera-video" style="color:var(--muted)"></i>Videos
+      </a>
       <hr style="border-color:var(--border)">
        
       
       {% for cat in categories_menu %}<a href="{% url 'apps_core:categorie_detail' cat.slug %}?categorie={{ cat.slug }}" class="cpill"><i class="bi bi-tag me-2"></i>{{ cat.nom }}</a>{% endfor %}
       <hr style="border-color:var(--border)">
       <a href="{% url 'apps_encheres:encheres_liste' %}" class="cpill special"><i class="bi bi-hammer me-2"></i>Enchères</a>
-      <a href="/lives/" class="cpill special"><i class="bi bi-broadcast me-2"></i>Lives</a>
+      <a href="{% url 'apps_social:lives_liste' %}" class="cpill special"><i class="bi bi-broadcast me-2"></i>Lives</a>
       <a href="{% url 'apps_core:promotions_liste' %}" class="cpill"><i class="bi bi-percent me-2" style="color:var(--saffron)"></i>Promotions</a>
     </div>
   </div>
@@ -533,7 +635,7 @@
   </div>
   <div class="fcard fcard-2">
     <div class="fi-icon" style="background:var(--ember-d)"><i class="bi bi-hammer" style="color:var(--ember)"></i></div>
-    <div><div class="fi-val" style="color:var(--ember)">{{ stats.nb_encheres|default:"12" }}</div><div class="fi-lbl">Enchères actives</div></div>
+    <div><div class="fi-val" style="color:var(--ember)">{{ stats.nb_encheres|default:"0" }}</div><div class="fi-lbl">Enchères actives</div></div>
   </div>
   <div class="fcard fcard-3">
     <div class="fi-icon" style="background:var(--indigo-d)"><i class="bi bi-shop" style="color:var(--indigo)"></i></div>
@@ -655,15 +757,18 @@
   <div class="container">
     <div class="stories-row">
       {% if request.user.is_authenticated %}
-      <a href="/stories/creer/" class="story-item text-decoration-none">
+       {% if request.user.peut_vendre %}
+      <a href="{% url 'apps_social:creer_story' %}" class="story-item text-decoration-none">
         <div class="story-ring" style="background:var(--surface);border:2.5px dashed var(--saffron)">
           <div class="story-av" style="border:0;font-size:1.5rem"><i class="bi bi-plus" style="color:var(--saffron)"></i></div>
         </div>
         <span class="story-name" style="color:var(--saffron)">Ajouter</span>
+       
       </a>
+       {% endif %}
       {% endif %}
       {% for story in stories %}
-      <a href="/stories/{{ story.id }}/" class="story-item text-decoration-none">
+      <a href="{% url 'apps_social:story_viewer' pk=story.pk %}" class="story-item text-decoration-none">
         <div class="story-ring {% if story.id in stories_vues_ids %}seen{% endif %}">
           {% if story.auteur.avatar %}
           <img src="{{ story.auteur.avatar.url }}" alt="{{ story.auteur.username }}" class="story-inner">
@@ -940,7 +1045,7 @@
         <div class="eyebrow">📡 En direct</div>
         <h2 class="sec-title"><span class="chip chip-live me-2" style="font-size:.6rem;vertical-align:middle">LIVE</span>Shopping <span class="ac">en direct</span></h2>
       </div>
-      <a href="/lives/" class="btn-ghost">Tous les lives <i class="bi bi-arrow-right"></i></a>
+      <a href="{% url 'apps_social:lives_liste' %}" class="btn-ghost">Tous les lives <i class="bi bi-arrow-right"></i></a>
     </div>
     <div class="row g-3">
       {% for live in lives_en_cours %}
@@ -967,7 +1072,7 @@
               <img src="{{ pl.produit.image_principale }}" alt="" class="lcard-thumb">
               {% endif %}{% endfor %}
             </div>
-            <a href="/lives/{{ live.id }}/" class="btn-ember" style="background:linear-gradient(90deg,var(--ember),var(--indigo))">
+            <a href="{% url 'apps_social:live_detail' live.pk %}" class="btn-ember" style="background:linear-gradient(90deg,var(--ember),var(--indigo))">
               <i class="bi bi-broadcast"></i> Rejoindre
             </a>
           </div>

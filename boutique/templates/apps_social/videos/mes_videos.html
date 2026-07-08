@@ -1,0 +1,146 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.mv-stats { display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin-bottom:1.5rem; }
+@media (max-width:767px) { .mv-stats { grid-template-columns:repeat(2,1fr); } }
+.mv-stat { background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;display:flex;align-items:center;gap:.75rem; }
+.mv-stat-ico { width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0; }
+.mv-stat-val { font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text); }
+.mv-stat-lbl { font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em; }
+.mv-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:1rem; }
+.mv-card { border-radius:var(--r);overflow:hidden;background:var(--card);border:1px solid var(--border); }
+.mv-thumb { aspect-ratio:9/16;background:var(--surface);position:relative;overflow:hidden; }
+.mv-thumb img { width:100%;height:100%;object-fit:cover; }
+.mv-badge-depub { position:absolute;top:.5rem;left:.5rem;background:rgba(200,80,80,.85);color:#fff;font-size:.65rem;font-weight:700;padding:.2rem .55rem;border-radius:6px; }
+.mv-badge-vedette { position:absolute;top:.5rem;right:.5rem;background:var(--saffron);color:#0A0B1A;font-size:.65rem;font-weight:800;padding:.2rem .55rem;border-radius:6px; }
+.mv-stats-overlay { position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.75),transparent);padding:1.5rem .6rem .5rem;display:flex;gap:.6rem;flex-wrap:wrap; }
+.mv-stat-pill { font-size:.68rem;color:#fff;display:flex;align-items:center;gap:.25rem; }
+.mv-body { padding:.65rem .75rem; }
+.mv-titre { font-size:.8rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.5rem; }
+.mv-actions { display:flex;gap:.4rem; }
+.mv-empty { text-align:center;padding:3rem 1rem;color:var(--muted); }
+</style>
+
+<div class="container mt-4">
+
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 fi" style="margin-bottom:1.25rem">
+    <div>
+      <div style="font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text)">
+        <i class="bi bi-camera-reels me-2" style="color:var(--saffron)"></i>Mes vidéos
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);margin-top:.2rem">Gérez vos vidéos ShopTok</div>
+    </div>
+    <a href="{% url 'apps_social:creer_video' %}" class="btn-gold" style="font-size:.85rem">
+      <i class="bi bi-plus-lg me-1"></i>Publier une vidéo
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="mv-stats fi">
+    <div class="mv-stat">
+      <div class="mv-stat-ico" style="background:var(--indigo-d)"><i class="bi bi-camera-reels" style="color:var(--indigo)"></i></div>
+      <div><div class="mv-stat-val">{{ stats.total }}</div><div class="mv-stat-lbl">Vidéos</div></div>
+    </div>
+    <div class="mv-stat">
+      <div class="mv-stat-ico" style="background:var(--saffron-d)"><i class="bi bi-eye" style="color:var(--saffron)"></i></div>
+      <div><div class="mv-stat-val">{{ stats.vues_total }}</div><div class="mv-stat-lbl">Vues</div></div>
+    </div>
+    <div class="mv-stat">
+      <div class="mv-stat-ico" style="background:var(--ember-d)"><i class="bi bi-heart" style="color:var(--ember)"></i></div>
+      <div><div class="mv-stat-val">{{ stats.likes_total }}</div><div class="mv-stat-lbl">Likes</div></div>
+    </div>
+    <div class="mv-stat">
+      <div class="mv-stat-ico" style="background:var(--jade-d)"><i class="bi bi-cash-coin" style="color:var(--jade)"></i></div>
+      <div><div class="mv-stat-val">{{ stats.ca_total|floatformat:0 }} F</div><div class="mv-stat-lbl">CA généré</div></div>
+    </div>
+  </div>
+
+  {% if videos %}
+  <div class="mv-grid fi">
+    {% for video in videos %}
+    <div class="mv-card" id="video-{{ video.pk }}">
+      <a href="{% url 'apps_social:video_detail' pk=video.pk %}" style="text-decoration:none">
+        <div class="mv-thumb">
+          <img src="{{ video.miniature.url }}" alt="{{ video.titre }}">
+          {% if not video.est_publie %}<div class="mv-badge-depub">Dépubliée</div>{% endif %}
+          {% if video.est_mis_en_avant %}<div class="mv-badge-vedette"><i class="bi bi-star-fill"></i></div>{% endif %}
+          <div class="mv-stats-overlay">
+            <span class="mv-stat-pill"><i class="bi bi-eye-fill"></i>{{ video.nb_vues }}</span>
+            <span class="mv-stat-pill"><i class="bi bi-heart-fill"></i>{{ video.nb_likes }}</span>
+            <span class="mv-stat-pill"><i class="bi bi-bag-check-fill"></i>{{ video.nb_achats }}</span>
+          </div>
+        </div>
+      </a>
+      <div class="mv-body">
+        <div class="mv-titre">{{ video.titre }}</div>
+        <div class="mv-actions">
+          <a href="{% url 'apps_social:modifier_video' pk=video.pk %}" class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;flex:1;text-align:center">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <button class="btn-ghost supprimer-video-btn" data-pk="{{ video.pk }}" data-titre="{{ video.titre }}"
+                  style="font-size:.72rem;padding:.3rem .6rem;color:#c85050">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if videos.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if videos.has_previous %}
+    <a href="?page={{ videos.previous_page_number }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ videos.number }} / {{ videos.paginator.num_pages }}</span>
+    {% if videos.has_next %}
+    <a href="?page={{ videos.next_page_number }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="ycard fi mv-empty" style="border:1px solid var(--border)">
+    <i class="bi bi-camera-reels" style="font-size:2.5rem;display:block;margin-bottom:1rem;opacity:.4"></i>
+    Vous n'avez encore publié aucune vidéo.
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+document.querySelectorAll('.supprimer-video-btn').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    if(!confirm(`Supprimer définitivement « ${this.dataset.titre} » ?`)) return;
+    try{
+      const r = await fetch(`/videos/${this.dataset.pk}/supprimer/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const d = await r.json();
+      if(d.success){
+        const card = document.getElementById(`video-${this.dataset.pk}`);
+        card.style.transition = 'opacity .3s';
+        card.style.opacity = '0';
+        setTimeout(() => card.remove(), 300);
+      } else {
+        alert(d.message || 'Erreur');
+      }
+    }catch(e){ console.error(e); }
+  });
+});
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

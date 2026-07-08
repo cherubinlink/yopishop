@@ -1,0 +1,198 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.ml-stats { display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin-bottom:1.5rem; }
+@media (max-width:767px) { .ml-stats { grid-template-columns:repeat(2,1fr); } }
+.ml-stat { background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;display:flex;align-items:center;gap:.75rem; }
+.ml-stat-ico { width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0; }
+.ml-stat-val { font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text); }
+.ml-stat-lbl { font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em; }
+.ml-filters { display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem; }
+.ml-pill { display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .9rem;border-radius:99px;font-size:.78rem;font-weight:600;border:1.5px solid var(--border);color:var(--muted);text-decoration:none;transition:all .2s; }
+.ml-pill:hover, .ml-pill.on { border-color:var(--saffron);color:var(--saffron);background:var(--saffron-d); }
+.ml-row { display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid var(--border); }
+.ml-row:last-child { border-bottom:none; }
+.ml-thumb { width:64px;height:64px;border-radius:10px;overflow:hidden;background:var(--surface);flex-shrink:0;position:relative; }
+.ml-thumb img { width:100%;height:100%;object-fit:cover; }
+.ml-badge-statut { font-size:.66rem;font-weight:800;padding:.2rem .55rem;border-radius:99px;display:inline-flex;align-items:center;gap:.3rem; }
+.bs-planifie { background:var(--indigo-d);color:var(--indigo); }
+.bs-en_cours { background:var(--ember-d);color:var(--ember); }
+.bs-termine { background:var(--jade-d);color:var(--jade); }
+.bs-annule { background:rgba(200,80,80,.12);color:#c85050; }
+.ml-live-dot { width:7px;height:7px;border-radius:50%;background:var(--ember);animation:mlpulse 1.4s infinite; }
+@keyframes mlpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.ml-titre { font-size:.88rem;font-weight:700;color:var(--text); }
+.ml-meta { font-size:.76rem;color:var(--muted); }
+.ml-actions { display:flex;gap:.5rem;flex-shrink:0;margin-left:auto; }
+.ml-empty { text-align:center;padding:3rem 1rem;color:var(--muted); }
+</style>
+
+<div class="container mt-4">
+
+  <!-- En-tête -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 fi" style="margin-bottom:1.25rem">
+    <div>
+      <div style="font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text)">
+        <i class="bi bi-broadcast me-2" style="color:var(--ember)"></i>Mes lives
+      </div>
+      <div style="font-size:.82rem;color:var(--muted);margin-top:.2rem">Gérez vos sessions de vente en direct</div>
+    </div>
+    <a href="{% url 'apps_social:creer_live' %}" class="btn-gold" style="font-size:.85rem">
+      <i class="bi bi-plus-lg me-1"></i>Créer un live
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="ml-stats fi">
+    <div class="ml-stat">
+      <div class="ml-stat-ico" style="background:var(--indigo-d)"><i class="bi bi-collection-play" style="color:var(--indigo)"></i></div>
+      <div><div class="ml-stat-val">{{ stats.total }}</div><div class="ml-stat-lbl">Total</div></div>
+    </div>
+    <div class="ml-stat">
+      <div class="ml-stat-ico" style="background:var(--ember-d)"><i class="bi bi-broadcast" style="color:var(--ember)"></i></div>
+      <div><div class="ml-stat-val">{{ stats.en_direct }}</div><div class="ml-stat-lbl">En direct</div></div>
+    </div>
+    <div class="ml-stat">
+      <div class="ml-stat-ico" style="background:var(--saffron-d)"><i class="bi bi-cash-coin" style="color:var(--saffron)"></i></div>
+      <div><div class="ml-stat-val">{{ stats.ca_total|floatformat:0 }} F</div><div class="ml-stat-lbl">CA total</div></div>
+    </div>
+    <div class="ml-stat">
+      <div class="ml-stat-ico" style="background:var(--jade-d)"><i class="bi bi-eye" style="color:var(--jade)"></i></div>
+      <div><div class="ml-stat-val">{{ stats.vues_total }}</div><div class="ml-stat-lbl">Vues totales</div></div>
+    </div>
+  </div>
+
+  <!-- Filtres statut -->
+  <div class="ml-filters fi">
+    <a href="?" class="ml-pill {% if not statut %}on{% endif %}">Tous</a>
+    {% for code, label in statuts %}
+    <a href="?statut={{ code }}" class="ml-pill {% if statut == code %}on{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  <!-- Liste -->
+  <div class="ycard fi" style="border:1px solid var(--border);padding:0">
+    {% if lives %}
+      {% for live in lives %}
+      <div class="ml-row">
+        <div class="ml-thumb">
+          {% if live.image_couverture %}
+          <img src="{{ live.image_couverture.url }}" alt="">
+          {% else %}
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="bi bi-broadcast" style="color:var(--muted)"></i></div>
+          {% endif %}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="ml-titre">{{ live.titre }}</div>
+          <div class="ml-meta">{{ live.date_debut|date:"d M Y à H:i" }}</div>
+          <span class="ml-badge-statut bs-{{ live.statut }}" style="margin-top:.35rem">
+            {% if live.statut == 'en_cours' %}<span class="ml-live-dot"></span>{% endif %}
+            {{ live.get_statut_display }}
+          </span>
+        </div>
+        <div class="ml-actions">
+          <a href="{% url 'apps_social:live_detail' pk=live.pk %}" class="btn-ghost" style="font-size:.76rem;padding:.35rem .75rem">
+            <i class="bi bi-eye"></i>
+          </a>
+          {% if live.statut == 'planifie' %}
+          <a href="{% url 'apps_social:modifier_live' pk=live.pk %}" class="btn-ghost" style="font-size:.76rem;padding:.35rem .75rem">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <button class="btn-gold btn-demarrer" data-pk="{{ live.pk }}"
+                  data-url="{% url 'apps_social:demarrer_live' pk=live.pk %}"
+                  style="font-size:.76rem;padding:.35rem .85rem">
+            <i class="bi bi-play-fill"></i> Démarrer
+          </button>
+          {% elif live.statut == 'en_cours' %}
+          <button class="btn-ghost btn-terminer" data-pk="{{ live.pk }}"
+                  data-url="{% url 'apps_social:terminer_live' pk=live.pk %}"
+                  style="font-size:.76rem;padding:.35rem .85rem;color:#c85050;border-color:#c85050">
+            <i class="bi bi-stop-fill"></i> Terminer
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="ml-empty">
+        <i class="bi bi-broadcast" style="font-size:2.5rem;display:block;margin-bottom:1rem;opacity:.4"></i>
+        {% if statut %}Aucun live avec ce statut.{% else %}Vous n'avez pas encore créé de live.{% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  {% if lives.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if lives.has_previous %}
+    <a href="?page={{ lives.previous_page_number }}{% if statut %}&statut={{ statut }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ lives.number }} / {{ lives.paginator.num_pages }}</span>
+    {% if lives.has_next %}
+    <a href="?page={{ lives.next_page_number }}{% if statut %}&statut={{ statut }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+document.querySelectorAll('.btn-demarrer').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    if(!confirm('Démarrer ce live maintenant ?')) return;
+    this.disabled = true;
+    try {
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const d = await r.json();
+      if (d.success) {
+        window.location.href = `/social/lives/${this.dataset.pk}/`;
+      } else {
+        alert(d.message || 'Erreur');
+        this.disabled = false;
+      }
+    } catch(e) {
+      console.error(e);
+      this.disabled = false;
+    }
+  });
+});
+
+document.querySelectorAll('.btn-terminer').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    if(!confirm('Terminer ce live ? Cette action est définitive.')) return;
+    this.disabled = true;
+    try {
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const d = await r.json();
+      if (d.success) {
+        location.reload();
+      } else {
+        alert(d.message || 'Erreur');
+        this.disabled = false;
+      }
+    } catch(e) {
+      console.error(e);
+      this.disabled = false;
+    }
+  });
+});
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

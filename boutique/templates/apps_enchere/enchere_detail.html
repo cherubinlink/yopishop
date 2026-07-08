@@ -239,6 +239,180 @@
         </div>
       </div>
 
+      <!-- ══ COMMENTAIRES ══ -->
+      <div class="ycard mt-3" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+        <div class="d-flex align-items-center justify-content-between px-4 py-3"
+          style="border-bottom:1px solid var(--border);background:var(--surface)">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text)">
+            <i class="bi bi-chat-left-text me-2" style="color:var(--jade)"></i>
+            Commentaires
+            <span style="font-size:.74rem;color:var(--muted);font-weight:400;margin-left:.4rem" id="nbCommentaires">
+              ({{ commentaires|length }})
+            </span>
+          </div>
+          <a href="{% url 'apps_enchere:commentaires_enchere' enchere.pk %}"
+            style="font-size:.74rem;color:var(--saffron);text-decoration:none">
+            Voir tout <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+
+        <!-- Formulaire nouveau commentaire -->
+        {% if request.user.is_authenticated %}
+        <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border)">
+          <form id="formCommentaire" novalidate
+            data-url="{% url 'apps_enchere:ajax_ajouter_commentaire' enchere.pk %}">
+            {% csrf_token %}
+            <div class="d-flex gap-2 align-items-start">
+              <!-- Avatar utilisateur -->
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:var(--saffron);flex-shrink:0">
+                {% if request.user.avatar %}
+                  <img src="{{ request.user.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                {% else %}
+                  {{ request.user.username|first|upper }}
+                {% endif %}
+              </div>
+              <div style="flex:1">
+                <textarea id="inputCommentaire" name="texte" rows="2" required
+                  placeholder="Posez une question ou laissez un commentaire…"
+                  class="form-control mb-2"
+                  style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.82rem;resize:none;transition:border-color .2s"
+                  onfocus="this.style.borderColor='var(--jade)'"
+                  onblur="this.style.borderColor='var(--border)'"
+                  maxlength="500"></textarea>
+                <div class="d-flex align-items-center justify-content-between">
+                  <span id="compteurCaracteres" style="font-size:.7rem;color:var(--muted)">500 caractères restants</span>
+                  <button type="submit" id="btnEnvoyerCommentaire" class="btn-gold"
+                    style="font-size:.78rem;padding:.35rem .9rem;width:auto">
+                    <i class="bi bi-send-fill me-1"></i>Envoyer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        {% else %}
+        <div style="padding:.75rem 1.2rem;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--muted);text-align:center">
+          <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" style="color:var(--saffron)">Connectez-vous</a>
+          pour laisser un commentaire
+        </div>
+        {% endif %}
+
+        <!-- Liste des commentaires -->
+        <div id="commentaires-container" style="padding:.5rem 0;max-height:400px;overflow-y:auto">
+          {% if commentaires %}
+            {% for com in commentaires %}
+            <div class="commentaire-item" id="com-{{ com.pk }}"
+              style="display:flex;gap:.75rem;padding:.75rem 1.2rem;border-bottom:1px solid var(--border)">
+              <!-- Avatar -->
+              <div style="width:32px;height:32px;border-radius:50%;background:{% if com.utilisateur == enchere.vendeur %}var(--jade-d,rgba(16,185,129,.15)){% else %}var(--saffron-d){% endif %};display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:{% if com.utilisateur == enchere.vendeur %}var(--jade){% else %}var(--saffron){% endif %};flex-shrink:0">
+                {% if com.utilisateur.avatar %}
+                  <img src="{{ com.utilisateur.avatar.url }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                {% else %}
+                  {{ com.utilisateur.username|first|upper }}
+                {% endif %}
+              </div>
+              <!-- Contenu -->
+              <div style="flex:1;min-width:0">
+                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                  <span style="font-size:.8rem;font-weight:700;color:var(--text)">
+                    {{ com.utilisateur.username }}
+                  </span>
+                  {% if com.utilisateur == enchere.vendeur %}
+                  <span class="chip" style="font-size:.62rem;padding:.1rem .45rem;background:rgba(16,185,129,.12);color:var(--jade)">
+                    <i class="bi bi-shop me-1"></i>Vendeur
+                  </span>
+                  {% endif %}
+                  <span style="font-size:.7rem;color:var(--muted)">{{ com.date_creation|timesince }} ago</span>
+                  <!-- Supprimer (propriétaire ou admin) -->
+                  {% if com.utilisateur == request.user or request.user.is_staff %}
+                  <button class="btn-supprimer-commentaire ms-auto"
+                    data-pk="{{ com.pk }}"
+                    data-url="{% url 'apps_enchere:ajax_supprimer_commentaire' com.pk %}"
+                    style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;font-size:.75rem"
+                    title="Supprimer">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                  {% endif %}
+                </div>
+                <div style="font-size:.82rem;color:var(--text-2);line-height:1.55;word-break:break-word">
+                  {{ com.texte }}
+                </div>
+                <!-- Réponses -->
+                {% if com.reponses.exists %}
+                <div style="margin-top:.6rem;padding-left:.8rem;border-left:2px solid var(--border)">
+                  {% for rep in com.reponses.all %}
+                  <div class="d-flex gap-2 mb-2" id="com-{{ rep.pk }}">
+                    <div style="width:26px;height:26px;border-radius:50%;background:{% if rep.utilisateur == enchere.vendeur %}rgba(16,185,129,.15){% else %}var(--surface){% endif %};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:{% if rep.utilisateur == enchere.vendeur %}var(--jade){% else %}var(--muted){% endif %};flex-shrink:0">
+                      {{ rep.utilisateur.username|first|upper }}
+                    </div>
+                    <div style="flex:1">
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span style="font-size:.76rem;font-weight:700;color:var(--text)">{{ rep.utilisateur.username }}</span>
+                        {% if rep.utilisateur == enchere.vendeur %}
+                        <span class="chip" style="font-size:.6rem;padding:.08rem .38rem;background:rgba(16,185,129,.12);color:var(--jade)"><i class="bi bi-shop me-1"></i>Vendeur</span>
+                        {% endif %}
+                        <span style="font-size:.68rem;color:var(--muted)">{{ rep.date_creation|timesince }} ago</span>
+                        {% if rep.utilisateur == request.user or request.user.is_staff %}
+                        <button class="btn-supprimer-commentaire ms-auto"
+                          data-pk="{{ rep.pk }}"
+                          data-url="{% url 'apps_enchere:ajax_supprimer_commentaire' rep.pk %}"
+                          style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;font-size:.72rem">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                        {% endif %}
+                      </div>
+                      <div style="font-size:.8rem;color:var(--text-2);line-height:1.5;word-break:break-word">{{ rep.texte }}</div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                <!-- Bouton répondre -->
+                {% if request.user.is_authenticated %}
+                <button class="btn-repondre"
+                  data-pk="{{ com.pk }}"
+                  style="font-size:.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:.2rem 0;margin-top:.3rem">
+                  <i class="bi bi-reply me-1"></i>Répondre
+                </button>
+                <!-- Formulaire réponse (masqué) -->
+                <div id="form-rep-{{ com.pk }}" style="display:none;margin-top:.5rem">
+                  <form class="form-reponse" data-parent="{{ com.pk }}"
+                    data-url="{% url 'apps_enchere:ajax_ajouter_commentaire' enchere.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="parent_pk" value="{{ com.pk }}">
+                    <div class="d-flex gap-2">
+                      <textarea name="texte" rows="2" required
+                        placeholder="Votre réponse…"
+                        class="form-control"
+                        style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.78rem;resize:none;flex:1"
+                        maxlength="500"></textarea>
+                      <div class="d-flex flex-column gap-1">
+                        <button type="submit" class="btn-gold" style="font-size:.74rem;padding:.3rem .7rem;width:auto;flex-shrink:0">
+                          <i class="bi bi-send-fill"></i>
+                        </button>
+                        <button type="button" class="btn-ghost btn-annuler-rep" data-pk="{{ com.pk }}"
+                          style="font-size:.74rem;padding:.3rem .7rem;width:auto;flex-shrink:0">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="padding:2rem;text-align:center;color:var(--muted);font-size:.84rem">
+            <i class="bi bi-chat-left" style="font-size:1.8rem;display:block;margin-bottom:.5rem;opacity:.4"></i>
+            Aucun commentaire — soyez le premier !
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+      <!-- ══ FIN COMMENTAIRES ══ -->
+
     </div>
 
     <!-- ══ COLONNE DROITE — Actions sticky ══ -->
@@ -900,6 +1074,247 @@ setInterval(() => rafraichirEtat(false), 10000);
   pollSmartBid();
 })();
 {% endif %}
+
+/* ══════════════════════════════════════════
+   COMMENTAIRES
+   ✅ URLs : ajax_ajouter_commentaire + ajax_supprimer_commentaire
+══════════════════════════════════════════ */
+
+/* ── Compteur de caractères ── */
+const inputCom = document.getElementById('inputCommentaire');
+const compteur = document.getElementById('compteurCaracteres');
+if (inputCom && compteur) {
+  inputCom.addEventListener('input', function () {
+    const restants = 500 - this.value.length;
+    compteur.textContent = `${restants} caractère${restants !== 1 ? 's' : ''} restant${restants !== 1 ? 's' : ''}`;
+    compteur.style.color = restants < 50 ? 'var(--ember)' : 'var(--muted)';
+  });
+}
+
+/* ── Soumission commentaire principal ── */
+const formCom = document.getElementById('formCommentaire');
+if (formCom) {
+  formCom.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const texte = inputCom?.value.trim();
+    if (!texte) return;
+    const btn = document.getElementById('btnEnvoyerCommentaire');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:12px;height:12px;border-width:2px"></span>';
+
+    const fd = new FormData();
+    fd.append('texte', texte);
+
+    try {
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd,
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        afficherToast(d.message || `Erreur ${r.status}`, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Envoyer';
+        return;
+      }
+      const d = await r.json();
+      if (d.success) {
+        ajouterCommentaireDom(d.commentaire);
+        inputCom.value = '';
+        if (compteur) compteur.textContent = '500 caractères restants';
+        afficherToast('Commentaire publié !', 'success');
+        // Mise à jour compteur
+        const nb = document.getElementById('nbCommentaires');
+        if (nb) {
+          const actuel = parseInt(nb.textContent.replace(/\D/g, '')) || 0;
+          nb.textContent = `(${actuel + 1})`;
+        }
+      } else {
+        afficherToast(d.message || 'Erreur', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      afficherToast('Erreur réseau.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Envoyer';
+    }
+  });
+}
+
+/* ── Ajouter un commentaire dans le DOM ── */
+function ajouterCommentaireDom(com, parentPk = null) {
+  const isVendeur = com.est_vendeur || false;
+  const avatarColor = isVendeur ? 'rgba(16,185,129,.15)' : 'var(--saffron-d)';
+  const textColor   = isVendeur ? 'var(--jade)' : 'var(--saffron)';
+
+  const html = `
+    <div class="commentaire-item" id="com-${com.pk}"
+      style="display:flex;gap:.75rem;padding:.75rem 1.2rem;border-bottom:1px solid var(--border)">
+      <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:${textColor};flex-shrink:0">
+        ${com.username.charAt(0).toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.3rem">
+          <span style="font-size:.8rem;font-weight:700;color:var(--text)">${com.username}</span>
+          ${isVendeur ? '<span class="chip" style="font-size:.62rem;padding:.1rem .45rem;background:rgba(16,185,129,.12);color:var(--jade)"><i class="bi bi-shop me-1"></i>Vendeur</span>' : ''}
+          <span style="font-size:.7rem;color:var(--muted)">À l'instant</span>
+          <button class="btn-supprimer-commentaire" data-pk="${com.pk}"
+            data-url="/apps_encheres/encheres/commentaire/${com.pk}/supprimer/"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;font-size:.75rem;margin-left:auto">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        <div style="font-size:.82rem;color:var(--text-2);line-height:1.55;word-break:break-word">${com.texte}</div>
+        <button class="btn-repondre" data-pk="${com.pk}"
+          style="font-size:.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:.2rem 0;margin-top:.3rem">
+          <i class="bi bi-reply me-1"></i>Répondre
+        </button>
+        <div id="form-rep-${com.pk}" style="display:none;margin-top:.5rem">
+          <form class="form-reponse" data-parent="${com.pk}"
+            data-url="${formCom?.dataset?.url || ''}">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+            <input type="hidden" name="parent_pk" value="${com.pk}">
+            <div style="display:flex;gap:.5rem">
+              <textarea name="texte" rows="2" required placeholder="Votre réponse…"
+                class="form-control"
+                style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r);font-size:.78rem;resize:none;flex:1"
+                maxlength="500"></textarea>
+              <div style="display:flex;flex-direction:column;gap:.25rem">
+                <button type="submit" class="btn-gold" style="font-size:.74rem;padding:.3rem .7rem;width:auto">
+                  <i class="bi bi-send-fill"></i>
+                </button>
+                <button type="button" class="btn-ghost btn-annuler-rep" data-pk="${com.pk}"
+                  style="font-size:.74rem;padding:.3rem .7rem;width:auto">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>`;
+
+  const container = document.getElementById('commentaires-container');
+  if (!container) return;
+  // Supprimer le message "aucun commentaire" si présent
+  const empty = container.querySelector('[style*="text-align:center"]');
+  if (empty) empty.remove();
+
+  if (parentPk) {
+    // Insérer comme réponse
+    const parentEl = document.getElementById(`com-${parentPk}`);
+    if (parentEl) {
+      let repContainer = parentEl.querySelector('[style*="border-left:2px"]');
+      if (!repContainer) {
+        repContainer = document.createElement('div');
+        repContainer.style.cssText = 'margin-top:.6rem;padding-left:.8rem;border-left:2px solid var(--border)';
+        parentEl.querySelector('[style*="flex:1"]')?.appendChild(repContainer);
+      }
+      repContainer.insertAdjacentHTML('beforeend', html);
+    }
+  } else {
+    container.insertAdjacentHTML('afterbegin', html);
+  }
+
+  // Réattacher les listeners sur les nouveaux éléments
+  attacherListenersCommentaires();
+}
+
+/* ── Supprimer un commentaire ── */
+function attacherListenersCommentaires() {
+  document.querySelectorAll('.btn-supprimer-commentaire').forEach(btn => {
+    // Éviter les doublons
+    if (btn.dataset.ecouteur) return;
+    btn.dataset.ecouteur = '1';
+    btn.addEventListener('click', async function () {
+      if (!confirm('Supprimer ce commentaire ?')) return;
+      const url = this.dataset.url;
+      const pk  = this.dataset.pk;
+      try {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const d = await r.json();
+        if (d.success) {
+          document.getElementById(`com-${pk}`)?.remove();
+          afficherToast('Commentaire supprimé.', 'success');
+          // Mise à jour compteur
+          const nb = document.getElementById('nbCommentaires');
+          if (nb) {
+            const actuel = parseInt(nb.textContent.replace(/\D/g, '')) || 0;
+            nb.textContent = `(${Math.max(0, actuel - 1)})`;
+          }
+        } else {
+          afficherToast(d.message || 'Erreur', 'error');
+        }
+      } catch { afficherToast('Erreur réseau.', 'error'); }
+    });
+  });
+
+  /* ── Boutons Répondre ── */
+  document.querySelectorAll('.btn-repondre').forEach(btn => {
+    if (btn.dataset.ecouteur) return;
+    btn.dataset.ecouteur = '1';
+    btn.addEventListener('click', function () {
+      const pk = this.dataset.pk;
+      const form = document.getElementById(`form-rep-${pk}`);
+      if (form) {
+        const visible = form.style.display !== 'none';
+        form.style.display = visible ? 'none' : 'block';
+        if (!visible) form.querySelector('textarea')?.focus();
+      }
+    });
+  });
+
+  /* ── Annuler réponse ── */
+  document.querySelectorAll('.btn-annuler-rep').forEach(btn => {
+    if (btn.dataset.ecouteur) return;
+    btn.dataset.ecouteur = '1';
+    btn.addEventListener('click', function () {
+      const pk = this.dataset.pk;
+      const form = document.getElementById(`form-rep-${pk}`);
+      if (form) { form.style.display = 'none'; form.querySelector('textarea').value = ''; }
+    });
+  });
+
+  /* ── Soumettre une réponse ── */
+  document.querySelectorAll('.form-reponse').forEach(form => {
+    if (form.dataset.ecouteur) return;
+    form.dataset.ecouteur = '1';
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const texte     = this.querySelector('textarea')?.value.trim();
+      const parentPk  = this.dataset.parent;
+      const url       = this.dataset.url;
+      if (!texte || !url) return;
+
+      const fd = new FormData(this);
+
+      try {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+          body: fd,
+        });
+        const d = await r.json();
+        if (d.success) {
+          ajouterCommentaireDom(d.commentaire, parentPk);
+          const formParent = document.getElementById(`form-rep-${parentPk}`);
+          if (formParent) { formParent.style.display = 'none'; formParent.querySelector('textarea').value = ''; }
+          afficherToast('Réponse publiée !', 'success');
+        } else {
+          afficherToast(d.message || 'Erreur', 'error');
+        }
+      } catch { afficherToast('Erreur réseau.', 'error'); }
+    });
+  });
+}
+
+// Init des listeners au chargement
+attacherListenersCommentaires();
 
 /* ══ Toast ══ */
 function afficherToast(msg, type='info') {

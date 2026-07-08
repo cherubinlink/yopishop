@@ -135,6 +135,57 @@ urlpatterns = [
     # Terminer manuellement une battle (POST / AJAX)
     path('admin/encheres/battle/<uuid:pk>/terminer/',views.admin_terminer_battle,name='admin_terminer_battle',),
 
+    # =========================================================================
+    # AJAX — Like (remplace ajax_toggle_like de views.py)
+    # =========================================================================
+    path(
+        'encheres/<uuid:pk>/like/',
+        views.ajax_toggle_like_social,
+        name='ajax_toggle_like',             # même name → compatibilité templates
+    ),
+ 
+    # =========================================================================
+    # AJAX — Commentaires
+    # =========================================================================
+    path(
+        'encheres/<uuid:pk>/commenter/',
+        views.ajax_ajouter_commentaire,
+        name='ajax_ajouter_commentaire',
+    ),
+    path(
+        'encheres/commentaire/<int:pk>/supprimer/',
+        views.ajax_supprimer_commentaire,
+        name='ajax_supprimer_commentaire',
+    ),
+ 
+    # =========================================================================
+    # AJAX — Partage (remplace ajax_partager de views.py)
+    # =========================================================================
+    path(
+        'encheres/<uuid:pk>/partager/',
+        views.ajax_partager_social,
+        name='ajax_partager',                # même name → compatibilité templates
+    ),
+ 
+    # =========================================================================
+    # PUBLIC — Commentaires complets
+    # =========================================================================
+    path(
+        'encheres/<uuid:pk>/commentaires/',
+        views.commentaires_enchere,
+        name='commentaires_enchere',
+    ),
+ 
+    # =========================================================================
+    # ADMIN — Modération
+    # =========================================================================
+    path(
+        'admin/encheres/interactions/',
+        views.admin_interactions_liste,
+        name='admin_interactions_liste',
+    ),
+    path('admin/encheres/interactions/<int:pk>/supprimer/',views.admin_supprimer_interaction,name='admin_supprimer_interaction',),
+
  
     
 ]

@@ -171,6 +171,16 @@
   text-decoration: none; flex-shrink: 0;
 }
 
+.pd-follow-btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .78rem; font-weight: 700; padding: .45rem .9rem; border-radius: 8px;
+  background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
+  cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.pd-follow-btn:hover:not(:disabled) { border-color: var(--saffron); color: var(--saffron); }
+.pd-follow-btn.active { border-color: var(--jade); color: var(--jade); background: var(--jade-d); }
+.pd-follow-btn:disabled { opacity: .6; cursor: not-allowed; }
+
 /* ── Livraison info ── */
 .pd-delivery-info {
   display: flex; flex-direction: column; gap: .5rem;
@@ -492,24 +502,42 @@
 
           <!-- Vendeur -->
           <div class="pd-vendor-card">
-            {% if produit.vendeur.avatar %}
-            <img src="{{ produit.vendeur.avatar.url }}" alt="{{ produit.vendeur.username }}" class="pd-vendor-avatar">
-            {% else %}
-            <div class="pd-vendor-avatar">{{ produit.vendeur.username|first|upper }}</div>
-            {% endif %}
-            <div>
-              <div class="pd-vendor-name">
-                {{ produit.vendeur.boutique.nom|default:produit.vendeur.username }}
-                {% if produit.est_produit_yopishop %}<i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.8rem;margin-left:.2rem"></i>{% endif %}
+            <a href="{% url 'apps_social:profil_public' produit.vendeur.username %}"
+              style="display:flex;align-items:center;gap:.9rem;flex:1;min-width:0;text-decoration:none">
+              {% if produit.vendeur.avatar %}
+              <img src="{{ produit.vendeur.avatar.url }}" alt="{{ produit.vendeur.username }}" class="pd-vendor-avatar">
+              {% else %}
+              <div class="pd-vendor-avatar">{{ produit.vendeur.username|first|upper }}</div>
+              {% endif %}
+              <div style="min-width:0">
+                <div class="pd-vendor-name">
+                  {{ produit.vendeur.boutique.nom|default:produit.vendeur.username }}
+                  {% if produit.est_produit_yopishop %}<i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.8rem;margin-left:.2rem"></i>{% endif %}
+                </div>
+                <div class="pd-vendor-meta">
+                  {% if produit.vendeur.ville %}<i class="bi bi-geo-alt"></i> {{ produit.vendeur.ville }}{% endif %}
+                  {% if produit.vendeur.est_verifie %} &bull; <span style="color:var(--jade)"><i class="bi bi-check-circle-fill"></i> Vérifié</span>{% endif %}
+                </div>
               </div>
-              <div class="pd-vendor-meta">
-                {% if produit.vendeur.ville %}<i class="bi bi-geo-alt"></i> {{ produit.vendeur.ville }}{% endif %}
-                {% if produit.vendeur.est_verifie %} &bull; <span style="color:var(--jade)"><i class="bi bi-check-circle-fill"></i> Vérifié</span>{% endif %}
-              </div>
-            </div>
-            <a href="{% url 'apps_core:profil_vendeur_public' produit.vendeur.username %}" class="pd-vendor-link">
-              Voir la boutique <i class="bi bi-arrow-right"></i>
             </a>
+
+            <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+              {% if request.user.is_authenticated and request.user != produit.vendeur %}
+              <button class="pd-follow-btn {% if je_suis_vendeur %}active{% endif %}"
+                      id="btnFollowVendor"
+                      data-url="{% url 'apps_social:ajax_toggle_abonnement' username=produit.vendeur.username %}"
+                      onclick="toggleFollowVendor(this)">
+                {% if je_suis_vendeur %}
+                <i class="bi bi-person-check-fill"></i> Abonné
+                {% else %}
+                <i class="bi bi-person-plus"></i> Suivre
+                {% endif %}
+              </button>
+              {% endif %}
+              <a href="{% url 'apps_core:profil_vendeur_public' produit.vendeur.username %}" class="pd-vendor-link">
+                Boutique <i class="bi bi-arrow-right"></i>
+              </a>
+            </div>
           </div>
 
           <!-- Livraison -->
@@ -927,6 +955,33 @@ if(btnFavLg){
       }
     }catch{}
   });
+}
+
+/* ── Suivre / Ne plus suivre le vendeur ── */
+async function toggleFollowVendor(btn){
+  const url = btn.dataset.url;
+  btn.disabled = true;
+  try{
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if(d.success){
+      btn.classList.toggle('active', d.je_suis);
+      btn.innerHTML = d.je_suis
+        ? '<i class="bi bi-person-check-fill"></i> Abonné'
+        : '<i class="bi bi-person-plus"></i> Suivre';
+    }
+  }catch(err){
+    console.error('Erreur toggleFollowVendor:', err);
+  }finally{
+    btn.disabled = false;
+  }
 }
 
 /* ── Fade-in ── */

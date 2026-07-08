@@ -1,0 +1,204 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — Admin YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.al-stat-card { text-align:center;padding:1rem .5rem; }
+.al-stat-val { font-family:var(--fm);font-size:1.4rem;font-weight:900;color:var(--text); }
+.al-stat-lbl { font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em; }
+.al-filters { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem; }
+.al-filters select, .al-filters input { padding:.55rem .9rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.82rem; }
+.al-filters input { flex:1;min-width:200px; }
+.al-table { width:100%;border-collapse:collapse; }
+.al-table th { text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.6rem .75rem;border-bottom:1px solid var(--border); }
+.al-table td { padding:.7rem .75rem;border-bottom:1px solid var(--border);font-size:.84rem;color:var(--text);vertical-align:middle; }
+.al-table tr:last-child td { border-bottom:none; }
+.al-badge { font-size:.68rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;display:inline-flex;align-items:center;gap:.3rem; }
+.bs-planifie { background:var(--indigo-d);color:var(--indigo); }
+.bs-en_direct { background:var(--ember-d);color:var(--ember); }
+.bs-termine { background:var(--jade-d);color:var(--jade); }
+.bs-suspendu { background:var(--surface);color:var(--muted);border:1px solid var(--border); }
+.bs-annule { background:rgba(200,80,80,.12);color:#c85050; }
+.al-live-dot { width:7px;height:7px;border-radius:50%;background:var(--ember);animation:alpulse 1.4s infinite; }
+@keyframes alpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+
+<div class="container mt-4">
+
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text)">
+      <i class="bi bi-broadcast me-2" style="color:var(--saffron)"></i>Gestion des lives
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-2 fi" style="margin-bottom:1.25rem">
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="al-stat-card"><div class="al-stat-val">{{ stats.total }}</div><div class="al-stat-lbl">Total</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="al-stat-card"><div class="al-stat-val">{{ stats.en_direct }}</div><div class="al-stat-lbl">En direct</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="al-stat-card"><div class="al-stat-val">{{ stats.ca_total|floatformat:0 }} F</div><div class="al-stat-lbl">CA total</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="al-stat-card"><div class="al-stat-val">{{ stats.vues_total }}</div><div class="al-stat-lbl">Vues totales</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="al-filters fi">
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher par titre ou vendeur...">
+    <select name="statut" onchange="this.form.submit()">
+      <option value="">Tous les statuts</option>
+      {% for code, label in statuts %}
+      <option value="{{ code }}" {% if statut == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-gold" style="font-size:.82rem">Filtrer</button>
+  </form>
+
+  <!-- Tableau -->
+  <div class="ycard fi" style="border:1px solid var(--border);overflow-x:auto">
+    <table class="al-table">
+      <thead>
+        <tr>
+          <th>Live</th>
+          <th>Vendeur</th>
+          <th>Statut</th>
+          <th>CA généré</th>
+          <th>Vues</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for live in lives %}
+        <tr id="row-live-{{ live.pk }}">
+          <td>
+            <div style="font-weight:700">{{ live.titre|truncatechars:40 }}</div>
+            <div style="font-size:.74rem;color:var(--muted)">{{ live.date_debut|date:"d M Y à H:i" }}</div>
+          </td>
+          <td>
+            <a href="{% url 'apps_social:profil_public' username=live.vendeur.username %}" style="color:var(--text);text-decoration:none">
+              @{{ live.vendeur.username }}
+            </a>
+          </td>
+          <td>
+            <span class="al-badge bs-{{ live.statut }}" id="badge-statut-{{ live.pk }}">
+              {% if live.statut == 'en_direct' %}<span class="al-live-dot"></span>{% endif %}
+              {{ live.get_statut_display }}
+            </span>
+          </td>
+          <td>{{ live.ca_genere|default:0|floatformat:0 }} F</td>
+          <td>{{ live.nb_vues }}</td>
+          <td style="text-align:right">
+            <div class="d-flex gap-1 justify-content-end flex-wrap">
+              <a href="{% url 'apps_social:live_detail' pk=live.pk %}" class="btn-ghost" style="font-size:.74rem;padding:.3rem .6rem">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if live.statut == 'en_direct' %}
+              <button class="btn-ghost admin-live-action" style="font-size:.74rem;padding:.3rem .7rem"
+                      data-pk="{{ live.pk }}" data-action="suspendre"
+                      data-url="{% url 'apps_social:admin_suspendre_live' pk=live.pk %}">
+                Suspendre
+              </button>
+              {% elif live.statut == 'suspendu' %}
+              <button class="btn-ghost admin-live-action" style="font-size:.74rem;padding:.3rem .7rem"
+                      data-pk="{{ live.pk }}" data-action="reprendre"
+                      data-url="{% url 'apps_social:admin_suspendre_live' pk=live.pk %}">
+                Reprendre
+              </button>
+              {% endif %}
+              {% if live.statut == 'en_direct' or live.statut == 'suspendu' %}
+              <button class="btn-ghost admin-live-action" style="font-size:.74rem;padding:.3rem .7rem;color:#c85050"
+                      data-pk="{{ live.pk }}" data-action="terminer"
+                      data-url="{% url 'apps_social:admin_suspendre_live' pk=live.pk %}">
+                Terminer
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">
+            <i class="bi bi-search" style="font-size:2rem;display:block;margin-bottom:.75rem"></i>
+            Aucun live ne correspond à ces critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if lives.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if lives.has_previous %}
+    <a href="?page={{ lives.previous_page_number }}&q={{ q }}&statut={{ statut }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ lives.number }} / {{ lives.paginator.num_pages }}</span>
+    {% if lives.has_next %}
+    <a href="?page={{ lives.next_page_number }}&q={{ q }}&statut={{ statut }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+document.querySelectorAll('.admin-live-action').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    const action = this.dataset.action;
+    let motif = '';
+    if(action === 'suspendre' || action === 'terminer'){
+      motif = prompt('Motif (optionnel) :') || '';
+    }
+    if(action === 'terminer' && !confirm('Terminer ce live définitivement ?')) return;
+
+    this.disabled = true;
+    const fd = new FormData();
+    fd.append('action', action);
+    fd.append('motif', motif);
+
+    try{
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd,
+      });
+      if(!r.ok){ throw new Error(`HTTP ${r.status}`); }
+      const d = await r.json();
+      if(d.success){
+        location.reload();
+      } else {
+        alert(d.message || 'Erreur');
+        this.disabled = false;
+      }
+    }catch(e){
+      console.error('Erreur admin-live-action:', e);
+      this.disabled = false;
+    }
+  });
+});
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

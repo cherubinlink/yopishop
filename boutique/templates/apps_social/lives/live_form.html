@@ -1,0 +1,335 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.lf-wrap { max-width:760px;margin:0 auto; }
+.lf-section { background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.4rem 1.6rem;margin-bottom:1.25rem; }
+.lf-section-title { font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:1.1rem;display:flex;align-items:center;gap:.5rem; }
+.lf-label { font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem;display:block; }
+.lf-input, .lf-textarea, .lf-select { width:100%;padding:.65rem .9rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.85rem; }
+.lf-textarea { resize:vertical;min-height:90px; }
+.lf-field { margin-bottom:1.1rem; }
+.lf-row2 { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
+@media (max-width:575px) { .lf-row2 { grid-template-columns:1fr; } }
+.lf-toggle-row { display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;background:var(--surface);border-radius:.6rem;border:1px solid var(--border);margin-bottom:.75rem; }
+.lf-switch { position:relative;width:42px;height:23px;flex-shrink:0; }
+.lf-switch input { opacity:0;width:0;height:0; }
+.lf-switch-slider { position:absolute;inset:0;background:var(--border);border-radius:999px;cursor:pointer;transition:.2s; }
+.lf-switch-slider::before { content:'';position:absolute;width:17px;height:17px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s; }
+.lf-switch input:checked + .lf-switch-slider { background:var(--saffron); }
+.lf-switch input:checked + .lf-switch-slider::before { transform:translateX(19px); }
+.lf-cover-wrap { height:160px;border-radius:.7rem;background:linear-gradient(135deg,var(--indigo),var(--saffron));position:relative;overflow:hidden;cursor:pointer; }
+.lf-cover-wrap img { width:100%;height:100%;object-fit:cover; }
+.lf-cover-overlay { position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;gap:.5rem;color:#fff;font-size:.85rem;font-weight:700; }
+.lf-prod-list { max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:.6rem; }
+.lf-prod-item { display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--border); }
+.lf-prod-item:last-child { border-bottom:none; }
+.lf-prod-img { width:44px;height:44px;border-radius:8px;overflow:hidden;background:var(--surface);flex-shrink:0; }
+.lf-prod-img img { width:100%;height:100%;object-fit:cover; }
+.lf-prod-name { font-size:.82rem;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.lf-prod-inputs { display:flex;gap:.5rem;flex-shrink:0; }
+.lf-prod-inputs input { width:90px;padding:.35rem .55rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.78rem; }
+.lf-prod-inputs input:disabled { opacity:.4; }
+.lf-actions { display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem; }
+.lf-existing-prod { display:flex;align-items:center;gap:.7rem;padding:.65rem 0;border-bottom:1px solid var(--border); }
+.lf-existing-prod:last-child { border-bottom:none; }
+</style>
+
+<div class="container mt-4 lf-wrap">
+
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.15rem;font-weight:900;color:var(--text)">
+      <i class="bi bi-broadcast me-2" style="color:var(--ember)"></i>{{ page_titre }}
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="fi" style="margin-bottom:1rem">
+    {% for message in messages %}
+    <div style="padding:.7rem 1rem;border-radius:.6rem;font-size:.82rem;margin-bottom:.5rem;
+                {% if message.tags == 'success' %}background:rgba(46,160,67,.12);color:#2ea043;
+                {% else %}background:rgba(200,80,80,.12);color:#c85050;{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" id="liveForm">
+    {% csrf_token %}
+
+    <!-- Image de couverture -->
+    <div class="fi lf-section">
+      <div class="lf-section-title"><i class="bi bi-image" style="color:var(--saffron)"></i>Image de couverture {% if mode == 'creation' %}*{% endif %}</div>
+      <div class="lf-cover-wrap" onclick="document.getElementById('inputCouverture').click()">
+        {% if live.image_couverture %}
+        <img src="{{ live.image_couverture.url }}" alt="" id="couverturePreview">
+        {% else %}
+        <img src="" alt="" id="couverturePreview" style="display:none">
+        {% endif %}
+        <div class="lf-cover-overlay"><i class="bi bi-camera"></i> Choisir une image</div>
+      </div>
+      <input type="file" id="inputCouverture" name="image_couverture" accept="image/*"
+             style="display:none" onchange="previewCouverture(this)">
+      <div id="couvertureErreur" style="display:none;font-size:.75rem;color:#c85050;margin-top:.4rem">
+        <i class="bi bi-exclamation-circle me-1"></i>Une image de couverture est requise.
+      </div>
+      {% if mode == 'creation' %}
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">Image obligatoire pour créer un live.</div>
+      {% endif %}
+    </div>
+
+    <!-- Infos générales -->
+    <div class="fi lf-section">
+      <div class="lf-section-title"><i class="bi bi-info-circle" style="color:var(--indigo)"></i>Informations générales</div>
+
+      <div class="lf-field">
+        <label class="lf-label" for="inputTitre">Titre du live *</label>
+        <input type="text" class="lf-input" id="inputTitre" name="titre" required maxlength="200"
+               value="{{ live.titre|default:'' }}" placeholder="Ex: Déstockage mode femme — jusqu'à -50%">
+      </div>
+
+      <div class="lf-field">
+        <label class="lf-label" for="inputDescription">Description</label>
+        <textarea class="lf-textarea" id="inputDescription" name="description" maxlength="1000"
+                  placeholder="Présentez votre live à vos abonnés...">{{ live.description|default:'' }}</textarea>
+      </div>
+
+      <div class="lf-row2">
+        {% if mode == 'creation' %}
+        <div class="lf-field">
+          <label class="lf-label" for="inputDateDebut">Date &amp; heure de début</label>
+          <input type="datetime-local" class="lf-input" id="inputDateDebut" name="date_debut">
+        </div>
+        <div class="lf-field">
+          <label class="lf-label">Durée prévue</label>
+          <div style="display:flex;gap:.5rem">
+            <input type="number" class="lf-input" name="duree_jours" min="0" value="0" placeholder="Jours">
+            <input type="number" class="lf-input" name="duree_heures" min="0" value="1" placeholder="Heures">
+          </div>
+        </div>
+        {% else %}
+        <div class="lf-field">
+          <label class="lf-label">Statut actuel</label>
+          <input type="text" class="lf-input" value="{{ live.get_statut_display }}" disabled>
+        </div>
+        <div class="lf-field">
+          <label class="lf-label">Fin prévue</label>
+          <input type="text" class="lf-input" value="{{ live.date_fin_prevue }}" disabled>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="lf-field">
+        <label class="lf-label" for="inputNbMax">Nombre maximum de participants</label>
+        <input type="number" class="lf-input" id="inputNbMax" name="nb_participants_max" min="0"
+               value="{{ live.nb_participants_max|default:'' }}" placeholder="0 = illimité">
+      </div>
+
+      <div class="lf-toggle-row">
+        <span style="font-size:.85rem;color:var(--text)">Autoriser le chat</span>
+        <label class="lf-switch">
+          <input type="checkbox" name="autoriser_chat" {% if live.autoriser_chat|default:True %}checked{% endif %}>
+          <span class="lf-switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="lf-toggle-row">
+        <span style="font-size:.85rem;color:var(--text)">Autoriser les questions</span>
+        <label class="lf-switch">
+          <input type="checkbox" name="autoriser_questions" {% if live.autoriser_questions|default:True %}checked{% endif %}>
+          <span class="lf-switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="lf-toggle-row">
+        <span style="font-size:.85rem;color:var(--text)">Autoriser les réactions (emojis)</span>
+        <label class="lf-switch">
+          <input type="checkbox" name="autoriser_reactions" {% if live.autoriser_reactions|default:True %}checked{% endif %}>
+          <span class="lf-switch-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Produits (uniquement à la création) -->
+    {% if mode == 'creation' %}
+    <div class="fi lf-section">
+      <div class="lf-section-title"><i class="bi bi-bag" style="color:var(--jade)"></i>Produits à présenter</div>
+      {% if mes_produits %}
+      <div class="lf-prod-list">
+        {% for produit in mes_produits %}
+        <div class="lf-prod-item">
+          <input type="checkbox" name="produits" value="{{ produit.pk }}" onchange="toggleProdInputs(this)">
+          <div class="lf-prod-img">
+            {% if produit.image_principale %}<img src="{{ produit.image_principale }}" alt=""> {% endif %}
+          </div>
+          <div class="lf-prod-name">{{ produit.titre }} <span style="color:var(--muted)">({{ produit.prix|floatformat:0 }} F)</span></div>
+          <div class="lf-prod-inputs">
+            <input type="number" step="0.01" name="prix_live_{{ produit.pk }}" placeholder="Prix live" disabled>
+            <input type="number" name="quantite_{{ produit.pk }}" placeholder="Qté" disabled>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="mp-hint" style="font-size:.72rem;color:var(--muted);margin-top:.5rem">
+        Cochez les produits à présenter, puis définissez un prix spécial live et une quantité limitée (optionnel).
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.85rem">
+        Vous n'avez aucun produit actif à ajouter. <a href="{% url 'apps_core:produit_creer' %}" style="color:var(--saffron)">Créer un produit</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="fi lf-actions">
+      {% if mode == 'edition' %}
+      <a href="{% url 'apps_social:live_detail' pk=live.pk %}" class="btn-ghost" style="font-size:.85rem">Annuler</a>
+      {% else %}
+      <a href="{% url 'apps_social:mes_lives' %}" class="btn-ghost" style="font-size:.85rem">Annuler</a>
+      {% endif %}
+      <button type="submit" class="btn-gold" style="font-size:.85rem">
+        <i class="bi bi-check-lg me-1"></i>{% if mode == 'creation' %}Créer le live{% else %}Enregistrer{% endif %}
+      </button>
+    </div>
+  </form>
+
+  <!-- Gestion des produits existants (édition uniquement) -->
+  {% if mode == 'edition' %}
+  <div class="fi lf-section" style="margin-top:1.25rem">
+    <div class="lf-section-title"><i class="bi bi-bag-check" style="color:var(--jade)"></i>Produits déjà dans ce live</div>
+    <div id="existingProdList">
+      {% for pl in live.produits_live.all %}
+      <div class="lf-existing-prod" id="prodlive-{{ pl.pk }}">
+        <div class="lf-prod-img"><img src="{{ pl.produit.image_principale }}" alt=""></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;color:var(--text)">{{ pl.produit.titre }}</div>
+          <div style="font-size:.74rem;color:var(--muted)">{{ pl.prix_final|floatformat:0 }} F (au lieu de {{ pl.produit.prix|floatformat:0 }} F) &bull; {{ pl.stock_disponible }} en stock live</div>
+        </div>
+        <button class="btn-ghost toggle-actif-btn" data-url="{% url 'apps_social:toggle_produit_actif' produit_live_pk=pl.pk %}" style="font-size:.72rem">
+          {{ pl.est_disponible|yesno:"Actif,Inactif" }}
+        </button>
+        <button class="btn-ghost retirer-prod-btn" data-url="{% url 'apps_social:retirer_produit_live' produit_live_pk=pl.pk %}" style="font-size:.72rem;color:#c85050">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:1rem;color:var(--muted);font-size:.85rem">Aucun produit ajouté pour l'instant.</div>
+      {% endfor %}
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+      <select class="lf-select" id="selectAjoutProduit">
+        <option value="">— Ajouter un produit —</option>
+        {% for produit in mes_produits %}
+        <option value="{{ produit.pk }}" data-prix="{{ produit.prix }}">{{ produit.titre }} ({{ produit.prix|floatformat:0 }} F)</option>
+        {% endfor %}
+      </select>
+      <button class="btn-gold" id="btnAjouterProduit" style="font-size:.82rem;white-space:nowrap">
+        <i class="bi bi-plus-lg"></i> Ajouter
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+function previewCouverture(input){
+  const file = input.files[0];
+  if(!file) return;
+  document.getElementById('couvertureErreur').style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('couverturePreview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+{% if mode == 'creation' %}
+document.getElementById('liveForm').addEventListener('submit', function(e){
+  const input = document.getElementById('inputCouverture');
+  if(!input.files || input.files.length === 0){
+    e.preventDefault();
+    document.getElementById('couvertureErreur').style.display = 'block';
+    document.querySelector('.lf-cover-wrap').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+});
+{% endif %}
+
+function toggleProdInputs(checkbox){
+  const row = checkbox.closest('.lf-prod-item');
+  row.querySelectorAll('input[type="number"]').forEach(inp => inp.disabled = !checkbox.checked);
+}
+
+{% if mode == 'edition' %}
+document.getElementById('btnAjouterProduit')?.addEventListener('click', async function(){
+  const select = document.getElementById('selectAjoutProduit');
+  const produitId = select.value;
+  if(!produitId){ alert('Sélectionnez un produit.'); return; }
+
+  const url = "{% url 'apps_social:ajouter_produit_live' pk=live.pk %}";
+  const fd = new FormData();
+  fd.append('produit_id', produitId);
+
+  try{
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    });
+    const d = await r.json();
+    if(d.success){
+      location.reload();
+    } else {
+      alert(d.message || 'Erreur');
+    }
+  }catch(e){ console.error(e); }
+});
+
+document.querySelectorAll('.toggle-actif-btn').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    try{
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const d = await r.json();
+      if(d.success){
+        this.textContent = d.est_actif ? 'Actif' : 'Inactif';
+      }
+    }catch(e){ console.error(e); }
+  });
+});
+
+document.querySelectorAll('.retirer-prod-btn').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    if(!confirm('Retirer ce produit du live ?')) return;
+    try{
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const d = await r.json();
+      if(d.success){
+        this.closest('.lf-existing-prod').remove();
+      }
+    }catch(e){ console.error(e); }
+  });
+});
+{% endif %}
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,742 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}🔴 {{ page_titre }} — YopiShop Live{% endblock %}
+
+{% block content %}
+<style>
+/* ══════════════════════════════════════════════
+   LIVE DETAIL
+   Variables contexte :
+     live, produits_live, commentaires,
+     nb_participants_actifs, ma_participation,
+     est_proprietaire, est_active
+══════════════════════════════════════════════ */
+.ld-wrap { padding: 0; min-height: 100vh; background: #05060F; }
+
+/* ── Topbar live ── */
+.ld-topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(5,6,15,.92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: .6rem 1.25rem;
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+}
+.ld-live-badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: #FF0000; color: #fff;
+  font-size: .72rem; font-weight: 800; padding: .25rem .7rem;
+  border-radius: 99px; animation: livepulse 1.5s infinite;
+}
+@keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+.ld-titre { font-size: .9rem; font-weight: 700; color: var(--text); flex: 1; }
+.ld-participants {
+  display: flex; align-items: center; gap: .35rem;
+  font-size: .78rem; font-weight: 600; color: var(--text-2);
+}
+.ld-participants i { color: #FF4F5E; font-size: .7rem; }
+.ld-stream-badge {
+  font-size: .68rem; font-weight: 700; padding: .2rem .6rem; border-radius: 99px;
+  display: inline-flex; align-items: center; gap: .3rem;
+}
+.sb-hors_ligne { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.sb-connexion  { background: rgba(247,183,49,.12); color: var(--saffron); }
+.sb-diffusion  { background: rgba(255,0,0,.12); color: #FF4F5E; }
+.sb-erreur     { background: rgba(255,90,71,.12); color: var(--ember); }
+.sb-termine    { background: var(--jade-d); color: var(--jade); }
+.sb-dot { width:6px;height:6px;border-radius:50%;background:currentColor; }
+
+/* ── Layout ── */
+.ld-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  grid-template-rows: auto auto;
+  height: calc(100vh - 52px);
+  gap: 0;
+}
+@media(max-width:991px) {
+  .ld-layout { grid-template-columns: 1fr; height: auto; }
+}
+
+/* ── Stream ── */
+.ld-stream-col {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+.ld-player {
+  position: relative; background: #000;
+  aspect-ratio: 16/9; flex-shrink: 0;
+}
+.ld-player iframe, .ld-player video {
+  width: 100%; height: 100%; border: none; display: block;
+}
+.ld-player-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center;
+  justify-content: center; flex-direction: column; gap: .75rem;
+  color: rgba(255,255,255,.3); text-align: center; padding: 1rem;
+}
+.ld-player-placeholder i { font-size: 3.5rem; }
+.ld-player-placeholder.no-stream i { color: var(--saffron); opacity: .6; }
+.ld-player-placeholder.erreur i { color: var(--ember); opacity: .8; }
+
+/* ── Produits carousel ── */
+.ld-produits {
+  padding: .75rem 1rem; border-top: 1px solid var(--border);
+  background: rgba(8,11,36,.95);
+  display: flex; gap: .6rem; overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+}
+.ld-produits::-webkit-scrollbar { display: none; }
+.ld-produit-card {
+  flex-shrink: 0; width: 130px; background: var(--card);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  overflow: hidden; cursor: pointer; transition: border-color .2s, transform .2s;
+}
+.ld-produit-card:hover, .ld-produit-card.actif {
+  border-color: var(--saffron); transform: translateY(-2px);
+}
+.ld-produit-img {
+  height: 80px; overflow: hidden; background: var(--surface);
+}
+.ld-produit-img img { width: 100%; height: 100%; object-fit: cover; }
+.ld-produit-info { padding: .4rem .5rem; }
+.ld-produit-nom { font-size: .72rem; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: .2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ld-produit-prix-live { font-family: var(--fm); font-size: .85rem; font-weight: 800; color: #FF4F5E; }
+.ld-produit-prix-normal { font-size: .65rem; color: var(--muted); text-decoration: line-through; }
+.ld-produit-badge {
+  font-size: .6rem; font-weight: 700; padding: 1px 5px; border-radius: 99px;
+  background: #FF4F5E; color: #fff;
+}
+
+/* ── Colonne chat ── */
+.ld-chat-col {
+  display: flex; flex-direction: column;
+  background: var(--card); overflow: hidden;
+}
+.ld-chat-head {
+  padding: .7rem 1rem; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.ld-chat-title { font-size: .84rem; font-weight: 700; color: var(--text); }
+.ld-chat-messages {
+  flex: 1; overflow-y: auto; padding: .75rem 1rem;
+  display: flex; flex-direction: column; gap: .5rem;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.ld-msg { display: flex; gap: .5rem; align-items: flex-start; }
+.ld-msg-avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  background: var(--indigo-d); color: var(--indigo);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .65rem; font-weight: 800;
+}
+.ld-msg-content { flex: 1; min-width: 0; }
+.ld-msg-user { font-size: .72rem; font-weight: 700; color: var(--saffron); }
+.ld-msg-text { font-size: .8rem; color: var(--text-2); line-height: 1.4; word-break: break-word; }
+.ld-msg.epingle { background: rgba(247,183,49,.08); border-left: 2px solid var(--saffron); padding: .35rem .6rem; border-radius: 0 8px 8px 0; }
+.ld-msg-system { font-size: .72rem; color: var(--muted); text-align: center; font-style: italic; }
+
+/* ── Réactions ── */
+.ld-reactions { display: flex; gap: .4rem; padding: .5rem 1rem; border-top: 1px solid var(--border); flex-shrink: 0; }
+.ld-react-btn {
+  font-size: 1.1rem; background: none; border: none; cursor: pointer;
+  padding: .2rem .35rem; border-radius: 8px; transition: transform .2s, background .2s;
+}
+.ld-react-btn:hover { transform: scale(1.25); background: var(--surface); }
+
+/* ── Input chat ── */
+.ld-chat-input-zone { padding: .6rem .75rem; border-top: 1px solid var(--border); flex-shrink: 0; }
+.ld-chat-input-row { display: flex; gap: .4rem; }
+.ld-chat-input {
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 20px; color: var(--text); font-size: .82rem;
+  padding: .45rem .9rem; outline: none; transition: border-color .2s;
+}
+.ld-chat-input:focus { border-color: var(--saffron); }
+.ld-chat-send {
+  width: 36px; height: 36px; background: var(--saffron); color: #0A0B1A;
+  border: none; border-radius: 50%; cursor: pointer; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center; transition: opacity .2s;
+}
+.ld-chat-send:hover { opacity: .9; }
+
+/* ── Modal achat ── */
+.ld-buy-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 9998;
+  display: none; align-items: flex-end; justify-content: center;
+}
+.ld-buy-overlay.show { display: flex; }
+.ld-buy-modal {
+  background: var(--card); border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0; padding: 1.5rem; width: 100%; max-width: 480px;
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.ld-buy-titre { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; }
+.ld-buy-prix { font-family: var(--fm); font-size: 1.6rem; font-weight: 900; color: #FF4F5E; margin-bottom: .6rem; }
+.ld-qty-ctrl { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
+.ld-qty-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.ld-qty-val { font-family: var(--fm); font-size: 1rem; font-weight: 700; color: var(--text); min-width: 30px; text-align: center; }
+.btn-acheter-live {
+  width: 100%; background: linear-gradient(90deg,#FF4F5E,#ff6b78);
+  color: #fff; border: none; border-radius: 12px; padding: .85rem;
+  font-size: .95rem; font-weight: 800; cursor: pointer; transition: opacity .2s;
+}
+.btn-acheter-live:hover { opacity: .9; }
+
+/* ── Contrôles vendeur ── */
+.ld-vendor-controls {
+  position: fixed; bottom: 1rem; left: 1rem; z-index: 200;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.ld-ctrl-btn {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: .5rem .9rem; font-size: .8rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: .4rem; color: var(--text);
+  transition: all .2s;
+}
+.ld-ctrl-btn:hover { border-color: var(--saffron); color: var(--saffron); }
+.ld-ctrl-btn.danger { color: var(--ember); border-color: rgba(255,90,71,.3); background: var(--ember-d); }
+.ld-ctrl-btn.danger:hover { background: var(--ember); color: #fff; }
+
+/* ── Toast ── */
+.ld-toast {
+  position: fixed; top: 70px; right: 1rem; z-index: 9999;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: .85rem 1.1rem; max-width: 300px;
+  display: flex; align-items: center; gap: .6rem; font-size: .82rem; color: var(--text);
+  transform: translateX(120%); transition: transform .3s ease;
+}
+.ld-toast.show { transform: translateX(0); }
+.ld-toast.success { border-color: rgba(0,200,150,.35); }
+.ld-toast.error   { border-color: rgba(255,90,71,.35); }
+
+/* ── Stats topbar ── */
+.ld-stat-pill {
+  display: flex; align-items: center; gap: .3rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 99px; padding: .2rem .7rem; font-size: .74rem; color: var(--text-2);
+}
+.ld-stat-pill i { font-size: .65rem; }
+</style>
+
+<div class="ld-wrap">
+
+  <!-- Topbar -->
+  <div class="ld-topbar">
+    {% if est_active %}
+    <span class="ld-live-badge"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> EN DIRECT</span>
+    {% else %}
+    <span style="font-size:.72rem;font-weight:700;color:var(--jade);background:var(--jade-d);border:1px solid rgba(0,200,150,.25);padding:.25rem .7rem;border-radius:99px">
+      <i class="bi bi-check-circle-fill"></i> {{ live.get_statut_display }}
+    </span>
+    {% endif %}
+
+    {% if live.url_stream %}
+    <span class="ld-stream-badge sb-{{ live.stream_statut }}" id="streamBadge">
+      <span class="sb-dot"></span><span id="streamBadgeLabel">{{ live.get_stream_statut_display }}</span>
+    </span>
+    {% endif %}
+
+    <span class="ld-titre">{{ live.titre }}</span>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="ld-stat-pill">
+        <i class="bi bi-people-fill" style="color:#FF4F5E"></i>
+        <span id="nbParticipants">{{ nb_participants_actifs }}</span>
+      </span>
+      <span class="ld-stat-pill">
+        <i class="bi bi-eye" style="color:var(--saffron)"></i> {{ live.nb_vues_total }}
+      </span>
+      <span class="ld-stat-pill">
+        <i class="bi bi-bag-check" style="color:var(--jade)"></i>
+        <span id="caGenere">{{ live.chiffre_affaires_live|floatformat:0|default:"0" }} F</span>
+      </span>
+    </div>
+
+    <a href="{% url 'apps_social:lives_liste' %}" class="btn-ghost" style="font-size:.78rem;padding:.3rem .75rem">
+      <i class="bi bi-x-lg"></i>
+    </a>
+  </div>
+
+  <!-- Layout principal -->
+  <div class="ld-layout">
+
+    <!-- ═══ Colonne stream + produits ═══ -->
+    <div class="ld-stream-col">
+
+      <!-- Player -->
+      <div class="ld-player" id="ldPlayer">
+        {% if live.url_stream and live.stream_statut == 'diffusion' %}
+        <iframe src="{{ live.url_stream }}" allowfullscreen
+                allow="autoplay; fullscreen" frameborder="0"></iframe>
+        {% elif not live.url_stream %}
+        <!-- Live sans vidéo : uniquement chat + produits, ce n'est pas une erreur -->
+        <div class="ld-player-placeholder no-stream" id="ldPlayerPlaceholder">
+          <i class="bi bi-chat-square-text"></i>
+          <span style="font-size:.9rem;font-weight:700;color:rgba(255,255,255,.7)">Live sans diffusion vidéo</span>
+          <span style="font-size:.8rem;color:rgba(255,255,255,.4)">Suivez les produits et le chat en direct ci-dessous</span>
+        </div>
+        {% else %}
+        <div class="ld-player-placeholder {% if live.stream_statut == 'erreur' %}erreur{% endif %}" id="ldPlayerPlaceholder">
+          <i class="bi bi-broadcast"></i>
+          <span style="font-size:.9rem;font-weight:700" id="ldPlayerLabel">
+            {% if live.stream_statut == 'connexion' %}Connexion au stream…
+            {% elif live.stream_statut == 'erreur' %}Erreur de connexion au stream
+            {% elif live.statut == 'planifie' %}Live pas encore démarré
+            {% elif live.stream_statut == 'termine' %}Diffusion terminée
+            {% else %}Stream hors ligne{% endif %}
+          </span>
+          {% if live.statut == 'planifie' %}
+          <span style="font-size:.8rem;color:rgba(255,255,255,.4)">Prévu le {{ live.date_debut|date:"d M Y à H:i" }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Produits carousel -->
+      {% if produits_live %}
+      <div class="ld-produits" id="produitCarousel">
+        {% for pl in produits_live %}
+        <div class="ld-produit-card {% if forloop.first %}actif{% endif %}"
+             id="pl{{ pl.pk }}"
+             data-pk="{{ pl.pk }}"
+             data-titre="{{ pl.produit.titre }}"
+             data-prix="{{ pl.prix_final }}"
+             data-normal="{{ pl.produit.prix }}"
+             data-qte="{{ pl.stock_disponible|default_if_none:'null' }}"
+             onclick="ouvrirAchat(this)">
+          <div class="ld-produit-img">
+            {% if pl.produit.image_principale %}
+            <img src="{{ pl.produit.image_principale }}" alt="{{ pl.produit.titre }}" loading="lazy">
+            {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted)"><i class="bi bi-image"></i></div>
+            {% endif %}
+          </div>
+          <div class="ld-produit-info">
+            <div class="ld-produit-nom">{{ pl.produit.titre|truncatechars:28 }}</div>
+            <div class="ld-produit-prix-live">{{ pl.prix_final|floatformat:0 }} F</div>
+            {% if pl.produit.prix and pl.produit.prix != pl.prix_final %}
+            <div class="ld-produit-prix-normal">{{ pl.produit.prix|floatformat:0 }} F</div>
+            {% endif %}
+            {% if pl.stock_disponible is not None %}
+            <div class="ld-produit-badge">{{ pl.stock_disponible }} restant{{ pl.stock_disponible|pluralize }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- ═══ Colonne chat ═══ -->
+    <div class="ld-chat-col">
+      <div class="ld-chat-head">
+        <span class="ld-chat-title"><i class="bi bi-chat-dots" style="color:var(--saffron)"></i> Chat live</span>
+        <span style="font-size:.72rem;color:var(--muted)" id="nbMessages">{{ commentaires|length }}</span>
+      </div>
+
+      <div class="ld-chat-messages" id="chatMessages">
+        <div class="ld-msg-system">Bienvenue dans le live de {{ live.vendeur.username }} 👋</div>
+        {% for comm in commentaires reversed %}
+        <div class="ld-msg {% if comm.est_epingle %}epingle{% endif %}"
+             id="msg{{ comm.pk }}"
+             data-sig="{{ comm.utilisateur.username }}|{{ comm.date_creation|date:'H:i:s' }}|{{ comm.contenu }}">
+          <div class="ld-msg-avatar">{{ comm.utilisateur.username|first|upper }}</div>
+          <div class="ld-msg-content">
+            <div class="ld-msg-user">{{ comm.utilisateur.username }}
+              {% if comm.est_epingle %}<i class="bi bi-pin-fill" style="color:var(--saffron);font-size:.6rem"></i>{% endif %}
+            </div>
+            <div class="ld-msg-text">{{ comm.contenu }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Réactions emoji -->
+      {% if est_active and request.user.is_authenticated and live.autoriser_reactions %}
+      <div class="ld-reactions">
+        <button class="ld-react-btn" onclick="envoyerReaction('❤️')">❤️</button>
+        <button class="ld-react-btn" onclick="envoyerReaction('🔥')">🔥</button>
+        <button class="ld-react-btn" onclick="envoyerReaction('👏')">👏</button>
+        <button class="ld-react-btn" onclick="envoyerReaction('😍')">😍</button>
+        <button class="ld-react-btn" onclick="envoyerReaction('💰')">💰</button>
+        <button class="ld-react-btn" onclick="envoyerReaction('🎉')">🎉</button>
+      </div>
+      {% endif %}
+
+      <!-- Input commentaire -->
+      {% if est_active and live.autoriser_chat %}
+      {% if request.user.is_authenticated %}
+      <div class="ld-chat-input-zone">
+        <div class="ld-chat-input-row">
+          <input type="text" id="chatInput" class="ld-chat-input"
+                 placeholder="Tapez un message…" maxlength="300"
+                 onkeydown="if(event.key==='Enter')envoyerCommentaire()">
+          <button class="ld-chat-send" onclick="envoyerCommentaire()">
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <div class="ld-chat-input-zone" style="text-align:center">
+        <a href="{% url 'apps_core:connexion' %}?next={{ request.path }}" style="color:var(--saffron);font-size:.8rem">
+          <i class="bi bi-box-arrow-in-right"></i> Connectez-vous pour participer
+        </a>
+      </div>
+      {% endif %}
+      {% elif est_active and not live.autoriser_chat %}
+      <div class="ld-chat-input-zone" style="text-align:center">
+        <span style="font-size:.78rem;color:var(--muted)"><i class="bi bi-chat-square-dots"></i> Le chat est désactivé pour ce live</span>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Contrôles vendeur -->
+  {% if est_proprietaire %}
+  <div class="ld-vendor-controls">
+    {% if live.statut == 'planifie' %}
+    <button class="ld-ctrl-btn" onclick="demarrerLive()" style="background:#FF4F5E;color:#fff;border-color:#FF4F5E">
+      <i class="bi bi-broadcast"></i> Démarrer le live
+    </button>
+    {% elif live.statut == 'en_cours' %}
+    <button class="ld-ctrl-btn danger" onclick="terminerLive()"
+            id="btnTerminer">
+      <i class="bi bi-stop-circle"></i> Terminer
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal achat -->
+<div class="ld-buy-overlay" id="buyOverlay" onclick="fermerAchat(event)">
+  <div class="ld-buy-modal">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <span style="font-size:.88rem;font-weight:700;color:var(--text)"><i class="bi bi-bag-fill me-1" style="color:var(--saffron)"></i>Acheter maintenant</span>
+      <button onclick="fermerAchat()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem">✕</button>
+    </div>
+    <div class="ld-buy-titre" id="buyTitre">—</div>
+    <div class="ld-buy-prix" id="buyPrix">—</div>
+    <div id="buyQteZone" class="ld-qty-ctrl">
+      <button class="ld-qty-btn" onclick="changeQte(-1)">−</button>
+      <span class="ld-qty-val" id="buyQteVal">1</span>
+      <button class="ld-qty-btn" onclick="changeQte(1)">+</button>
+      <span style="font-size:.76rem;color:var(--muted)" id="buyStock"></span>
+    </div>
+    <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.75rem">
+      Total : <span id="buyTotal" style="color:var(--jade)">—</span>
+    </div>
+    <button class="btn-acheter-live" id="btnAcheterLive" onclick="confirmerAchat()">
+      <i class="bi bi-bag-check-fill"></i> Confirmer l'achat
+    </button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="ld-toast" id="ldToast">
+  <span id="ldToastIco"></span>
+  <span id="ldToastMsg"></span>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+"use strict";
+
+const CSRF        = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const LIVE_PK      = "{{ live.pk }}";
+const EST_ACTIVE   = {{ est_active|yesno:"true,false" }};
+const URL_STREAM   = {{ live.url_stream|yesno:"true,false" }} ? "{{ live.url_stream|escapejs }}" : "";
+const URL_COMM     = "{% url 'apps_social:ajax_poster_commentaire' live.pk %}";
+const URL_REACT    = "{% url 'apps_social:ajax_reaction' live.pk %}";
+const URL_ACHAT    = "{% url 'apps_social:ajax_acheter_live' live.pk %}";
+const URL_ETAT     = "{% url 'apps_social:ajax_etat_live' live.pk %}";
+{% if est_proprietaire %}
+const URL_DEMARRER = "{% url 'apps_social:demarrer_live' live.pk %}";
+const URL_TERMINER = "{% url 'apps_social:terminer_live' live.pk %}";
+{% endif %}
+
+/* ══ Toast ══ */
+function showToast(msg, type='success'){
+  const t = document.getElementById('ldToast');
+  document.getElementById('ldToastIco').innerHTML = type === 'success'
+    ? '<i class="bi bi-check-circle-fill" style="color:var(--jade)"></i>'
+    : '<i class="bi bi-x-circle-fill" style="color:var(--ember)"></i>';
+  document.getElementById('ldToastMsg').textContent = msg;
+  t.className = `ld-toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+/* ══ Commentaire ══ */
+async function envoyerCommentaire(){
+  const inp    = document.getElementById('chatInput');
+  const contenu = inp.value.trim();
+  if(!contenu) return;
+  inp.value = '';
+  try{
+    const fd = new FormData();
+    fd.append('contenu', contenu);
+    const r = await fetch(URL_COMM, {
+      method:'POST',
+      headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+      body: fd,
+    });
+    const d = await r.json();
+    if(d.success) ajouterMsgChat(d.commentaire);
+    else showToast(d.message, 'error');
+  } catch { showToast('Erreur réseau', 'error'); }
+}
+
+function ajouterMsgChat(comm){
+  const zone = document.getElementById('chatMessages');
+  const div  = document.createElement('div');
+  div.className = 'ld-msg';
+  div.id = `msg${comm.pk}`;
+  div.dataset.sig = `${comm.username}|${comm.date}|${comm.contenu}`;
+  div.innerHTML = `
+    <div class="ld-msg-avatar">${comm.username[0].toUpperCase()}</div>
+    <div class="ld-msg-content">
+      <div class="ld-msg-user">${comm.username}</div>
+      <div class="ld-msg-text">${comm.contenu}</div>
+    </div>`;
+  zone.appendChild(div);
+  zone.scrollTop = zone.scrollHeight;
+  const nbEl = document.getElementById('nbMessages');
+  if(nbEl) nbEl.textContent = parseInt(nbEl.textContent||0) + 1;
+}
+
+/* ══ Réaction ══ */
+async function envoyerReaction(emoji){
+  try{
+    const fd = new FormData();
+    fd.append('emoji', emoji);
+    await fetch(URL_REACT, {
+      method:'POST',
+      headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+      body: fd,
+    });
+    animerReaction(emoji);
+  } catch{}
+}
+
+function animerReaction(emoji){
+  const zone  = document.getElementById('chatMessages');
+  const span  = document.createElement('span');
+  span.textContent = emoji;
+  span.style.cssText = `
+    position:fixed;bottom:120px;right:${1.5 + Math.random()*4}rem;
+    font-size:1.6rem;pointer-events:none;z-index:9990;
+    animation:floatUp 2s ease forwards;`;
+  document.body.appendChild(span);
+  setTimeout(()=>span.remove(), 2100);
+}
+
+/* ══ Modal Achat ══ */
+let buyPk   = null;
+let buyPrix = 0;
+let buyQte  = 1;
+let buyQteMax = null;
+
+function ouvrirAchat(card){
+  if(!EST_ACTIVE) return;
+  {% if not request.user.is_authenticated %}
+  location.href = "{% url 'apps_core:connexion' %}?next={{ request.path }}";
+  return;
+  {% endif %}
+  buyPk    = card.dataset.pk;
+  buyPrix  = parseFloat(card.dataset.prix);
+  buyQte   = 1;
+  buyQteMax = card.dataset.qte !== 'null' ? parseInt(card.dataset.qte) : null;
+
+  document.getElementById('buyTitre').textContent = card.dataset.titre;
+  document.getElementById('buyPrix').textContent  = `${Math.round(buyPrix).toLocaleString('fr')} FCFA`;
+  document.getElementById('buyStock').textContent = buyQteMax ? `${buyQteMax} en stock` : '';
+  majTotal();
+  document.querySelectorAll('.ld-produit-card').forEach(c=>c.classList.remove('actif'));
+  card.classList.add('actif');
+  document.getElementById('buyOverlay').classList.add('show');
+}
+
+function fermerAchat(e){
+  if(e && e.target !== document.getElementById('buyOverlay')) return;
+  document.getElementById('buyOverlay').classList.remove('show');
+}
+
+function changeQte(delta){
+  buyQte = Math.max(1, buyQte + delta);
+  if(buyQteMax) buyQte = Math.min(buyQte, buyQteMax);
+  document.getElementById('buyQteVal').textContent = buyQte;
+  majTotal();
+}
+
+function majTotal(){
+  document.getElementById('buyTotal').textContent =
+    `${Math.round(buyPrix * buyQte).toLocaleString('fr')} FCFA`;
+}
+
+async function confirmerAchat(){
+  const btn = document.getElementById('btnAcheterLive');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  try{
+    const fd = new FormData();
+    fd.append('produit_live_pk', buyPk);
+    fd.append('quantite', buyQte);
+    const r = await fetch(URL_ACHAT, {
+      method:'POST',
+      headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+      body: fd,
+    });
+    const d = await r.json();
+    if(d.success){
+      showToast(d.message, 'success');
+      document.getElementById('buyOverlay').classList.remove('show');
+      const msgEl = document.getElementById('chatMessages');
+      const div = document.createElement('div');
+      div.className = 'ld-msg-system';
+      div.textContent = `🛍️ {{ request.user.username|default:"Un acheteur" }} vient d'acheter ${buyQte}x !`;
+      msgEl.appendChild(div);
+      msgEl.scrollTop = msgEl.scrollHeight;
+    } else {
+      showToast(d.message, 'error');
+    }
+  } catch { showToast('Erreur réseau', 'error'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-bag-check-fill"></i> Confirmer l\'achat';
+  }
+}
+
+/* ══ Contrôles vendeur ══ */
+{% if est_proprietaire %}
+async function demarrerLive(){
+  if(!confirm('Démarrer le live maintenant ?')) return;
+  const r = await fetch(URL_DEMARRER, {
+    method:'POST',
+    headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+  });
+  const d = await r.json();
+  if(d.success) location.reload();
+  else showToast(d.message, 'error');
+}
+
+async function terminerLive(){
+  if(!confirm('Terminer le live ? Cette action est irréversible.')) return;
+  const btn = document.getElementById('btnTerminer');
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm"></span>'; }
+  const r = await fetch(URL_TERMINER, {
+    method:'POST',
+    headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+  });
+  const d = await r.json();
+  if(d.success){ showToast(d.message, 'success'); setTimeout(()=>location.reload(), 1500); }
+  else showToast(d.message, 'error');
+}
+{% endif %}
+
+/* ══ Mettre à jour l'affichage du player selon stream_statut ══ */
+function majPlayer(streamStatut){
+  const playerEl = document.getElementById('ldPlayer');
+  if(!playerEl) return;
+
+  // Live sans URL de stream : on ne touche jamais au player (état permanent "sans vidéo")
+  if(!URL_STREAM) return;
+
+  const dejaIframe = playerEl.querySelector('iframe');
+
+  if(streamStatut === 'diffusion'){
+    if(!dejaIframe){
+      playerEl.innerHTML = `<iframe src="${URL_STREAM}" allowfullscreen allow="autoplay; fullscreen" frameborder="0"></iframe>`;
+    }
+  } else {
+    if(dejaIframe){
+      // Le stream vient de se couper : on revient au placeholder
+      playerEl.innerHTML = `
+        <div class="ld-player-placeholder ${streamStatut === 'erreur' ? 'erreur' : ''}" id="ldPlayerPlaceholder">
+          <i class="bi bi-broadcast"></i>
+          <span style="font-size:.9rem;font-weight:700" id="ldPlayerLabel"></span>
+        </div>`;
+    }
+    const label = document.getElementById('ldPlayerLabel');
+    if(label){
+      label.textContent =
+        streamStatut === 'connexion' ? 'Connexion au stream…'
+        : streamStatut === 'erreur'   ? 'Erreur de connexion au stream'
+        : streamStatut === 'termine'  ? 'Diffusion terminée'
+        : 'Stream hors ligne';
+    }
+  }
+
+  // Badge topbar
+  const badge = document.getElementById('streamBadge');
+  const badgeLabel = document.getElementById('streamBadgeLabel');
+  if(badge && badgeLabel){
+    badge.className = `ld-stream-badge sb-${streamStatut}`;
+    const labels = {hors_ligne:'Hors ligne', connexion:'Connexion en cours', diffusion:'En diffusion', erreur:'Erreur de connexion', termine:'Diffusion terminée'};
+    badgeLabel.textContent = labels[streamStatut] || streamStatut;
+  }
+}
+
+/* ══ Polling état (toutes les 3s) ══ */
+{% if est_active %}
+setInterval(async ()=>{
+  try{
+    const r = await fetch(URL_ETAT);
+    const d = await r.json();
+    const nbEl = document.getElementById('nbParticipants');
+    const caEl = document.getElementById('caGenere');
+    if(nbEl) nbEl.textContent = d.nb_actifs;
+    if(caEl && d.ca_genere) caEl.textContent = `${Math.round(d.ca_genere).toLocaleString('fr')} F`;
+    if(d.stream_statut) majPlayer(d.stream_statut);
+    if(d.doit_recharger) location.reload();
+
+    if(d.derniers_commentaires?.length){
+      const zone = document.getElementById('chatMessages');
+      const seen = new Set([...zone.querySelectorAll('[data-sig]')].map(el => el.dataset.sig));
+      // la vue renvoie les messages du plus récent au plus ancien : on inverse pour les ajouter dans l'ordre chrono
+      [...d.derniers_commentaires].reverse().forEach(c => {
+        const sig = `${c.username}|${c.date}|${c.contenu}`;
+        if(seen.has(sig)) return;
+        seen.add(sig);
+        const div = document.createElement('div');
+        div.className = `ld-msg${c.epingle ? ' epingle' : ''}`;
+        div.dataset.sig = sig;
+        div.innerHTML = `
+          <div class="ld-msg-avatar">${c.username[0].toUpperCase()}</div>
+          <div class="ld-msg-content">
+            <div class="ld-msg-user">${c.username}${c.epingle ? ' <i class="bi bi-pin-fill" style="color:var(--saffron);font-size:.6rem"></i>' : ''}</div>
+            <div class="ld-msg-text">${c.contenu}</div>
+          </div>`;
+        zone.appendChild(div);
+      });
+      zone.scrollTop = zone.scrollHeight;
+    }
+  } catch{}
+}, 3000);
+{% endif %}
+
+/* ══ CSS animation réaction ══ */
+const style = document.createElement('style');
+style.textContent = '@keyframes floatUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-120px);opacity:0}}';
+document.head.appendChild(style);
+
+/* ══ Rejoindre le live ══ */
+{% if est_active and request.user.is_authenticated and not est_proprietaire %}
+fetch("{% url 'apps_social:ajax_rejoindre_live' live.pk %}", {
+  method:'POST',
+  headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'},
+}).catch(()=>{});
+window.addEventListener('beforeunload', ()=>{
+  navigator.sendBeacon("{% url 'apps_social:ajax_quitter_live' live.pk %}",
+    new URLSearchParams({csrfmiddlewaretoken: CSRF}));
+});
+{% endif %}
+</script>
+{% endblock %}

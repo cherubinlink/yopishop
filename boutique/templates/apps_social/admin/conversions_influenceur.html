@@ -1,0 +1,203 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — Admin YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.ci-header { background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem; }
+.ci-user-row { display:flex;align-items:center;gap:.85rem; }
+.ci-avatar { width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--saffron);flex-shrink:0; }
+.ci-summary { display:flex;gap:1.5rem;flex-wrap:wrap; }
+.ci-summary-item { text-align:center; }
+.ci-summary-val { font-family:var(--fm);font-size:1.1rem;font-weight:900; }
+.ci-summary-lbl { font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.15rem; }
+
+.ci-filters { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center; }
+.ci-filters select { padding:.55rem .9rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.82rem; }
+
+.ci-table { width:100%;border-collapse:collapse; }
+.ci-table th { text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.6rem .75rem;border-bottom:1px solid var(--border); }
+.ci-table td { padding:.7rem .75rem;border-bottom:1px solid var(--border);font-size:.84rem;color:var(--text); }
+.ci-table tr:last-child td { border-bottom:none; }
+.ci-badge-payee { font-size:.66rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;background:rgba(46,160,67,.15);color:#2ea043; }
+.ci-badge-attente { font-size:.66rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;background:var(--surface);color:var(--muted);border:1px solid var(--border); }
+</style>
+
+<div class="container mt-4">
+
+  <nav class="mb-3 fi" style="font-size:.78rem;color:var(--muted)">
+    <a href="{% url 'apps_social:admin_influenceurs_liste' %}" style="color:var(--muted);text-decoration:none">
+      <i class="bi bi-arrow-left me-1"></i>Retour au programme influenceurs
+    </a>
+  </nav>
+
+  <!-- En-tête -->
+  <div class="ci-header fi">
+    <div class="ci-user-row">
+      {% if programme.influenceur.avatar %}
+      <img src="{{ programme.influenceur.avatar.url }}" alt="" class="ci-avatar">
+      {% else %}
+      <div class="ci-avatar">{{ programme.influenceur.username|first|upper }}</div>
+      {% endif %}
+      <div>
+        <div style="font-size:1rem;font-weight:800;color:var(--text)">@{{ programme.influenceur.username }}</div>
+        <div style="font-size:.78rem;color:var(--muted)">{{ programme.get_niveau_display }} &bull; Code : <span style="font-family:var(--fm)">{{ programme.code_parrainage }}</span></div>
+      </div>
+    </div>
+
+    <div class="ci-summary">
+      <div class="ci-summary-item">
+        <div class="ci-summary-val" style="color:var(--jade)">{{ programme.commissions_gagnees|floatformat:0 }} F</div>
+        <div class="ci-summary-lbl">Gagnées</div>
+      </div>
+      <div class="ci-summary-item">
+        <div class="ci-summary-val" style="color:var(--indigo)">{{ programme.commissions_payees|floatformat:0 }} F</div>
+        <div class="ci-summary-lbl">Payées</div>
+      </div>
+      <div class="ci-summary-item">
+        <div class="ci-summary-val" style="color:var(--saffron)">{{ programme.commissions_en_attente|floatformat:0 }} F</div>
+        <div class="ci-summary-lbl">En attente</div>
+      </div>
+    </div>
+
+    {% if programme.commissions_en_attente > 0 %}
+    <button class="btn-gold" id="btnPayerTout" style="font-size:.82rem"
+            data-url="{% url 'apps_social:admin_payer_toutes_commissions' pk=programme.pk %}">
+      <i class="bi bi-cash-stack me-1"></i>Payer tout ({{ programme.commissions_en_attente|floatformat:0 }} F)
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="ci-filters fi">
+    <select name="paye" onchange="this.form.submit()">
+      <option value="">Toutes les conversions</option>
+      <option value="0" {% if paye == '0' %}selected{% endif %}>En attente de paiement</option>
+      <option value="1" {% if paye == '1' %}selected{% endif %}>Déjà payées</option>
+    </select>
+  </form>
+
+  <!-- Tableau -->
+  <div class="ycard fi" style="border:1px solid var(--border);overflow-x:auto">
+    <table class="ci-table">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Commande</th>
+          <th>Montant commande</th>
+          <th>Commission</th>
+          <th>Date</th>
+          <th>Statut</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in conversions %}
+        <tr id="row-conv-{{ c.pk }}">
+          <td>{{ c.utilisateur_converti.username }}</td>
+          <td style="font-family:var(--fm);font-size:.78rem;color:var(--muted)">#{{ c.commande.pk|truncatechars:8 }}</td>
+          <td>{{ c.montant_commande|floatformat:0 }} F</td>
+          <td style="font-weight:700;color:var(--saffron)">{{ c.commission_gagnee|floatformat:0 }} F</td>
+          <td style="font-size:.78rem;color:var(--muted)">{{ c.date_conversion|date:"d M Y à H:i" }}</td>
+          <td>
+            <span class="ci-badge-{% if c.est_payee %}payee{% else %}attente{% endif %}" id="badge-conv-{{ c.pk }}">
+              {% if c.est_payee %}<i class="bi bi-check-circle-fill"></i> Payée{% else %}En attente{% endif %}
+            </span>
+          </td>
+          <td style="text-align:right">
+            {% if not c.est_payee %}
+            <button class="btn-ghost marquer-payee-btn" style="font-size:.72rem;padding:.3rem .7rem"
+                    data-pk="{{ c.pk }}"
+                    data-url="{% url 'apps_social:admin_marquer_commission_payee' pk=c.pk %}">
+              Marquer payée
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">
+            <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:.75rem"></i>
+            Aucune conversion pour cet influenceur.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if conversions.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if conversions.has_previous %}
+    <a href="?page={{ conversions.previous_page_number }}&paye={{ paye }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ conversions.number }} / {{ conversions.paginator.num_pages }}</span>
+    {% if conversions.has_next %}
+    <a href="?page={{ conversions.next_page_number }}&paye={{ paye }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+document.querySelectorAll('.marquer-payee-btn').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    this.disabled = true;
+    try{
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if(d.success){
+        const badge = document.getElementById(`badge-conv-${this.dataset.pk}`);
+        badge.className = 'ci-badge-payee';
+        badge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Payée';
+        this.remove();
+      } else {
+        alert(d.message || 'Erreur');
+        this.disabled = false;
+      }
+    }catch(e){
+      console.error('Erreur marquer payée:', e);
+      this.disabled = false;
+    }
+  });
+});
+
+document.getElementById('btnPayerTout')?.addEventListener('click', async function(){
+  if(!confirm('Marquer toutes les commissions en attente comme payées ?')) return;
+  this.disabled = true;
+  try{
+    const r = await fetch(this.dataset.url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if(d.success){
+      alert(d.message);
+      location.reload();
+    } else {
+      alert(d.message || 'Erreur');
+      this.disabled = false;
+    }
+  }catch(e){
+    console.error('Erreur paiement en masse:', e);
+    this.disabled = false;
+  }
+});
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

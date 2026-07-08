@@ -1,0 +1,132 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}Mes abonnements — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.al-search { position:relative;margin-bottom:1.25rem; }
+.al-search input { width:100%;padding:.65rem 1rem .65rem 2.6rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.85rem; }
+.al-search i { position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--muted); }
+.al-row { display:flex;align-items:center;gap:.85rem;padding:.85rem 0;border-bottom:1px solid var(--border); }
+.al-row:last-child { border-bottom:none; }
+.al-avatar-sm { width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:1rem;font-weight:900;color:var(--saffron);flex-shrink:0; }
+.al-name { font-size:.88rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.35rem; }
+.al-user { font-size:.78rem;color:var(--muted); }
+.al-empty { text-align:center;padding:3rem 1rem; }
+.al-follow-btn { font-size:.78rem;padding:.4rem .9rem; }
+.tab-btn { background:none;border:none;border-bottom:2px solid transparent;padding:.65rem 1rem;font-size:.85rem;font-weight:600;color:var(--muted);text-decoration:none; }
+.tab-btn.active { border-bottom-color:var(--saffron);color:var(--saffron); }
+</style>
+
+<div class="container mt-4">
+
+  <!-- En-tête + onglets -->
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.15rem;font-weight:900;color:var(--text);margin-bottom:.75rem">
+      <i class="bi bi-people-fill me-2" style="color:var(--saffron)"></i>Mon réseau
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--border)">
+      <a href="{% url 'apps_social:mes_abonnes' %}" class="tab-btn">Abonnés</a>
+      <a href="{% url 'apps_social:mes_abonnements' %}" class="tab-btn active">Abonnements</a>
+    </div>
+  </div>
+
+  <!-- Recherche -->
+  <form method="get" class="al-search fi">
+    <i class="bi bi-search"></i>
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher dans mes abonnements...">
+  </form>
+
+  <!-- Liste -->
+  <div class="ycard fi" style="border:1px solid var(--border);padding:.5rem 1.25rem">
+    {% if abonnements %}
+      {% for abonnement in abonnements %}
+      <div class="al-row">
+        {% if abonnement.suivi.avatar %}
+        <img src="{{ abonnement.suivi.avatar.url }}" alt="" class="al-avatar-sm">
+        {% else %}
+        <div class="al-avatar-sm">{{ abonnement.suivi.username|first|upper }}</div>
+        {% endif %}
+        <div style="flex:1;min-width:0">
+          <a href="{% url 'apps_social:profil_public' abonnement.suivi.username %}" style="text-decoration:none">
+            <div class="al-name">
+              {{ abonnement.suivi.get_full_name|default:abonnement.suivi.username }}
+              {% if abonnement.suivi.profil_social.est_verifie %}
+              <i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:.75rem"></i>
+              {% endif %}
+            </div>
+            <div class="al-user">@{{ abonnement.suivi.username }}</div>
+          </a>
+        </div>
+        <button class="btn-ghost al-follow-btn" data-username="{{ abonnement.suivi.username }}"
+                data-url="{% url 'apps_social:ajax_toggle_abonnement' username=abonnement.suivi.username %}"
+                onclick="toggleAbonnement(this)">
+          <i class="bi bi-person-check me-1"></i>Ne plus suivre
+        </button>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="al-empty">
+        <i class="bi bi-person-plus" style="font-size:2.5rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+        <div style="font-size:.9rem;color:var(--text);font-weight:600">
+          {% if q %}Aucun résultat pour « {{ q }} »{% else %}Vous ne suivez encore personne{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  {% if abonnements.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if abonnements.has_previous %}
+    <a href="?page={{ abonnements.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ abonnements.number }} / {{ abonnements.paginator.num_pages }}</span>
+    {% if abonnements.has_next %}
+    <a href="?page={{ abonnements.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+function toggleAbonnement(btn) {
+  const url = btn.dataset.url;
+  btn.disabled = true;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+  })
+  .then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  })
+  .then(data => {
+    if (data.success && !data.je_suis) {
+      // Se désabonner : on retire immédiatement la ligne de la liste
+      const row = btn.closest('.al-row');
+      row.style.transition = 'opacity .25s';
+      row.style.opacity = '0';
+      setTimeout(() => row.remove(), 250);
+    } else {
+      btn.disabled = false;
+      if (!data.success) console.error('Échec abonnement:', data.message);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    console.error('Erreur toggleAbonnement:', err);
+  });
+}
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

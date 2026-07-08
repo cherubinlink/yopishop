@@ -1,0 +1,236 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — Admin YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.avl-stat-card { text-align:center;padding:1rem .5rem; }
+.avl-stat-val { font-family:var(--fm);font-size:1.4rem;font-weight:900;color:var(--text); }
+.avl-stat-lbl { font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em; }
+.avl-filters { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem; }
+.avl-filters select, .avl-filters input { padding:.55rem .9rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.82rem; }
+.avl-filters input { flex:1;min-width:200px; }
+.avl-table { width:100%;border-collapse:collapse; }
+.avl-table th { text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.6rem .75rem;border-bottom:1px solid var(--border); }
+.avl-table td { padding:.7rem .75rem;border-bottom:1px solid var(--border);font-size:.84rem;color:var(--text);vertical-align:middle; }
+.avl-table tr:last-child td { border-bottom:none; }
+.avl-thumb { width:42px;height:56px;border-radius:6px;overflow:hidden;background:var(--surface);flex-shrink:0; }
+.avl-thumb img { width:100%;height:100%;object-fit:cover; }
+.avl-video-cell { display:flex;align-items:center;gap:.65rem; }
+.avl-avatar-sm { width:26px;height:26px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:.68rem;font-weight:900;color:var(--saffron);flex-shrink:0; }
+.avl-badge { font-size:.66rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:.3rem; }
+.avl-badge-publie { background:rgba(46,160,67,.15);color:#2ea043; }
+.avl-badge-depublie { background:var(--surface);color:var(--muted);border:1px solid var(--border); }
+.avl-badge-vedette { background:var(--saffron-d);color:var(--saffron); }
+.avl-stats-inline { display:flex;gap:.7rem;font-size:.74rem;color:var(--muted); }
+.avl-stats-inline span { display:flex;align-items:center;gap:.25rem; }
+</style>
+
+<div class="container mt-4">
+
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text)">
+      <i class="bi bi-camera-reels me-2" style="color:var(--saffron)"></i>Gestion des vidéos ShopTok
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-2 fi" style="margin-bottom:1.25rem">
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="avl-stat-card"><div class="avl-stat-val">{{ stats.total }}</div><div class="avl-stat-lbl">Total</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="avl-stat-card"><div class="avl-stat-val">{{ stats.publiees }}</div><div class="avl-stat-lbl">Publiées</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="avl-stat-card"><div class="avl-stat-val">{{ stats.vedettes }}</div><div class="avl-stat-lbl">Mises en avant</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="avl-stat-card"><div class="avl-stat-val">{{ stats.ca_total|floatformat:0 }} F</div><div class="avl-stat-lbl">CA total</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="avl-filters fi">
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher par titre ou auteur...">
+    <select name="publie" onchange="this.form.submit()">
+      <option value="">Toutes</option>
+      <option value="1" {% if publie == '1' %}selected{% endif %}>Publiées</option>
+      <option value="0" {% if publie == '0' %}selected{% endif %}>Dépubliées</option>
+    </select>
+    <select name="vedette" onchange="this.form.submit()">
+      <option value="">Toutes</option>
+      <option value="1" {% if vedette == '1' %}selected{% endif %}>Mises en avant</option>
+    </select>
+    <button type="submit" class="btn-gold" style="font-size:.82rem">Filtrer</button>
+  </form>
+
+  <!-- Tableau -->
+  <div class="ycard fi" style="border:1px solid var(--border);overflow-x:auto">
+    <table class="avl-table">
+      <thead>
+        <tr>
+          <th>Vidéo</th>
+          <th>Auteur</th>
+          <th>Statistiques</th>
+          <th>CA généré</th>
+          <th>Statut</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for video in videos %}
+        <tr id="row-video-{{ video.pk }}">
+          <td>
+            <div class="avl-video-cell">
+              <div class="avl-thumb"><img src="{{ video.miniature.url }}" alt="{{ video.titre }}"></div>
+              <div style="min-width:0">
+                <a href="{% url 'apps_social:video_detail' pk=video.pk %}" style="color:var(--text);text-decoration:none;font-weight:700;font-size:.82rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">
+                  {{ video.titre }}
+                </a>
+                <div style="font-size:.72rem;color:var(--muted)">{{ video.date_creation|date:"d M Y" }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              {% if video.auteur.avatar %}
+              <img src="{{ video.auteur.avatar.url }}" alt="" class="avl-avatar-sm">
+              {% else %}
+              <div class="avl-avatar-sm">{{ video.auteur.username|first|upper }}</div>
+              {% endif %}
+              <a href="{% url 'apps_social:profil_public' username=video.auteur.username %}" style="color:var(--text-2);text-decoration:none;font-size:.8rem">
+                @{{ video.auteur.username }}
+              </a>
+            </div>
+          </td>
+          <td>
+            <div class="avl-stats-inline">
+              <span><i class="bi bi-eye-fill"></i>{{ video.nb_vues }}</span>
+              <span><i class="bi bi-heart-fill"></i>{{ video.nb_likes }}</span>
+              <span><i class="bi bi-bag-check-fill"></i>{{ video.nb_achats }}</span>
+            </div>
+          </td>
+          <td>{{ video.chiffre_affaires|floatformat:0 }} F</td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-start">
+              <span class="avl-badge {% if video.est_publie %}avl-badge-publie{% else %}avl-badge-depublie{% endif %}" id="badge-publie-{{ video.pk }}">
+                {% if video.est_publie %}<i class="bi bi-check-circle-fill"></i> Publiée{% else %}<i class="bi bi-eye-slash"></i> Dépubliée{% endif %}
+              </span>
+              {% if video.est_mis_en_avant %}
+              <span class="avl-badge avl-badge-vedette" id="badge-vedette-{{ video.pk }}"><i class="bi bi-star-fill"></i> Vedette</span>
+              {% else %}
+              <span class="avl-badge" id="badge-vedette-{{ video.pk }}" style="display:none"></span>
+              {% endif %}
+            </div>
+          </td>
+          <td style="text-align:right">
+            <div class="d-flex gap-1 justify-content-end flex-wrap">
+              <button class="btn-ghost toggle-publie-btn" style="font-size:.74rem;padding:.3rem .6rem"
+                      data-pk="{{ video.pk }}"
+                      data-url="{% url 'apps_social:admin_toggle_publie' pk=video.pk %}">
+                {% if video.est_publie %}Dépublier{% else %}Publier{% endif %}
+              </button>
+              <button class="btn-ghost toggle-vedette-btn" style="font-size:.74rem;padding:.3rem .6rem"
+                      data-pk="{{ video.pk }}"
+                      data-url="{% url 'apps_social:admin_toggle_vedette' pk=video.pk %}">
+                {% if video.est_mis_en_avant %}Retirer vedette{% else %}Mettre en avant{% endif %}
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">
+            <i class="bi bi-search" style="font-size:2rem;display:block;margin-bottom:.75rem"></i>
+            Aucune vidéo ne correspond à ces critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if videos.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if videos.has_previous %}
+    <a href="?page={{ videos.previous_page_number }}&q={{ q }}&publie={{ publie }}&vedette={{ vedette }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ videos.number }} / {{ videos.paginator.num_pages }}</span>
+    {% if videos.has_next %}
+    <a href="?page={{ videos.next_page_number }}&q={{ q }}&publie={{ publie }}&vedette={{ vedette }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+async function toggleAction(btn, majBadge){
+  btn.disabled = true;
+  try{
+    const r = await fetch(btn.dataset.url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if(d.success){
+      majBadge(d);
+    } else {
+      alert(d.message || 'Erreur');
+    }
+  }catch(e){
+    console.error('Erreur toggle vidéo:', e);
+  }
+  btn.disabled = false;
+}
+
+document.querySelectorAll('.toggle-publie-btn').forEach(btn => {
+  btn.addEventListener('click', function(){
+    toggleAction(this, d => {
+      const badge = document.getElementById(`badge-publie-${this.dataset.pk}`);
+      badge.className = `avl-badge ${d.est_publie ? 'avl-badge-publie' : 'avl-badge-depublie'}`;
+      badge.innerHTML = d.est_publie
+        ? '<i class="bi bi-check-circle-fill"></i> Publiée'
+        : '<i class="bi bi-eye-slash"></i> Dépubliée';
+      this.textContent = d.est_publie ? 'Dépublier' : 'Publier';
+    });
+  });
+});
+
+document.querySelectorAll('.toggle-vedette-btn').forEach(btn => {
+  btn.addEventListener('click', function(){
+    toggleAction(this, d => {
+      const badge = document.getElementById(`badge-vedette-${this.dataset.pk}`);
+      if(d.est_mis_en_avant){
+        badge.className = 'avl-badge avl-badge-vedette';
+        badge.innerHTML = '<i class="bi bi-star-fill"></i> Vedette';
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
+      this.textContent = d.est_mis_en_avant ? 'Retirer vedette' : 'Mettre en avant';
+    });
+  });
+});
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

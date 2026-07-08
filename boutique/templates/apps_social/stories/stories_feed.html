@@ -1,0 +1,141 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+/* Variables contexte : bulles, vues_ids, page_titre
+   bulle = { auteur, stories (list), nb_non_vues, a_non_vues, premiere_pk } */
+.sf-wrap { padding: 1.25rem; max-width: 1100px; margin: 0 auto; }
+.sf-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
+.sf-titre { font-size:1.2rem; font-weight:800; color:var(--text); }
+
+.sf-bar {
+  display:flex; gap: 1rem; overflow-x:auto; padding-bottom:.5rem;
+  scrollbar-width:none; margin-bottom:1.5rem;
+}
+.sf-bar::-webkit-scrollbar { display:none; }
+.sf-bulle { flex-shrink:0; width:76px; text-align:center; text-decoration:none; }
+.sf-ring {
+  width:68px; height:68px; border-radius:50%; padding:2.5px;
+  display:flex; align-items:center; justify-content:center; margin:0 auto .35rem;
+  background: var(--border);
+}
+.sf-ring.non-vue {
+  background: linear-gradient(135deg, var(--saffron), var(--ember), var(--indigo));
+}
+.sf-ring-inner {
+  width:100%; height:100%; border-radius:50%; background:#05060F;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  border: 2px solid #05060F;
+}
+.sf-ring-inner img { width:100%; height:100%; object-fit:cover; }
+.sf-ring-inner .sf-fallback { color:var(--muted); font-size:1.4rem; font-weight:800; }
+.sf-username { font-size:.68rem; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.sf-badge {
+  position:absolute; top:0; right:8px; background:var(--ember); color:#fff;
+  font-size:.6rem; font-weight:800; border-radius:99px; padding:1px 5px; min-width:16px;
+}
+
+/* Grille de cartes (aperçu plus grand) */
+.sf-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:1rem; }
+.sf-card {
+  position:relative; border-radius:14px; overflow:hidden; aspect-ratio:9/16;
+  background:var(--card); border:1.5px solid var(--border); text-decoration:none; display:block;
+  transition: transform .2s, border-color .2s;
+}
+.sf-card:hover { transform:translateY(-3px); border-color:var(--saffron); }
+.sf-card.non-vue { border-color:var(--saffron); }
+.sf-card-media { width:100%; height:100%; object-fit:cover; }
+.sf-card-media-fallback {
+  width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+  color:#fff; font-weight:800; font-size:2rem;
+}
+.sf-card-overlay {
+  position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.75), transparent 55%);
+  display:flex; flex-direction:column; justify-content:flex-end; padding:.6rem;
+}
+.sf-card-user { display:flex; align-items:center; gap:.4rem; margin-bottom:.2rem; }
+.sf-card-avatar {
+  width:26px; height:26px; border-radius:50%; border:2px solid var(--saffron);
+  object-fit:cover; background:var(--indigo-d);
+}
+.sf-card-name { font-size:.74rem; font-weight:700; color:#fff; }
+.sf-card-count { font-size:.65rem; color:rgba(255,255,255,.75); }
+
+.sf-empty { text-align:center; padding:4rem 1rem; color:var(--muted); }
+.sf-empty i { font-size:2.5rem; display:block; margin-bottom:.75rem; opacity:.5; }
+</style>
+
+<div class="sf-wrap">
+  <div class="sf-head">
+    <span class="sf-titre"><i class="bi bi-camera-fill" style="color:var(--saffron)"></i> {{ page_titre }}</span>
+    {% if request.user.is_authenticated %}
+    <a href="{% url 'apps_social:creer_story' %}" class="btn-gold" style="font-size:.82rem;padding:.45rem 1rem">
+      <i class="bi bi-plus-lg"></i> Créer une story
+    </a>
+    {% endif %}
+  </div>
+
+  {% if bulles %}
+  <!-- Barre de bulles style Instagram -->
+  <div class="sf-bar">
+    {% for bulle in bulles %}
+    <a href="{% url 'apps_social:story_viewer' pk=bulle.premiere_pk %}" class="sf-bulle" style="position:relative">
+      {% if bulle.nb_non_vues > 0 %}<span class="sf-badge">{{ bulle.nb_non_vues }}</span>{% endif %}
+      <div class="sf-ring {% if bulle.a_non_vues %}non-vue{% endif %}">
+        <div class="sf-ring-inner">
+          {% if bulle.auteur.avatar %}
+          <img src="{{ bulle.auteur.avatar.url }}" alt="{{ bulle.auteur.username }}">
+          {% else %}
+          <span class="sf-fallback">{{ bulle.auteur.username|first|upper }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <span class="sf-username">{{ bulle.auteur.username }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Grille de cartes (aperçu de la première story de chaque auteur) -->
+  <div class="sf-grid">
+    {% for bulle in bulles %}
+    {% with premiere=bulle.stories|first %}
+    <a href="{% url 'apps_social:story_viewer' pk=bulle.premiere_pk %}"
+       class="sf-card {% if bulle.a_non_vues %}non-vue{% endif %}"
+       style="background:{{ premiere.couleur_fond|default:'#0A0B1A' }}">
+      {% if premiere.type_story == 'video' and premiere.miniature %}
+      <img class="sf-card-media" src="{{ premiere.miniature.url }}" alt="">
+      {% elif premiere.media %}
+      <img class="sf-card-media" src="{{ premiere.media.url }}" alt="">
+      {% else %}
+      <div class="sf-card-media-fallback">{{ bulle.auteur.username|first|upper }}</div>
+      {% endif %}
+      <div class="sf-card-overlay">
+        <div class="sf-card-user">
+          {% if bulle.auteur.avatar %}
+          <img class="sf-card-avatar" src="{{ bulle.auteur.avatar.url }}" alt="">
+          {% else %}
+          <div class="sf-card-avatar" style="display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--saffron)">{{ bulle.auteur.username|first|upper }}</div>
+          {% endif %}
+          <span class="sf-card-name">{{ bulle.auteur.username }}</span>
+        </div>
+        <span class="sf-card-count">{{ bulle.stories|length }} story{{ bulle.stories|length|pluralize }}</span>
+      </div>
+    </a>
+    {% endwith %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sf-empty">
+    <i class="bi bi-camera"></i>
+    {% if request.user.is_authenticated %}
+    Aucune story pour le moment. Suivez des vendeurs ou publiez la vôtre !
+    {% else %}
+    Aucune story disponible pour le moment.
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -37,7 +37,7 @@ from decimal import Decimal, InvalidOperation
 from .models import (
     Enchere, OffreEnchere, ConfigSmartBid, EnchereFlash, 
     EnchereGroupe, ParticipantEnchereGroupe,AppelOffre, OffreVendeur,
-    SupportBattle, BattleAuction,
+    SupportBattle, BattleAuction, InteractionSocialeEnchere
 )
 from apps_core.models import Produit, Categorie
 
@@ -158,6 +158,7 @@ def encheres_liste(request):
 # ===========================================================================
  
 
+
 def enchere_detail(request, pk):
     """
     Page détail d'une enchère — tous types confondus.
@@ -275,6 +276,11 @@ def enchere_detail(request, pk):
  
     # Fusion du contexte Battle (vide si pas de battle)
     context.update(battle_ctx)
+ 
+    # Fusion du contexte Social (commentaires, likes BDD, partages BDD)
+    # Remplace user_a_like session-based par la version BDD plus précise
+    social_ctx = get_social_context(enchere, request)
+    context.update(social_ctx)
  
     return render(request, 'apps_enchere/enchere_detail.html', context)
  
@@ -2946,6 +2952,280 @@ def admin_battles_liste(request):
     })
  
 
+
+# =============================================================================
+# HELPER — Injection dans enchere_detail
+# =============================================================================
+ 
+def get_social_context(enchere, request):
+    """
+    Retourne les données sociales à injecter dans enchere_detail :
+      - commentaires     : les 20 derniers commentaires
+      - nb_commentaires  : total
+      - user_a_like      : bool (remplace la version session-based de views.py)
+      - nb_likes         : depuis InteractionSocialeEnchere (plus précis)
+      - nb_partages      : depuis InteractionSocialeEnchere
+ 
+    Usage dans enchere_detail (views_patch_enchere_detail.py) :
+        context.update(get_social_context(enchere, request))
+    """
+    commentaires = InteractionSocialeEnchere.objects.filter(
+        enchere=enchere, type_interaction='commentaire'
+    ).select_related('utilisateur').order_by('date_creation')
+ 
+    nb_commentaires = commentaires.count()
+    commentaires_recents = commentaires[:20]
+ 
+    nb_likes_bdd   = InteractionSocialeEnchere.objects.filter(
+        enchere=enchere, type_interaction='like'
+    ).count()
+    nb_partages_bdd = InteractionSocialeEnchere.objects.filter(
+        enchere=enchere, type_interaction='partage'
+    ).count()
+ 
+    user_a_like = False
+    mon_commentaire = None
+    if request.user.is_authenticated:
+        user_a_like = InteractionSocialeEnchere.objects.filter(
+            enchere=enchere, utilisateur=request.user, type_interaction='like'
+        ).exists()
+        mon_commentaire = InteractionSocialeEnchere.objects.filter(
+            enchere=enchere, utilisateur=request.user, type_interaction='commentaire'
+        ).first()
+ 
+    return {
+        'commentaires':          commentaires_recents,
+        'nb_commentaires':       nb_commentaires,
+        'user_a_like':           user_a_like,
+        'nb_likes_social':       nb_likes_bdd,
+        'nb_partages_social':    nb_partages_bdd,
+        'mon_commentaire':       mon_commentaire,
+    }
+
+
+
+# =============================================================================
+# AJAX — Like enrichi (remplace ajax_toggle_like de views.py)
+# =============================================================================
+ 
+@login_required
+@require_POST
+def ajax_toggle_like_social(request, pk):
+    """
+    Like / unlike une enchère.
+    Enregistre dans InteractionSocialeEnchere + met à jour nb_likes sur Enchere.
+    Compatible avec l'ancien endpoint : retourne le même format JSON.
+    """
+    enchere = get_object_or_404(Enchere, pk=pk)
+ 
+    interaction = InteractionSocialeEnchere.objects.filter(
+        enchere=enchere, utilisateur=request.user, type_interaction='like'
+    ).first()
+ 
+    if interaction:
+        # Unlike
+        interaction.delete()
+        liked = False
+        Enchere.objects.filter(pk=pk).update(nb_likes=max(0, enchere.nb_likes - 1))
+    else:
+        # Like
+        InteractionSocialeEnchere.objects.create(
+            enchere=enchere,
+            utilisateur=request.user,
+            type_interaction='like',
+        )
+        liked = True
+        Enchere.objects.filter(pk=pk).update(nb_likes=enchere.nb_likes + 1)
+ 
+    enchere.refresh_from_db(fields=['nb_likes'])
+    return JsonResponse({
+        'success':  True,
+        'liked':    liked,
+        'nb_likes': enchere.nb_likes,
+    })
+
+
+
+# =============================================================================
+# AJAX — Commentaires
+# =============================================================================
+ 
+@login_required
+@require_POST
+def ajax_ajouter_commentaire(request, pk):
+    """
+    Ajoute un commentaire sur une enchère.
+    Un utilisateur ne peut poster qu'un commentaire par enchère (modifiable).
+    """
+    enchere = get_object_or_404(Enchere, pk=pk)
+ 
+    contenu = request.POST.get('texte', '').strip()
+    if not contenu:
+        return JsonResponse({'success': False, 'message': 'Le commentaire ne peut pas être vide.'}, status=400)
+    if len(contenu) > 500:
+        return JsonResponse({'success': False, 'message': 'Commentaire trop long (500 caractères max).'}, status=400)
+ 
+    # Mettre à jour si commentaire existant, créer sinon
+    interaction, created = InteractionSocialeEnchere.objects.get_or_create(
+        enchere=enchere,
+        utilisateur=request.user,
+        type_interaction='commentaire',
+        defaults={'contenu': contenu},
+    )
+    if not created:
+        interaction.contenu = contenu
+        interaction.date_creation = timezone.now()
+        interaction.save(update_fields=['contenu', 'date_creation'])
+ 
+    return JsonResponse({
+        'success':          True,
+        'created':          created,
+        'message':          'Commentaire publié.' if created else 'Commentaire mis à jour.',
+        'commentaire': {
+            'pk':        interaction.pk,
+            'username':  request.user.username,
+            'contenu':   interaction.contenu,
+            'date':      interaction.date_creation.strftime('%d/%m/%Y à %H:%M'),
+        },
+    })
+ 
+ 
+@login_required
+@require_POST
+def ajax_supprimer_commentaire(request, pk):
+    """Supprime son propre commentaire."""
+    interaction = get_object_or_404(
+        InteractionSocialeEnchere,
+        pk=pk,
+        utilisateur=request.user,
+        type_interaction='commentaire',
+    )
+    interaction.delete()
+    return JsonResponse({'success': True, 'message': 'Commentaire supprimé.'})
+
+
+
+# =============================================================================
+# AJAX — Partage enrichi (remplace ajax_partager de views.py)
+# =============================================================================
+ 
+@require_POST
+def ajax_partager_social(request, pk):
+    """
+    Enregistre un partage dans InteractionSocialeEnchere + incrémente nb_partages.
+    Paramètre optionnel POST : plateforme (WhatsApp, Facebook, Twitter, Copier…)
+    """
+    enchere     = get_object_or_404(Enchere, pk=pk)
+    plateforme  = request.POST.get('plateforme', '').strip()[:50]
+ 
+    InteractionSocialeEnchere.objects.create(
+        enchere=enchere,
+        utilisateur=request.user if request.user.is_authenticated else None,
+        type_interaction='partage',
+        plateforme_partage=plateforme,
+    )
+    Enchere.objects.filter(pk=pk).update(nb_partages=enchere.nb_partages + 1)
+ 
+    return JsonResponse({
+        'success':    True,
+        'nb_partages': enchere.nb_partages + 1,
+    })
+
+ 
+# =============================================================================
+# PUBLIC — Liste des commentaires
+# =============================================================================
+ 
+def commentaires_enchere(request, pk):
+    """
+    Page complète des commentaires d'une enchère
+    (accessible depuis le lien "Voir tous les commentaires").
+    """
+    enchere = get_object_or_404(
+        Enchere.objects.select_related('produit', 'vendeur'), pk=pk
+    )
+    commentaires = InteractionSocialeEnchere.objects.filter(
+        enchere=enchere, type_interaction='commentaire'
+    ).select_related('utilisateur').order_by('date_creation')
+ 
+    paginator    = Paginator(commentaires, 30)
+    commentaires = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/social/commentaires.html', {
+        'enchere':      enchere,
+        'commentaires': commentaires,
+        'page_titre':   f"Commentaires — {enchere.titre}",
+    })
+
+
+
+# =============================================================================
+# ADMIN — Modération
+# =============================================================================
+ 
+@login_required
+def admin_interactions_liste(request):
+    """Vue admin de toutes les interactions (modération commentaires)."""
+    if not request.user.is_staff:
+        messages.error(request, "Accès réservé aux administrateurs.")
+        return redirect('apps_core:accueil')
+ 
+    qs = InteractionSocialeEnchere.objects.select_related(
+        'enchere', 'utilisateur'
+    ).order_by('-date_creation')
+ 
+    type_filtre = request.GET.get('type', '')
+    if type_filtre:
+        qs = qs.filter(type_interaction=type_filtre)
+ 
+    q = request.GET.get('q', '')
+    if q:
+        qs = qs.filter(
+            Q(utilisateur__username__icontains=q) |
+            Q(enchere__titre__icontains=q) |
+            Q(contenu__icontains=q)
+        )
+ 
+    stats = {
+        'total':        InteractionSocialeEnchere.objects.count(),
+        'likes':        InteractionSocialeEnchere.objects.filter(type_interaction='like').count(),
+        'partages':     InteractionSocialeEnchere.objects.filter(type_interaction='partage').count(),
+        'commentaires': InteractionSocialeEnchere.objects.filter(type_interaction='commentaire').count(),
+    }
+ 
+    paginator     = Paginator(qs, 40)
+    interactions  = paginator.get_page(request.GET.get('page', 1))
+ 
+    return render(request, 'apps_enchere/social/admin_interactions_liste.html', {
+        'interactions': interactions,
+        'stats':        stats,
+        'type_filtre':  type_filtre,
+        'q':            q,
+        'types':        InteractionSocialeEnchere.TYPE_CHOICES,
+        'page_titre':   'Modération — Interactions sociales',
+    })
+
+
+@login_required
+@require_POST
+def admin_supprimer_interaction(request, pk):
+    """Suppression admin d'une interaction (commentaire abusif)."""
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'message': 'Non autorisé'}, status=403)
+ 
+    interaction = get_object_or_404(InteractionSocialeEnchere, pk=pk)
+    type_label  = interaction.get_type_interaction_display()
+    interaction.delete()
+ 
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': f'{type_label} supprimé(e).'})
+ 
+    messages.success(request, f'{type_label} supprimé(e).')
+    return redirect('app_enchere:admin_interactions_liste')
+ 
+ 
+ 
+ 
 
  
  

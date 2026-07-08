@@ -1,0 +1,215 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — Admin YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.ail-stat-card { text-align:center;padding:1rem .5rem; }
+.ail-stat-val { font-family:var(--fm);font-size:1.35rem;font-weight:900;color:var(--text); }
+.ail-stat-lbl { font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em; }
+.ail-filters { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem; }
+.ail-filters select, .ail-filters input { padding:.55rem .9rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.82rem; }
+.ail-filters input { flex:1;min-width:200px; }
+.ail-table { width:100%;border-collapse:collapse; }
+.ail-table th { text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.6rem .75rem;border-bottom:1px solid var(--border); }
+.ail-table td { padding:.7rem .75rem;border-bottom:1px solid var(--border);font-size:.84rem;color:var(--text);vertical-align:middle; }
+.ail-table tr:last-child td { border-bottom:none; }
+.ail-avatar-sm { width:34px;height:34px;border-radius:50%;object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:.78rem;font-weight:900;color:var(--saffron);flex-shrink:0; }
+.ail-user-cell { display:flex;align-items:center;gap:.6rem; }
+.ail-badge { font-size:.66rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;white-space:nowrap; }
+.ail-badge-candidature { background:var(--indigo-d);color:var(--indigo); }
+.ail-badge-actif { background:rgba(46,160,67,.15);color:#2ea043; }
+.ail-badge-suspendu { background:rgba(200,80,80,.12);color:#c85050; }
+.ail-badge-termine { background:var(--surface);color:var(--muted);border:1px solid var(--border); }
+.ail-code { font-family:var(--fm);font-size:.78rem;color:var(--text-2);background:var(--surface);padding:.15rem .5rem;border-radius:5px; }
+.ail-commission-due { font-weight:700;color:var(--saffron); }
+</style>
+
+<div class="container mt-4">
+
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.2rem;font-weight:900;color:var(--text)">
+      <i class="bi bi-megaphone-fill me-2" style="color:var(--saffron)"></i>Programme influenceurs
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-2 fi" style="margin-bottom:1.25rem">
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ail-stat-card"><div class="ail-stat-val">{{ stats.total }}</div><div class="ail-stat-lbl">Total</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ail-stat-card"><div class="ail-stat-val">{{ stats.candidatures }}</div><div class="ail-stat-lbl">Candidatures</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ail-stat-card"><div class="ail-stat-val">{{ stats.actifs }}</div><div class="ail-stat-lbl">Actifs</div></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ycard" style="border:1px solid var(--border)">
+        <div class="ail-stat-card"><div class="ail-stat-val">{{ stats.commissions_dues|floatformat:0 }} F</div><div class="ail-stat-lbl">Commissions dues</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="ail-filters fi">
+    <input type="text" name="q" value="{{ q }}" placeholder="Rechercher par username ou code...">
+    <select name="statut" onchange="this.form.submit()">
+      <option value="">Tous les statuts</option>
+      {% for code, label in statuts %}
+      <option value="{{ code }}" {% if statut == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="niveau" onchange="this.form.submit()">
+      <option value="">Tous les niveaux</option>
+      {% for code, label in niveaux %}
+      <option value="{{ code }}" {% if niveau == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-gold" style="font-size:.82rem">Filtrer</button>
+  </form>
+
+  <!-- Tableau -->
+  <div class="ycard fi" style="border:1px solid var(--border);overflow-x:auto">
+    <table class="ail-table">
+      <thead>
+        <tr>
+          <th>Influenceur</th>
+          <th>Niveau</th>
+          <th>Code</th>
+          <th>Clics / Ventes</th>
+          <th>CA généré</th>
+          <th>Commission due</th>
+          <th>Statut</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in programmes %}
+        <tr id="row-prog-{{ p.pk }}">
+          <td>
+            <div class="ail-user-cell">
+              {% if p.influenceur.avatar %}
+              <img src="{{ p.influenceur.avatar.url }}" alt="" class="ail-avatar-sm">
+              {% else %}
+              <div class="ail-avatar-sm">{{ p.influenceur.username|first|upper }}</div>
+              {% endif %}
+              <a href="{% url 'apps_social:profil_public' username=p.influenceur.username %}" style="color:var(--text);text-decoration:none;font-weight:600">
+                @{{ p.influenceur.username }}
+              </a>
+            </div>
+          </td>
+          <td style="font-size:.78rem">{{ p.get_niveau_display }}</td>
+          <td><span class="ail-code">{{ p.code_parrainage }}</span></td>
+          <td style="font-size:.8rem">{{ p.nb_clics }} / {{ p.nb_conversions }}</td>
+          <td>{{ p.chiffre_affaires_genere|floatformat:0 }} F</td>
+          <td>
+            <a href="{% url 'apps_social:admin_conversions_influenceur' pk=p.pk %}" class="ail-commission-due" style="text-decoration:none">
+              {{ p.commissions_en_attente|floatformat:0 }} F
+            </a>
+          </td>
+          <td>
+            <span class="ail-badge ail-badge-{{ p.statut }}" id="badge-statut-{{ p.pk }}">{{ p.get_statut_display }}</span>
+          </td>
+          <td style="text-align:right">
+            <div class="d-flex gap-1 justify-content-end flex-wrap">
+              <a href="{% url 'apps_social:admin_conversions_influenceur' pk=p.pk %}" class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem">
+                <i class="bi bi-list-ul"></i>
+              </a>
+              {% if p.statut == 'candidature' %}
+              <button class="btn-gold changer-statut-btn" style="font-size:.72rem;padding:.3rem .7rem"
+                      data-pk="{{ p.pk }}" data-statut="actif"
+                      data-url="{% url 'apps_social:admin_changer_statut_influenceur' pk=p.pk %}">
+                Valider
+              </button>
+              {% elif p.statut == 'actif' %}
+              <button class="btn-ghost changer-statut-btn" style="font-size:.72rem;padding:.3rem .7rem;color:#c85050"
+                      data-pk="{{ p.pk }}" data-statut="suspendu"
+                      data-url="{% url 'apps_social:admin_changer_statut_influenceur' pk=p.pk %}">
+                Suspendre
+              </button>
+              {% elif p.statut == 'suspendu' %}
+              <button class="btn-gold changer-statut-btn" style="font-size:.72rem;padding:.3rem .7rem"
+                      data-pk="{{ p.pk }}" data-statut="actif"
+                      data-url="{% url 'apps_social:admin_changer_statut_influenceur' pk=p.pk %}">
+                Réactiver
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">
+            <i class="bi bi-search" style="font-size:2rem;display:block;margin-bottom:.75rem"></i>
+            Aucun programme ne correspond à ces critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if programmes.has_other_pages %}
+  <div class="d-flex justify-content-center gap-2 mt-3 fi">
+    {% if programmes.has_previous %}
+    <a href="?page={{ programmes.previous_page_number }}&q={{ q }}&statut={{ statut }}&niveau={{ niveau }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span style="font-size:.8rem;color:var(--muted);align-self:center">Page {{ programmes.number }} / {{ programmes.paginator.num_pages }}</span>
+    {% if programmes.has_next %}
+    <a href="?page={{ programmes.next_page_number }}&q={{ q }}&statut={{ statut }}&niveau={{ niveau }}" class="btn-ghost" style="font-size:.8rem"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+document.querySelectorAll('.changer-statut-btn').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    const libelles = {actif:'valider', suspendu:'suspendre', termine:'terminer'};
+    const action = libelles[this.dataset.statut] || 'modifier';
+    if(!confirm(`Confirmer : ${action} ce programme influenceur ?`)) return;
+
+    this.disabled = true;
+    const fd = new FormData();
+    fd.append('statut', this.dataset.statut);
+
+    try{
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd,
+      });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if(d.success){
+        location.reload();
+      } else {
+        alert(d.message || 'Erreur');
+        this.disabled = false;
+      }
+    }catch(e){
+      console.error('Erreur changement statut influenceur:', e);
+      this.disabled = false;
+    }
+  });
+});
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

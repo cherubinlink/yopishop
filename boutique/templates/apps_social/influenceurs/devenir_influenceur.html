@@ -1,0 +1,111 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+/* Variables contexte : niveaux (ProgrammeInfluenceur.NIVEAU_CHOICES), page_titre */
+.di-wrap { max-width:640px; margin:0 auto; padding:2rem 1rem 3rem; }
+.di-hero { text-align:center; margin-bottom:2rem; }
+.di-hero i { font-size:2.4rem; color:var(--saffron); margin-bottom:.75rem; display:block; }
+.di-titre { font-size:1.4rem; font-weight:800; color:var(--text); margin-bottom:.5rem; }
+.di-sub { font-size:.88rem; color:var(--muted); max-width:440px; margin:0 auto; }
+
+.di-avantages { display:grid; grid-template-columns:repeat(3,1fr); gap:.85rem; margin-bottom:2rem; }
+@media(max-width:576px){ .di-avantages { grid-template-columns:1fr; } }
+.di-avantage {
+  background:var(--card); border:1.5px solid var(--border); border-radius:14px; padding:1rem; text-align:center;
+}
+.di-avantage i { font-size:1.4rem; color:var(--jade); margin-bottom:.5rem; display:block; }
+.di-avantage-titre { font-size:.82rem; font-weight:700; color:var(--text); margin-bottom:.2rem; }
+.di-avantage-desc { font-size:.72rem; color:var(--muted); line-height:1.35; }
+
+.di-card { background:var(--card); border:1.5px solid var(--border); border-radius:16px; padding:1.25rem; }
+.di-label { font-size:.85rem; font-weight:700; color:var(--text); margin-bottom:.85rem; display:block; }
+
+.di-niveaux { display:grid; grid-template-columns:repeat(2,1fr); gap:.75rem; margin-bottom:1.25rem; }
+@media(max-width:480px){ .di-niveaux { grid-template-columns:1fr; } }
+.di-niveau-card {
+  border:1.5px solid var(--border); border-radius:12px; padding:.9rem; cursor:pointer;
+  background:var(--surface); transition:all .15s;
+}
+.di-niveau-card.actif { border-color:var(--saffron); background:rgba(247,183,49,.08); }
+.di-niveau-nom { font-size:.88rem; font-weight:800; color:var(--text); display:flex; align-items:center; gap:.4rem; }
+.di-niveau-nom i { color:var(--saffron); }
+.di-niveau-desc { font-size:.72rem; color:var(--muted); margin-top:.3rem; }
+
+.di-btn-submit {
+  width:100%; background:var(--saffron); color:#0A0B1A; border:none; border-radius:12px;
+  padding:.85rem; font-size:.92rem; font-weight:800; cursor:pointer;
+}
+.di-btn-submit:hover { opacity:.92; }
+.di-note { font-size:.72rem; color:var(--muted); text-align:center; margin-top:.85rem; }
+</style>
+
+<div class="di-wrap">
+  <div class="di-hero">
+    <i class="bi bi-megaphone-fill"></i>
+    <div class="di-titre">{{ page_titre }}</div>
+    <div class="di-sub">Partagez YopiShop avec votre communauté et gagnez une commission sur chaque vente générée grâce à votre lien.</div>
+  </div>
+
+  <div class="di-avantages">
+    <div class="di-avantage">
+      <i class="bi bi-link-45deg"></i>
+      <div class="di-avantage-titre">Lien unique</div>
+      <div class="di-avantage-desc">Un lien de parrainage personnel à partager partout.</div>
+    </div>
+    <div class="di-avantage">
+      <i class="bi bi-cash-coin"></i>
+      <div class="di-avantage-titre">Commissions</div>
+      <div class="di-avantage-desc">Un pourcentage sur chaque commande générée pendant 30 jours.</div>
+    </div>
+    <div class="di-avantage">
+      <i class="bi bi-graph-up-arrow"></i>
+      <div class="di-avantage-titre">Suivi en temps réel</div>
+      <div class="di-avantage-desc">Clics, conversions et gains dans votre tableau de bord.</div>
+    </div>
+  </div>
+
+  <form method="post" class="di-card" id="influenceurForm">
+    {% csrf_token %}
+    <label class="di-label">Quel niveau correspond le mieux à votre audience ?</label>
+
+    <div class="di-niveaux" id="niveauCards">
+      {% for valeur, libelle in niveaux %}
+      <div class="di-niveau-card {% if forloop.first %}actif{% endif %}" data-niveau="{{ valeur }}" onclick="choisirNiveau('{{ valeur }}')">
+        <div class="di-niveau-nom"><i class="bi bi-star-fill"></i> {{ libelle }}</div>
+        <div class="di-niveau-desc">
+          {% if valeur == 'nano' %}Moins de 5 000 abonnés
+          {% elif valeur == 'micro' %}5 000 à 50 000 abonnés
+          {% elif valeur == 'macro' %}50 000 à 500 000 abonnés
+          {% elif valeur == 'mega' %}Plus de 500 000 abonnés
+          {% else %}Sélectionnez votre catégorie{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="niveau" id="niveauInput" value="{{ niveaux.0.0 }}">
+
+    <button type="submit" class="di-btn-submit" id="submitBtn">
+      <i class="bi bi-send-fill"></i> Envoyer ma candidature
+    </button>
+    <div class="di-note">Votre candidature sera examinée par notre équipe avant activation.</div>
+  </form>
+</div>
+
+<script>
+"use strict";
+function choisirNiveau(niveau){
+  document.getElementById('niveauInput').value = niveau;
+  document.querySelectorAll('.di-niveau-card').forEach(c => c.classList.toggle('actif', c.dataset.niveau === niveau));
+}
+
+document.getElementById('influenceurForm').addEventListener('submit', function(){
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Envoi…';
+});
+</script>
+{% endblock %}

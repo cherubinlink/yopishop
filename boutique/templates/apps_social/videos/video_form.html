@@ -1,0 +1,316 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_titre }} — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.vf2-wrap { max-width:760px;margin:0 auto; }
+.vf2-section { background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.4rem 1.6rem;margin-bottom:1.25rem; }
+.vf2-section-title { font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:1.1rem;display:flex;align-items:center;gap:.5rem; }
+.vf2-label { font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.4rem;display:block; }
+.vf2-input, .vf2-textarea, .vf2-select { width:100%;padding:.65rem .9rem;border-radius:.6rem;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.85rem; }
+.vf2-textarea { resize:vertical;min-height:90px; }
+.vf2-field { margin-bottom:1.1rem; }
+.vf2-row2 { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
+@media (max-width:575px) { .vf2-row2 { grid-template-columns:1fr; } }
+.vf2-upload-box { border:2px dashed var(--border);border-radius:.7rem;padding:1.5rem;text-align:center;cursor:pointer;transition:border-color .2s; }
+.vf2-upload-box:hover { border-color:var(--saffron); }
+.vf2-upload-box i { font-size:2rem;color:var(--muted);display:block;margin-bottom:.5rem; }
+.vf2-preview-video { width:100%;max-height:300px;border-radius:.6rem;background:#000;display:none; }
+.vf2-preview-img { width:120px;height:120px;border-radius:.6rem;object-fit:cover;display:none; }
+.vf2-toggle-row { display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;background:var(--surface);border-radius:.6rem;border:1px solid var(--border); }
+.vf2-switch { position:relative;width:42px;height:23px;flex-shrink:0; }
+.vf2-switch input { opacity:0;width:0;height:0; }
+.vf2-switch-slider { position:absolute;inset:0;background:var(--border);border-radius:999px;cursor:pointer;transition:.2s; }
+.vf2-switch-slider::before { content:'';position:absolute;width:17px;height:17px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s; }
+.vf2-switch input:checked + .vf2-switch-slider { background:var(--saffron); }
+.vf2-switch input:checked + .vf2-switch-slider::before { transform:translateX(19px); }
+.vf2-prod-list { max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:.6rem; }
+.vf2-prod-item { display:flex;align-items:center;gap:.75rem;padding:.7rem 1rem;border-bottom:1px solid var(--border); }
+.vf2-prod-item:last-child { border-bottom:none; }
+.vf2-prod-img { width:42px;height:42px;border-radius:8px;overflow:hidden;background:var(--surface);flex-shrink:0; }
+.vf2-prod-img img { width:100%;height:100%;object-fit:cover; }
+.vf2-prod-name { font-size:.82rem;font-weight:600;color:var(--text);flex:1;min-width:0; }
+.vf2-prod-item input[type="number"] { width:80px;padding:.35rem .5rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.76rem; }
+.vf2-actions { display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem; }
+.vf2-existing-prod { display:flex;align-items:center;gap:.7rem;padding:.6rem 0;border-bottom:1px solid var(--border); }
+.vf2-existing-prod:last-child { border-bottom:none; }
+</style>
+
+<div class="container mt-4 vf2-wrap">
+
+  <div class="fi" style="margin-bottom:1.25rem">
+    <div style="font-family:var(--fm);font-size:1.15rem;font-weight:900;color:var(--text)">
+      <i class="bi bi-camera-reels me-2" style="color:var(--saffron)"></i>{{ page_titre }}
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="fi" style="margin-bottom:1rem">
+    {% for message in messages %}
+    <div style="padding:.7rem 1rem;border-radius:.6rem;font-size:.82rem;margin-bottom:.5rem;
+                {% if message.tags == 'success' %}background:rgba(46,160,67,.12);color:#2ea043;
+                {% else %}background:rgba(200,80,80,.12);color:#c85050;{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" id="videoForm">
+    {% csrf_token %}
+
+    {% if mode == 'creation' %}
+    <!-- Fichier vidéo -->
+    <div class="fi vf2-section">
+      <div class="vf2-section-title"><i class="bi bi-film" style="color:var(--saffron)"></i>Fichier vidéo *</div>
+      <div class="vf2-upload-box" onclick="document.getElementById('inputVideo').click()">
+        <i class="bi bi-cloud-upload"></i>
+        <span style="font-size:.85rem;color:var(--text-2)">Cliquez pour choisir une vidéo (MP4, max 60s recommandé)</span>
+        <video class="vf2-preview-video" id="videoPreview" controls></video>
+      </div>
+      <input type="file" id="inputVideo" name="video" accept="video/*" style="display:none" onchange="previewVideo(this)">
+      <div id="videoErreur" style="display:none;font-size:.75rem;color:#c85050;margin-top:.4rem">
+        <i class="bi bi-exclamation-circle me-1"></i>Le fichier vidéo est requis.
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Miniature -->
+    <div class="fi vf2-section">
+      <div class="vf2-section-title"><i class="bi bi-image" style="color:var(--indigo)"></i>Miniature {% if mode == 'creation' %}*{% endif %}</div>
+      <div class="vf2-upload-box" onclick="document.getElementById('inputMiniature').click()" style="display:flex;align-items:center;gap:1rem;text-align:left">
+        <img class="vf2-preview-img" id="miniaturePreview" {% if video.miniature %}src="{{ video.miniature.url }}" style="display:block"{% endif %} alt="">
+        <div>
+          <i class="bi bi-image" style="display:inline;font-size:1.3rem"></i>
+          <span style="font-size:.85rem;color:var(--text-2)">Cliquez pour choisir une image de couverture</span>
+        </div>
+      </div>
+      <input type="file" id="inputMiniature" name="miniature" accept="image/*" style="display:none" onchange="previewMiniature(this)">
+      {% if mode == 'creation' %}
+      <div id="miniatureErreur" style="display:none;font-size:.75rem;color:#c85050;margin-top:.4rem">
+        <i class="bi bi-exclamation-circle me-1"></i>La miniature est requise.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Infos -->
+    <div class="fi vf2-section">
+      <div class="vf2-section-title"><i class="bi bi-info-circle" style="color:var(--jade)"></i>Informations</div>
+
+      <div class="vf2-field">
+        <label class="vf2-label" for="inputTitre">Titre *</label>
+        <input type="text" class="vf2-input" id="inputTitre" name="titre" required maxlength="200"
+               value="{{ video.titre|default:'' }}" placeholder="Ex: Cette robe est en rupture dans 24h ⏰">
+      </div>
+
+      <div class="vf2-field">
+        <label class="vf2-label" for="inputDescription">Description</label>
+        <textarea class="vf2-textarea" id="inputDescription" name="description" maxlength="500"
+                  placeholder="Décrivez votre produit...">{{ video.description|default:'' }}</textarea>
+      </div>
+
+      <div class="vf2-row2">
+        <div class="vf2-field">
+          <label class="vf2-label" for="inputHashtags">Hashtags</label>
+          <input type="text" class="vf2-input" id="inputHashtags" name="hashtags"
+                 value="{{ video.hashtags|default:'' }}" placeholder="mode promo yopishop">
+        </div>
+        {% if mode == 'creation' %}
+        <div class="vf2-field">
+          <label class="vf2-label" for="inputDuree">Durée estimée (secondes)</label>
+          <input type="number" class="vf2-input" id="inputDuree" name="duree_secondes" min="1" value="30">
+        </div>
+        {% else %}
+        <div class="vf2-field">
+          <label class="vf2-label">Statistiques</label>
+          <input type="text" class="vf2-input" value="{{ video.nb_vues }} vues · {{ video.nb_likes }} likes" disabled>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if mode == 'edition' %}
+      <div class="vf2-toggle-row">
+        <span style="font-size:.85rem;color:var(--text)">Vidéo publiée (visible dans le feed)</span>
+        <label class="vf2-switch">
+          <input type="checkbox" name="est_publie" {% if video.est_publie %}checked{% endif %}>
+          <span class="vf2-switch-slider"></span>
+        </label>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Produits (création uniquement) -->
+    {% if mode == 'creation' %}
+    <div class="fi vf2-section">
+      <div class="vf2-section-title"><i class="bi bi-bag" style="color:var(--saffron)"></i>Produits à taguer</div>
+      {% if mes_produits %}
+      <div class="vf2-prod-list">
+        {% for produit in mes_produits %}
+        <div class="vf2-prod-item">
+          <input type="checkbox" name="produits" value="{{ produit.pk }}" onchange="toggleTsInput(this)">
+          <div class="vf2-prod-img">{% if produit.image_principale %}<img src="{{ produit.image_principale }}" alt="">{% endif %}</div>
+          <div class="vf2-prod-name">{{ produit.titre }} <span style="color:var(--muted)">({{ produit.prix|floatformat:0 }} F)</span></div>
+          <input type="number" name="timestamp_{{ produit.pk }}" placeholder="Sec." min="0" disabled title="Seconde d'apparition dans la vidéo">
+        </div>
+        {% endfor %}
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem">
+        Cochez les produits à taguer, puis indiquez la seconde où chacun apparaît dans la vidéo.
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.85rem">
+        Vous n'avez aucun produit actif à taguer.
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="fi vf2-actions">
+      {% if mode == 'edition' %}
+      <a href="{% url 'apps_social:video_detail' pk=video.pk %}" class="btn-ghost" style="font-size:.85rem">Annuler</a>
+      {% else %}
+      <a href="{% url 'apps_social:mes_videos' %}" class="btn-ghost" style="font-size:.85rem">Annuler</a>
+      {% endif %}
+      <button type="submit" class="btn-gold" style="font-size:.85rem">
+        <i class="bi bi-check-lg me-1"></i>{% if mode == 'creation' %}Publier{% else %}Enregistrer{% endif %}
+      </button>
+    </div>
+  </form>
+
+  <!-- Produits déjà tagués (édition uniquement) -->
+  {% if mode == 'edition' %}
+  <div class="fi vf2-section" style="margin-top:1.25rem">
+    <div class="vf2-section-title"><i class="bi bi-bag-check" style="color:var(--jade)"></i>Produits déjà tagués</div>
+    <div id="existingProdList">
+      {% for pv in video.produits_video.all %}
+      <div class="vf2-existing-prod" id="pv-{{ pv.pk }}">
+        <div class="vf2-prod-img"><img src="{{ pv.produit.image_principale }}" alt=""></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;color:var(--text)">{{ pv.produit.titre }}</div>
+          <div style="font-size:.74rem;color:var(--muted)">Apparaît à {{ pv.timestamp_apparition }}s</div>
+        </div>
+        <button class="btn-ghost retirer-pv-btn" data-url="{% url 'apps_social:retirer_produit_video' produit_video_pk=pv.pk %}" style="font-size:.72rem;color:#c85050">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:1rem;color:var(--muted);font-size:.85rem">Aucun produit tagué pour l'instant.</div>
+      {% endfor %}
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+      <select class="vf2-select" id="selectAjoutProduit">
+        <option value="">— Ajouter un produit —</option>
+        {% for produit in mes_produits %}
+        <option value="{{ produit.pk }}">{{ produit.titre }} ({{ produit.prix|floatformat:0 }} F)</option>
+        {% endfor %}
+      </select>
+      <input type="number" id="inputTsAjout" placeholder="Sec." min="0" value="0" style="width:80px;padding:.5rem;border-radius:.5rem;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+      <button class="btn-gold" id="btnAjouterProduit" style="font-size:.82rem;white-space:nowrap">
+        <i class="bi bi-plus-lg"></i> Ajouter
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% block extra_js %}
+<script>
+"use strict";
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+function previewVideo(input){
+  const file = input.files[0];
+  if(!file) return;
+  document.getElementById('videoErreur').style.display = 'none';
+  const player = document.getElementById('videoPreview');
+  player.src = URL.createObjectURL(file);
+  player.style.display = 'block';
+}
+
+function previewMiniature(input){
+  const file = input.files[0];
+  if(!file) return;
+  document.getElementById('miniatureErreur')?.style && (document.getElementById('miniatureErreur').style.display = 'none');
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('miniaturePreview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function toggleTsInput(checkbox){
+  const row = checkbox.closest('.vf2-prod-item');
+  row.querySelector('input[type="number"]').disabled = !checkbox.checked;
+}
+
+{% if mode == 'creation' %}
+document.getElementById('videoForm').addEventListener('submit', function(e){
+  const inputVideo = document.getElementById('inputVideo');
+  const inputMiniature = document.getElementById('inputMiniature');
+  let bloque = false;
+
+  if(!inputVideo.files || inputVideo.files.length === 0){
+    document.getElementById('videoErreur').style.display = 'block';
+    bloque = true;
+  }
+  if(!inputMiniature.files || inputMiniature.files.length === 0){
+    document.getElementById('miniatureErreur').style.display = 'block';
+    bloque = true;
+  }
+  if(bloque){
+    e.preventDefault();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+});
+{% endif %}
+
+{% if mode == 'edition' %}
+document.getElementById('btnAjouterProduit')?.addEventListener('click', async function(){
+  const select = document.getElementById('selectAjoutProduit');
+  const produitId = select.value;
+  if(!produitId){ alert('Sélectionnez un produit.'); return; }
+  const ts = document.getElementById('inputTsAjout').value || '0';
+
+  const url = "{% url 'apps_social:ajouter_produit_video' pk=video.pk %}";
+  const fd = new FormData();
+  fd.append('produit_id', produitId);
+  fd.append('timestamp_apparition', ts);
+
+  try{
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      body: fd,
+    });
+    const d = await r.json();
+    if(d.success){ location.reload(); }
+    else { alert(d.message || 'Erreur'); }
+  }catch(e){ console.error(e); }
+});
+
+document.querySelectorAll('.retirer-pv-btn').forEach(btn => {
+  btn.addEventListener('click', async function(){
+    if(!confirm('Retirer ce produit de la vidéo ?')) return;
+    try{
+      const r = await fetch(this.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const d = await r.json();
+      if(d.success){ this.closest('.vf2-existing-prod').remove(); }
+    }catch(e){ console.error(e); }
+  });
+});
+{% endif %}
+
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}

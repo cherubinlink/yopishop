@@ -72,6 +72,14 @@ class LiveVente(models.Model):
         ('mixte',      'Vente + Enchères'),
         ('decouverte', 'Découverte produits'),
     ]
+
+    STREAM_CHOICES = [
+        ('hors_ligne', '⚫ Hors ligne'),
+        ('connexion',  '🟡 Connexion en cours'),
+        ('diffusion',  '🔴 En diffusion'),
+        ('erreur',     '⚠️ Erreur de connexion'),
+        ('termine',    '⏹️ Diffusion terminée'),
+    ]
  
     id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     titre           = models.CharField(max_length=200)
@@ -99,6 +107,10 @@ class LiveVente(models.Model):
     delai_defilement    = models.PositiveIntegerField(default=30,
                                                        validators=[MinValueValidator(10)])
     defilement_auto     = models.BooleanField(default=True)
+
+    # ... dans la classe LiveVente, à côté de url_stream ...
+    stream_statut  = models.CharField(max_length=20, choices=STREAM_CHOICES, default='hors_ligne')
+    stream_demarre = models.BooleanField(default=False)
  
     # Interaction
     autoriser_chat      = models.BooleanField(default=True)
@@ -168,18 +180,24 @@ class ProduitLive(models.Model):
  
     def prix_final(self):
         prix_normal = self.produit.prix
-        prix_promo  = self.produit.prix_promotionnel()
-        candidats   = [prix_normal]
- 
+        prix_promo  = self.produit.prix_promotionnel   # <-- sans ()
+
+        candidats = [prix_normal]
+
         if self.prix_live and self.prix_live > 0:
             candidats.append(self.prix_live)
+
         if self.reduction_pourcentage > 0:
-            r = (self.reduction_pourcentage / Decimal(100)) * prix_normal
-            candidats.append(prix_normal - r)
+            reduction = (self.reduction_pourcentage / Decimal("100")) * prix_normal
+            candidats.append(prix_normal - reduction)
+
         if prix_promo < prix_normal:
             candidats.append(prix_promo)
- 
-        return min(candidats).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        return min(candidats).quantize(
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP
+        )
  
     def stock_disponible(self):
         return self.quantite_live - self.quantite_vendue - self.quantite_reservee
@@ -578,6 +596,9 @@ class CommentairePublication(models.Model):
  
     def __str__(self):
         return f"{self.auteur.username}: {self.contenu[:50]}"
+
+
+
  
  
  

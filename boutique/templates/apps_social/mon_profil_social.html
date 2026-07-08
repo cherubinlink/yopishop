@@ -1,0 +1,222 @@
+{% extends 'navigateur/base.html' %}
+{% load static %}
+
+{% block title %}Mon profil social — YopiShop{% endblock %}
+
+{% block content %}
+<style>
+.sp-cover { height:200px;background:linear-gradient(135deg,var(--indigo),var(--saffron));position:relative;overflow:hidden; }
+.sp-avatar { width:96px;height:96px;border-radius:50%;border:4px solid var(--card);object-fit:cover;background:var(--saffron-d);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:2rem;font-weight:900;color:var(--saffron); }
+.sp-stat-card { text-align:center;padding:.75rem .5rem; }
+.sp-stat-val { font-family:var(--fm);font-size:1.4rem;font-weight:900;color:var(--text); }
+.sp-stat-lbl { font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em; }
+.pub-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:3px; }
+.pub-thumb { aspect-ratio:1;overflow:hidden;background:var(--surface);position:relative;cursor:pointer; }
+.pub-thumb img { width:100%;height:100%;object-fit:cover;transition:transform .3s; }
+.pub-thumb:hover img { transform:scale(1.06); }
+.pub-thumb-overlay { position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;gap:1rem;opacity:0;transition:opacity .2s; }
+.pub-thumb:hover .pub-thumb-overlay { opacity:1; }
+.tab-btn { background:none;border:none;border-bottom:2px solid transparent;padding:.65rem 1rem;font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;transition:all .2s; }
+.tab-btn.active { border-bottom-color:var(--saffron);color:var(--saffron); }
+</style>
+
+<!-- Cover -->
+<div class="sp-cover fi">
+  {% if profil.utilisateur.banniere %}
+  <img src="{{ profil.utilisateur.banniere.url }}" alt="" style="width:100%;height:100%;object-fit:cover">
+  {% endif %}
+</div>
+
+<!-- Profil header -->
+<div class="container" style="position:relative">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-top:-48px;margin-bottom:1.25rem">
+    <div style="display:flex;align-items:flex-end;gap:1rem">
+      <!-- Avatar -->
+      <div style="flex-shrink:0">
+        {% if profil.utilisateur.avatar %}
+        <img src="{{ profil.utilisateur.avatar.url }}" alt="" class="sp-avatar">
+        {% else %}
+        <div class="sp-avatar">{{ profil.utilisateur.username|first|upper }}</div>
+        {% endif %}
+      </div>
+      <div style="padding-bottom:.3rem">
+        <div style="font-family:var(--fm);font-size:1.25rem;font-weight:900;color:var(--text);display:flex;align-items:center;gap:.5rem">
+          {{ profil.utilisateur.get_full_name|default:profil.utilisateur.username }}
+          {% if profil.est_verifie %}
+          <i class="bi bi-patch-check-fill" style="color:var(--indigo);font-size:1rem"></i>
+          {% endif %}
+        </div>
+        <div style="font-size:.85rem;color:var(--muted)">@{{ profil.utilisateur.username }}</div>
+      </div>
+    </div>
+    <!-- Actions -->
+    <div style="display:flex;gap:.5rem;padding-bottom:.3rem">
+      <a href="{% url 'apps_social:modifier_profil_social' %}" class="btn-ghost" style="font-size:.82rem">
+        <i class="bi bi-pencil me-1"></i>Modifier
+      </a>
+      <a href="" class="btn-ghost" style="font-size:.82rem">
+        <i class="bi bi-people me-1"></i>Explorer
+      </a>
+    </div>
+  </div>
+
+  <!-- Biographie -->
+  {% if profil.biographie %}
+  <p style="font-size:.88rem;color:var(--text-2);margin-bottom:.75rem;max-width:500px;line-height:1.6">{{ profil.biographie }}</p>
+  {% endif %}
+  {% if profil.lien_bio %}
+  <a href="{{ profil.lien_bio }}" target="_blank" style="font-size:.82rem;color:var(--saffron);text-decoration:none">
+    <i class="bi bi-link-45deg me-1"></i>{{ profil.lien_bio|truncatechars:40 }}
+  </a>
+  {% endif %}
+</div>
+
+<!-- Stats -->
+<div class="container mt-3 fi">
+  <div class="ycard" style="border:1px solid var(--border)">
+    <div class="row g-0">
+      <div class="col-4 border-end" style="border-color:var(--border)!important">
+        <div class="sp-stat-card">
+          <div class="sp-stat-val">{{ profil.nb_publications }}</div>
+          <div class="sp-stat-lbl">Publications</div>
+        </div>
+      </div>
+      <div class="col-4 border-end" style="border-color:var(--border)!important">
+        <a href="{% url 'apps_social:mes_abonnes' %}" style="text-decoration:none">
+          <div class="sp-stat-card">
+            <div class="sp-stat-val">{{ profil.nb_abonnes|floatformat:0 }}</div>
+            <div class="sp-stat-lbl">Abonnés</div>
+          </div>
+        </a>
+      </div>
+      <div class="col-4">
+        <a href="{% url 'apps_social:mes_abonnements' %}" style="text-decoration:none">
+          <div class="sp-stat-card">
+            <div class="sp-stat-val">{{ profil.nb_abonnements }}</div>
+            <div class="sp-stat-lbl">Abonnements</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Onglets -->
+<div class="container mt-4 fi">
+  <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem">
+    <button class="tab-btn active" data-tab="publications" onclick="switchTab('publications', this)">
+      <i class="bi bi-grid-3x3 me-1"></i>Publications
+    </button>
+    <button class="tab-btn" data-tab="videos" onclick="switchTab('videos', this)">
+      <i class="bi bi-play-btn me-1"></i>Vidéos
+    </button>
+    {% if request.user.peut_vendre %}
+    <button class="tab-btn" data-tab="boutique" onclick="switchTab('boutique', this)">
+      <i class="bi bi-shop me-1"></i>Boutique
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Publications -->
+  <div id="tab-publications">
+    {% if publications %}
+    <div class="pub-grid">
+      {% for pub in publications %}
+      <div class="pub-thumb">
+        {% if pub.medias.first %}
+        <img src="{{ pub.medias.first.fichier.url }}" alt="">
+        {% else %}
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface)">
+          <i class="bi bi-card-text" style="font-size:1.5rem;color:var(--muted)"></i>
+        </div>
+        {% endif %}
+        <div class="pub-thumb-overlay">
+          <span style="color:#fff;font-size:.8rem"><i class="bi bi-heart-fill me-1"></i>{{ pub.nb_likes }}</span>
+          <span style="color:#fff;font-size:.8rem"><i class="bi bi-chat-fill me-1"></i>{{ pub.nb_commentaires }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-camera" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+      <div style="font-size:.9rem;color:var(--text);font-weight:600;margin-bottom:.4rem">Aucune publication</div>
+      <a href="" class="btn-gold mt-2" style="font-size:.85rem">
+        <i class="bi bi-plus-lg me-1"></i>Créer ma première publication
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Vidéos -->
+  <div id="tab-videos" style="display:none">
+    {% if videos %}
+    <div class="pub-grid">
+      {% for vid in videos %}
+      <div class="pub-thumb">
+        {% if vid.miniature %}
+        <img src="{{ vid.miniature.url }}" alt="{{ vid.titre }}">
+        {% else %}
+        <div style="width:100%;height:100%;background:var(--surface);display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-play-circle" style="font-size:2rem;color:var(--muted)"></i>
+        </div>
+        {% endif %}
+        <div class="pub-thumb-overlay">
+          <span style="color:#fff;font-size:.8rem"><i class="bi bi-eye-fill me-1"></i>{{ vid.nb_vues }}</span>
+          <span style="color:#fff;font-size:.8rem"><i class="bi bi-play-fill me-1"></i>{{ vid.duree_secondes }}s</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-camera-video" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+      <div style="font-size:.9rem;color:var(--text);font-weight:600">Aucune vidéo</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if request.user.peut_vendre %}
+  <!-- Onglet Boutique -->
+  <div id="tab-boutique" style="display:none">
+    {% if produits_boutique %}
+    <div class="row g-3">
+      {% for produit in produits_boutique %}
+      <div class="col-6 col-md-4">
+        <a href="{% url 'apps_core:produit_detail' produit.slug %}" class="ycard d-block text-decoration-none" style="border:1px solid var(--border)">
+          <div style="aspect-ratio:1;overflow:hidden;background:var(--surface)">
+            {% if produit.image_principale %}
+            <img src="{{ produit.image_principale }}" alt="{{ produit.titre }}" style="width:100%;height:100%;object-fit:cover">
+            {% endif %}
+          </div>
+          <div style="padding:.65rem">
+            <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ produit.titre }}</div>
+            <div style="font-family:var(--fm);font-size:.9rem;font-weight:800;color:var(--saffron)">{{ produit.prix|floatformat:0 }} F</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-shop" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem"></i>
+      <div style="font-size:.9rem;color:var(--text);font-weight:600">Aucun produit dans votre boutique</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% block extra_js %}
+<script>
+function switchTab(tab, btn) {
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display='none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+tab).style.display='block';
+  btn.classList.add('active');
+}
+const io = new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');io.unobserve(x.target);}});},{threshold:.05});
+document.querySelectorAll('.fi').forEach(el=>io.observe(el));
+</script>
+{% endblock %}
+{% endblock %}
